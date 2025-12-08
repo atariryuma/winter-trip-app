@@ -1,18 +1,7 @@
 function doGet(e) {
-    const params = e.parameter;
-    let result = {};
-
-    if (params.action === 'getItinerary') {
-        result = getTripData();
-    } else {
-        result = {
-            status: 'success',
-            message: 'Hello from GAS Backend! Use ?action=getItinerary to get trip data.'
-        };
-    }
-
-    return ContentService.createTextOutput(JSON.stringify(result))
-        .setMimeType(ContentService.MimeType.JSON);
+    return HtmlService.createHtmlOutputFromFile('index')
+        .setTitle('Tabi Log')
+        .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
 function doPost(e) {

@@ -3,7 +3,8 @@ import {
     Plane, Train, Bus, MapPin, BedDouble, Calendar,
     Sun, Cloud, Snowflake, Camera, ArrowRight, Utensils,
     CheckCircle2, Circle, AlertCircle, Copy, Ticket, Mountain,
-    Edit2, Plus, X, Save, Trash2, Moon, Menu, Smartphone
+    Edit2, Plus, X, Save, Trash2, Moon, Menu, Smartphone,
+    Settings, Download, Upload, Clock, ChevronRight
 } from 'lucide-react';
 
 // ============================================================================
@@ -342,6 +343,120 @@ const MapView = ({ mapUrl, itinerary }) => {
     );
 };
 
+// ============================================================================
+// SETTINGS VIEW COMPONENT
+// ============================================================================
+
+const SettingsView = ({ itinerary, isDarkMode, setIsDarkMode, lastUpdate }) => {
+    const handleExportCSV = () => {
+        // Convert itinerary to CSV
+        const headers = ['日付', '曜日', 'タイトル', '場所', '天気', '気温', 'イベントID', 'タイプ', 'カテゴリ', '名前', '開始時刻', '終了時刻', 'ステータス', '詳細'];
+        const rows = [];
+
+        itinerary.forEach(day => {
+            day.events.forEach(event => {
+                rows.push([
+                    day.date, day.dayOfWeek, day.title, day.location,
+                    day.weather?.condition || '', day.weather?.temp || '',
+                    event.id, event.type, event.category, event.name,
+                    event.time || '', event.endTime || '', event.status || '',
+                    event.details || event.description || ''
+                ]);
+            });
+        });
+
+        const csvContent = [headers.join(','), ...rows.map(r => r.map(c => `"${(c || '').replace(/"/g, '""')}"`).join(','))].join('\n');
+        const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `旅程_${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
+    const handleImportCSV = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        alert('CSV インポート機能は次のバージョンで実装予定です');
+        e.target.value = '';
+    };
+
+    return (
+        <div className="pt-4 space-y-4 overflow-hidden">
+            {/* Data Management */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="px-4 py-3 border-b border-gray-100">
+                    <h3 className="font-bold text-gray-800 text-sm">データ管理</h3>
+                </div>
+                <button onClick={handleExportCSV} className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 active:bg-gray-100 transition">
+                    <div className="flex items-center gap-3">
+                        <Download size={20} className="text-blue-500" />
+                        <span className="text-gray-700">CSV ダウンロード</span>
+                    </div>
+                    <ChevronRight size={18} className="text-gray-300" />
+                </button>
+                <label className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 active:bg-gray-100 transition cursor-pointer border-t border-gray-50">
+                    <div className="flex items-center gap-3">
+                        <Upload size={20} className="text-green-500" />
+                        <span className="text-gray-700">CSV アップロード</span>
+                    </div>
+                    <ChevronRight size={18} className="text-gray-300" />
+                    <input type="file" accept=".csv" onChange={handleImportCSV} className="hidden" />
+                </label>
+                {lastUpdate && (
+                    <div className="px-4 py-3 border-t border-gray-50 flex items-center gap-3">
+                        <Clock size={20} className="text-gray-400" />
+                        <div>
+                            <span className="text-xs text-gray-400 block">最終更新</span>
+                            <span className="text-sm text-gray-600">{lastUpdate}</span>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Appearance */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="px-4 py-3 border-b border-gray-100">
+                    <h3 className="font-bold text-gray-800 text-sm">外観</h3>
+                </div>
+                <div className="px-4 py-3 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <Moon size={20} className="text-indigo-500" />
+                        <span className="text-gray-700">ダークモード</span>
+                    </div>
+                    <button
+                        onClick={() => setIsDarkMode(!isDarkMode)}
+                        className={`w-12 h-7 rounded-full transition-colors relative ${isDarkMode ? 'bg-blue-600' : 'bg-gray-300'}`}
+                    >
+                        <div className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform ${isDarkMode ? 'translate-x-6' : 'translate-x-1'}`} />
+                    </button>
+                </div>
+            </div>
+
+            {/* App Info */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="px-4 py-3 border-b border-gray-100">
+                    <h3 className="font-bold text-gray-800 text-sm">アプリ情報</h3>
+                </div>
+                <div className="px-4 py-3 flex items-center justify-between">
+                    <span className="text-gray-700">バージョン</span>
+                    <span className="text-gray-400 text-sm">1.0.0</span>
+                </div>
+                <a href="https://github.com/atariryuma/winter-trip-app" target="_blank" rel="noopener noreferrer" className="px-4 py-3 flex items-center justify-between hover:bg-gray-50 border-t border-gray-50">
+                    <span className="text-gray-700">GitHub</span>
+                    <ChevronRight size={18} className="text-gray-300" />
+                </a>
+            </div>
+
+            {/* Hint */}
+            <div className="text-center text-xs text-gray-400 py-4">
+                💡 カードを編集するには右上の編集ボタンを押してください
+            </div>
+        </div>
+    );
+};
+
 // API URL - same origin for GAS deployment
 // Server Communication Adapter
 const server = {
@@ -413,6 +528,8 @@ export default function TravelApp() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
+    const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('darkMode') === 'true');
+    const [lastUpdate, setLastUpdate] = useState(() => localStorage.getItem('lastUpdate') || null);
 
     const selectedDay = useMemo(() => itinerary.find(d => d.id === selectedDayId), [itinerary, selectedDayId]);
     const sortedEvents = useMemo(() => {
@@ -444,6 +561,11 @@ export default function TravelApp() {
     useEffect(() => {
         if (sessionStorage.getItem('trip_auth') === 'true') setAuth(true);
     }, []);
+
+    // Dark mode persistence
+    useEffect(() => {
+        localStorage.setItem('darkMode', isDarkMode);
+    }, [isDarkMode]);
 
     // Fetch data from Spreadsheet via GAS API
     // Fetch data from Spreadsheet via GAS Adapter
@@ -778,6 +900,9 @@ export default function TravelApp() {
 
                     {/* NEW: Map View */}
                     {activeTab === 'map' && <MapView mapUrl={mapUrl} itinerary={itinerary} />}
+
+                    {/* NEW: Settings View */}
+                    {activeTab === 'settings' && <SettingsView itinerary={itinerary} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} lastUpdate={lastUpdate} />}
                 </main>
 
                 {/* ========== BOTTOM NAV ========== */}
@@ -802,6 +927,13 @@ export default function TravelApp() {
                     >
                         <MapPin size={24} strokeWidth={activeTab === 'map' ? 2.5 : 2} />
                         <span className="text-[11px] font-bold">マップ</span>
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('settings')}
+                        className={`flex flex-col items-center gap-0.5 p-1 transition-transform active:scale-95 ${activeTab === 'settings' ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
+                    >
+                        <Settings size={24} strokeWidth={activeTab === 'settings' ? 2.5 : 2} />
+                        <span className="text-[11px] font-bold">設定</span>
                     </button>
                 </div>
 

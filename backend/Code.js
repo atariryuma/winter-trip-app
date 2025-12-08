@@ -1,8 +1,18 @@
 function doGet(e) {
-    return ContentService.createTextOutput(JSON.stringify({
-        status: 'success',
-        message: 'Hello from GAS Backend!'
-    })).setMimeType(ContentService.MimeType.JSON);
+    const params = e.parameter;
+    let result = {};
+
+    if (params.action === 'getItinerary') {
+        result = getTripData();
+    } else {
+        result = {
+            status: 'success',
+            message: 'Hello from GAS Backend! Use ?action=getItinerary to get trip data.'
+        };
+    }
+
+    return ContentService.createTextOutput(JSON.stringify(result))
+        .setMimeType(ContentService.MimeType.JSON);
 }
 
 function doPost(e) {

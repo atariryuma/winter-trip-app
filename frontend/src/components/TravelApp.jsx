@@ -605,10 +605,10 @@ export default function TravelApp() {
 
                     {/* Content Area */}
                     {activeTab === 'timeline' && selectedDay && (
-                        <div className="pt-2">
+                        <div className="pt-4">
 
                             {/* Summary Card */}
-                            <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm mb-6 border border-gray-100">
+                            <div className="bg-white rounded-2xl p-5 shadow-sm mb-6 border border-gray-100">
                                 <div className="flex justify-between items-start mb-3 gap-4">
                                     <div className="flex-1">
                                         <div className="lg:hidden text-xs text-blue-600 font-bold mb-1">Day {dayIndex + 1}</div>
@@ -634,7 +634,7 @@ export default function TravelApp() {
 
                                         <div
                                             onClick={isEditMode ? () => { setEditItem(event); setModalOpen(true); } : undefined}
-                                            className={`rounded-2xl p-4 sm:p-5 shadow-sm border border-gray-100 transition bg-white relative overflow-hidden ${event.type === 'stay' ? 'bg-indigo-50/50 border-indigo-100' : ''} ${isEditMode ? 'cursor-pointer hover:shadow-md hover:border-blue-300' : ''}`}
+                                            className={`rounded-2xl p-5 shadow-sm border border-gray-100 transition bg-white relative overflow-hidden ${event.type === 'stay' ? 'bg-indigo-50/50 border-indigo-100' : ''} ${isEditMode ? 'cursor-pointer hover:shadow-md hover:border-blue-300' : ''}`}
                                         >
                                             {/* Icon Background Decoration */}
                                             <div className="absolute top-0 right-0 p-3 opacity-10">

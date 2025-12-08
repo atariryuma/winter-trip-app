@@ -3,7 +3,7 @@ import {
     Plane, Train, Hotel, MapPin, Clock, Utensils, Camera, Mountain,
     CheckCircle, AlertCircle, Bus, Menu, CalendarDays, X, Moon, Sun,
     Share2, Printer, ChevronRight, Check, Copy, Edit2, Trash2, Plus,
-    LayoutGrid, List, Settings, Save, RefreshCw
+    LayoutGrid, List, Settings, Save, RefreshCw, ArrowRight, Star
 } from 'lucide-react';
 
 // ============================================================================
@@ -90,28 +90,44 @@ const initialItinerary = [
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
-const categoryIcons = {
-    flight: Plane, train: Train, bus: Bus, other: Mountain,
-    hotel: Hotel, meal: Utensils, sightseeing: Camera, transfer: MapPin,
-    default: CheckCircle
-};
-
-const categoryColors = {
-    flight: 'text-sky-600 bg-sky-50 dark:bg-sky-900/20',
-    train: 'text-rose-600 bg-rose-50 dark:bg-rose-900/20',
-    bus: 'text-amber-600 bg-amber-50 dark:bg-amber-900/20',
-    hotel: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20',
-    sightseeing: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20',
-    default: 'text-slate-600 bg-slate-50 dark:bg-slate-800'
+const eventColors = {
+    flight: { bg: 'bg-sky-50 dark:bg-sky-900/20', text: 'text-sky-700 dark:text-sky-300', border: 'border-sky-200 dark:border-sky-800', icon: Plane },
+    train: { bg: 'bg-rose-50 dark:bg-rose-900/20', text: 'text-rose-700 dark:text-rose-300', border: 'border-rose-200 dark:border-rose-800', icon: Train },
+    bus: { bg: 'bg-amber-50 dark:bg-amber-900/20', text: 'text-amber-700 dark:text-amber-300', border: 'border-amber-200 dark:border-amber-800', icon: Bus },
+    hotel: { bg: 'bg-indigo-50 dark:bg-indigo-900/20', text: 'text-indigo-700 dark:text-indigo-300', border: 'border-indigo-200 dark:border-indigo-800', icon: Hotel },
+    meal: { bg: 'bg-orange-50 dark:bg-orange-900/20', text: 'text-orange-700 dark:text-orange-300', border: 'border-orange-200 dark:border-orange-800', icon: Utensils },
+    sightseeing: { bg: 'bg-emerald-50 dark:bg-emerald-900/20', text: 'text-emerald-700 dark:text-emerald-300', border: 'border-emerald-200 dark:border-emerald-800', icon: Camera },
+    default: { bg: 'bg-slate-50 dark:bg-slate-900/50', text: 'text-slate-700 dark:text-slate-300', border: 'border-slate-200 dark:border-slate-800', icon: CheckCircle }
 };
 
 // ============================================================================
-// COMPONENTS - EDITOR MODAL
+// COMPONENTS
 // ============================================================================
+
+const Card = ({ children, className = "", onClick }) => (
+    <div
+        onClick={onClick}
+        className={`bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm transition-all duration-300 ${onClick ? 'cursor-pointer active:scale-[0.98] hover:shadow-md' : ''} ${className}`}
+    >
+        {children}
+    </div>
+);
+
+const Badge = ({ type, text }) => {
+    const styles = {
+        confirmed: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
+        planned: 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300',
+        suggested: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
+    };
+    return (
+        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${styles[type] || styles.planned}`}>
+            {text || type}
+        </span>
+    );
+};
 
 const EditModal = ({ isOpen, onClose, item, onSave, onDelete }) => {
     const [formData, setFormData] = useState({});
-
     useEffect(() => {
         if (item) setFormData({ ...item });
         else setFormData({ type: 'activity', category: 'sightseeing', status: 'planned', time: '10:00' });
@@ -120,123 +136,103 @@ const EditModal = ({ isOpen, onClose, item, onSave, onDelete }) => {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
-            <div
-                className="bg-white dark:bg-slate-900 w-full max-w-md rounded-t-2xl md:rounded-2xl shadow-2xl flex flex-col max-h-[90vh]"
-                onClick={e => e.stopPropagation()}
-            >
-                <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
-                    <h3 className="font-bold text-lg dark:text-white">{item ? '予定を編集' : '新しい予定'}</h3>
-                    <button onClick={onClose}><X size={24} className="text-slate-400" /></button>
+        <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={onClose}>
+            <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-3xl shadow-2xl flex flex-col max-h-[85vh] animate-in slide-in-from-bottom-10 duration-300" onClick={e => e.stopPropagation()}>
+                <div className="p-4 md:p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50 rounded-t-3xl">
+                    <h3 className="font-bold text-lg dark:text-white">{item ? 'Edit Event' : 'New Event'}</h3>
+                    <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"><X size={20} /></button>
                 </div>
 
-                <div className="p-6 overflow-y-auto space-y-4">
-                    {/* Type Selection */}
-                    <div className="grid grid-cols-2 gap-2">
-                        <div>
-                            <label className="block text-xs font-bold text-slate-500 mb-1">種類</label>
-                            <select
-                                value={formData.type}
-                                onChange={e => setFormData({ ...formData, type: e.target.value })}
-                                className="w-full p-2 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 dark:text-white"
-                            >
-                                <option value="transport">移動 (Transport)</option>
-                                <option value="activity">活動 (Activity)</option>
-                                <option value="stay">宿泊 (Stay)</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold text-slate-500 mb-1">カテゴリー</label>
-                            <select
-                                value={formData.category}
-                                onChange={e => setFormData({ ...formData, category: e.target.value })}
-                                className="w-full p-2 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 dark:text-white"
-                            >
-                                <option value="flight">飛行機</option>
-                                <option value="train">電車</option>
-                                <option value="bus">バス</option>
-                                <option value="sightseeing">観光</option>
-                                <option value="meal">食事</option>
-                                <option value="hotel">ホテル</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label className="block text-xs font-bold text-slate-500 mb-1">タイトル</label>
-                        <input
-                            type="text"
-                            value={formData.name || ''}
-                            onChange={e => setFormData({ ...formData, name: e.target.value })}
-                            className="w-full p-3 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 dark:text-white font-bold"
-                            placeholder="例: 那覇空港へ移動"
-                        />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-xs font-bold text-slate-500 mb-1">開始時間</label>
-                            <input
-                                type="time"
-                                value={formData.time || ''}
-                                onChange={e => setFormData({ ...formData, time: e.target.value })}
-                                className="w-full p-2 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 dark:text-white"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold text-slate-500 mb-1">終了時間 (任意)</label>
-                            <input
-                                type="time"
-                                value={formData.endTime || ''}
-                                onChange={e => setFormData({ ...formData, endTime: e.target.value })}
-                                className="w-full p-2 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 dark:text-white"
-                            />
-                        </div>
-                    </div>
-
-                    <div>
-                        <label className="block text-xs font-bold text-slate-500 mb-1">詳細・メモ</label>
-                        <textarea
-                            value={formData.details || (formData.description || '')}
-                            onChange={e => setFormData({ ...formData, details: e.target.value, description: e.target.value })}
-                            className="w-full p-3 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 dark:text-white h-24 text-sm"
-                            placeholder="予約番号や注意事項など"
-                        />
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-slate-500">ステータス:</span>
-                        <div className="flex gap-2">
-                            {['planned', 'confirmed', 'suggested'].map(s => (
-                                <button
-                                    key={s}
-                                    onClick={() => setFormData({ ...formData, status: s })}
-                                    className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${formData.status === s
-                                            ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
-                                            : 'bg-slate-100 text-slate-500 dark:bg-slate-800'
-                                        }`}
+                <div className="p-6 overflow-y-auto space-y-6">
+                    <div className="space-y-4">
+                        {/* Type & Category */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-xs font-bold text-slate-400 uppercase mb-1.5 block">Category</label>
+                                <select
+                                    value={formData.category}
+                                    onChange={e => setFormData({ ...formData, category: e.target.value })}
+                                    className="w-full p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
                                 >
-                                    {s === 'confirmed' ? '確定' : s === 'suggested' ? '提案' : '予定'}
-                                </button>
-                            ))}
+                                    <option value="flight">Flight</option>
+                                    <option value="train">Train</option>
+                                    <option value="bus">Bus</option>
+                                    <option value="hotel">Hotel</option>
+                                    <option value="meal">Meal</option>
+                                    <option value="sightseeing">Sightseeing</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-slate-400 uppercase mb-1.5 block">Status</label>
+                                <select
+                                    value={formData.status}
+                                    onChange={e => setFormData({ ...formData, status: e.target.value })}
+                                    className="w-full p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                >
+                                    <option value="planned">Planned</option>
+                                    <option value="confirmed">Confirmed</option>
+                                    <option value="suggested">Suggested</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* Title */}
+                        <div>
+                            <label className="text-xs font-bold text-slate-400 uppercase mb-1.5 block">Title</label>
+                            <input
+                                type="text"
+                                value={formData.name || ''}
+                                onChange={e => setFormData({ ...formData, name: e.target.value })}
+                                className="w-full p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 dark:text-white font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                placeholder="Event Name"
+                            />
+                        </div>
+
+                        {/* Time */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-xs font-bold text-slate-400 uppercase mb-1.5 block">Start Time</label>
+                                <input type="time" value={formData.time || ''} onChange={e => setFormData({ ...formData, time: e.target.value })} className="w-full p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 dark:text-white outline-none" />
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-slate-400 uppercase mb-1.5 block">End Time</label>
+                                <input type="time" value={formData.endTime || ''} onChange={e => setFormData({ ...formData, endTime: e.target.value })} className="w-full p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 dark:text-white outline-none" />
+                            </div>
+                        </div>
+
+                        {/* Locations */}
+                        {(formData.category === 'flight' || formData.category === 'train' || formData.category === 'bus') && (
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-xs font-bold text-slate-400 uppercase mb-1.5 block">Departure</label>
+                                    <input type="text" value={formData.place || ''} onChange={e => setFormData({ ...formData, place: e.target.value })} className="w-full p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 dark:text-white outline-none" placeholder="Origin" />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-slate-400 uppercase mb-1.5 block">Arrival</label>
+                                    <input type="text" value={formData.to || ''} onChange={e => setFormData({ ...formData, to: e.target.value })} className="w-full p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 dark:text-white outline-none" placeholder="Destination" />
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Details */}
+                        <div>
+                            <label className="text-xs font-bold text-slate-400 uppercase mb-1.5 block">Notes</label>
+                            <textarea
+                                value={formData.description || formData.details || ''}
+                                onChange={e => setFormData({ ...formData, description: e.target.value, details: e.target.value })}
+                                className="w-full p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 dark:text-white h-24 resize-none outline-none"
+                                placeholder="Additional details..."
+                            />
                         </div>
                     </div>
                 </div>
 
-                <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex gap-3">
+                <div className="p-4 md:p-6 border-t border-slate-100 dark:border-slate-800 flex gap-3 bg-slate-50/50 dark:bg-slate-900/50 rounded-b-3xl">
                     {item && onDelete && (
-                        <button
-                            onClick={() => onDelete(item.id)}
-                            className="p-3 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400"
-                        >
-                            <Trash2 size={20} />
-                        </button>
+                        <button onClick={() => onDelete(item.id)} className="p-3 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-100 dark:bg-rose-900/20 dark:text-rose-400 transition-colors"><Trash2 size={20} /></button>
                     )}
-                    <button
-                        onClick={() => onSave(formData)}
-                        className="flex-1 bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20"
-                    >
-                        <Save size={18} /> 保存する
+                    <button onClick={() => onSave(formData)} className="flex-1 bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-500/20 transition-all active:scale-[0.98]">
+                        Save Changes
                     </button>
                 </div>
             </div>
@@ -245,24 +241,30 @@ const EditModal = ({ isOpen, onClose, item, onSave, onDelete }) => {
 };
 
 // ============================================================================
-// MAIN APP COMPONENT
+// MAIN APP
 // ============================================================================
 
 export default function TravelApp() {
-    // State
-    const [itinerary, setItinerary] = useState(initialItinerary);
+    const [itinerary, setItinerary] = useState(() => {
+        // Try to restore from session storage, else use initial
+        const saved = sessionStorage.getItem('trip_data_v4');
+        return saved ? JSON.parse(saved) : initialItinerary;
+    });
+
     const [selectedDayId, setSelectedDayId] = useState(initialItinerary[0].id);
-    const [viewMode, setViewMode] = useState('list'); // 'list' | 'dashboard'
     const [isEditMode, setIsEditMode] = useState(false);
     const [darkMode, setDarkMode] = useState(false);
     const [auth, setAuth] = useState(false);
 
-    // Editor State
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingItem, setEditingItem] = useState(null);
-    const [targetDayId, setTargetDayId] = useState(null);
+    // Modal State
+    const [modalOpen, setModalOpen] = useState(false);
+    const [editItem, setEditItem] = useState(null);
 
-    // Initialization
+    // Computed
+    const selectedDay = useMemo(() => itinerary.find(d => d.id === selectedDayId), [itinerary, selectedDayId]);
+    const dayIndex = useMemo(() => itinerary.findIndex(d => d.id === selectedDayId), [itinerary, selectedDayId]);
+
+    // Effects
     useEffect(() => {
         if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
             setDarkMode(true);
@@ -271,368 +273,296 @@ export default function TravelApp() {
         if (sessionStorage.getItem('trip_auth') === 'true') setAuth(true);
     }, []);
 
+    useEffect(() => {
+        sessionStorage.setItem('trip_data_v4', JSON.stringify(itinerary));
+    }, [itinerary]);
+
     const toggleDark = () => {
         setDarkMode(!darkMode);
         document.documentElement.classList.toggle('dark');
     };
 
-    // CRUD Operations
-    const handleSave = (itemData) => {
+    // Logic
+    const handleSaveEvent = (newItem) => {
         setItinerary(prev => prev.map(day => {
-            if (day.id === (targetDayId || selectedDayId)) {
-                let newEvents;
-                if (editingItem) {
-                    // Update existing
-                    newEvents = day.events.map(e => e.id === itemData.id ? { ...itemData } : e);
-                } else {
-                    // Add new
-                    newEvents = [...day.events, { ...itemData, id: generateId() }];
-                }
-                // Sort by time
-                newEvents.sort((a, b) => a.time.localeCompare(b.time));
-                return { ...day, events: newEvents };
+            if (day.id === selectedDayId) {
+                let newEvents = editItem
+                    ? day.events.map(e => e.id === newItem.id ? newItem : e)
+                    : [...day.events, { ...newItem, id: generateId() }];
+                return { ...day, events: newEvents.sort((a, b) => a.time.localeCompare(b.time)) };
             }
             return day;
         }));
-        setIsModalOpen(false);
-        setEditingItem(null);
+        setModalOpen(false);
     };
 
-    const handleDelete = (itemId) => {
-        if (!window.confirm('本当に削除しますか？')) return;
-        setItinerary(prev => prev.map(day => ({
-            ...day,
-            events: day.events.filter(e => e.id !== itemId)
-        })));
-        setIsModalOpen(false);
-        setEditingItem(null);
+    const handleDeleteEvent = (id) => {
+        if (!window.confirm("Are you sure?")) return;
+        setItinerary(prev => prev.map(day => {
+            if (day.id === selectedDayId) {
+                return { ...day, events: day.events.filter(e => e.id !== id) };
+            }
+            return day;
+        }));
+        setModalOpen(false);
     };
 
-    const openAddModal = (dayId) => {
-        setTargetDayId(dayId);
-        setEditingItem(null);
-        setIsModalOpen(true);
-    };
-
-    const openEditModal = (dayId, item) => {
-        setTargetDayId(dayId);
-        setEditingItem(item);
-        setIsModalOpen(true);
-    };
-
-    // Login Screen
     if (!auth) {
         return (
-            <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6">
-                <div className="w-full max-w-sm bg-white dark:bg-slate-800 rounded-3xl p-8 text-center">
-                    <h1 className="text-2xl font-black text-slate-900 dark:text-white mb-2">Winter Trip</h1>
-                    <p className="text-slate-500 mb-6">Enter Passcode</p>
+            <div className="flex h-screen items-center justify-center bg-slate-950 p-6">
+                <div className="w-full max-w-sm text-center space-y-8">
+                    <div className="w-20 h-20 bg-indigo-500 rounded-3xl mx-auto flex items-center justify-center shadow-2xl shadow-indigo-500/50">
+                        <Plane className="text-white -rotate-45" size={40} />
+                    </div>
+                    <div>
+                        <h1 className="text-3xl font-black text-white tracking-tight mb-2">Winter Trip</h1>
+                        <p className="text-indigo-300 font-medium">Family Vacation 2025</p>
+                    </div>
                     <input
                         type="password"
-                        autoFocus
-                        className="w-full p-4 text-center text-2xl tracking-[0.5em] bg-slate-100 dark:bg-slate-700 rounded-xl mb-4"
-                        onChange={e => {
-                            if (e.target.value === '2025') {
-                                setAuth(true);
-                                sessionStorage.setItem('trip_auth', 'true');
-                            }
-                        }}
+                        placeholder="••••"
+                        onChange={e => e.target.value === '2025' && (setAuth(true), sessionStorage.setItem('trip_auth', 'true'))}
+                        className="w-full bg-slate-900 border border-slate-800 text-center text-3xl tracking-[12px] py-6 rounded-2xl text-white outline-none focus:border-indigo-500 transition-colors"
                     />
                 </div>
             </div>
         );
     }
 
-    // Selected Day Data
-    const selectedDay = itinerary.find(d => d.id === selectedDayId);
-
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans transition-colors pb-24 md:pb-0 md:pl-72">
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans transition-colors md:pl-80">
 
             {/* DESKTOP SIDEBAR */}
-            <aside className="hidden md:flex flex-col fixed inset-y-0 left-0 w-72 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 z-50">
-                <div className="p-6">
-                    <h1 className="text-2xl font-black bg-gradient-to-r from-indigo-500 to-sky-500 bg-clip-text text-transparent">Winter Trip</h1>
-                    <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mt-1">2024-2025 Family Plan</p>
+            <aside className="hidden md:flex flex-col fixed inset-y-0 left-0 w-80 bg-white dark:bg-slate-900 border-r border-slate-100 dark:border-slate-800 z-50">
+                <div className="p-8 pb-4">
+                    <div className="flex items-center gap-3 mb-8">
+                        <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
+                            <Plane size={20} className="-rotate-45" />
+                        </div>
+                        <div>
+                            <h1 className="font-bold text-lg leading-tight">Winter Trip</h1>
+                            <div className="text-xs text-slate-400 font-bold uppercase tracking-wider">Family Plan</div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-1">
+                        <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-3">Itinerary</div>
+                        {itinerary.map((day, idx) => (
+                            <button
+                                key={day.id}
+                                onClick={() => setSelectedDayId(day.id)}
+                                className={`w-full text-left px-4 py-3 rounded-xl transition-all group relative overflow-hidden ${selectedDayId === day.id
+                                        ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-xl shadow-slate-900/10'
+                                        : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+                                    }`}
+                            >
+                                <div className="flex justify-between items-center relative z-10">
+                                    <span className="font-bold text-sm">Day {idx + 1}</span>
+                                    <span className="text-xs opacity-60 font-medium">{day.date}</span>
+                                </div>
+                                <div className="text-xs mt-1 truncate relative z-10 opacity-80">{day.title}</div>
+                            </button>
+                        ))}
+                    </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto px-4 space-y-2">
-                    <div className="text-xs font-bold text-slate-400 px-2 mb-2">ITINERARY</div>
-                    {itinerary.map(day => (
-                        <button
-                            key={day.id}
-                            onClick={() => { setSelectedDayId(day.id); setViewMode('list'); }}
-                            className={`w-full text-left p-3 rounded-xl transition-all group ${selectedDayId === day.id && viewMode === 'list'
-                                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30'
-                                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-                                }`}
-                        >
-                            <div className="flex justify-between items-center mb-1">
-                                <span className="font-bold">{day.date}</span>
-                                <span className={`text-[10px] px-2 py-0.5 rounded-full ${selectedDayId === day.id ? 'bg-white/20' : 'bg-slate-200 dark:bg-slate-700'
-                                    }`}>{day.dayOfWeek}</span>
-                            </div>
-                            <div className="text-xs opacity-70 truncate">{day.title}</div>
-                        </button>
-                    ))}
+                <div className="mt-auto p-6 border-t border-slate-100 dark:border-slate-800">
+                    <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl mb-4">
+                        <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Trip Progress</div>
+                        <div className="flex gap-1 h-1.5 mb-2">
+                            {itinerary.map((_, i) => (
+                                <div key={i} className={`flex-1 rounded-full ${i <= dayIndex ? 'bg-indigo-500' : 'bg-slate-200 dark:bg-slate-700'}`} />
+                            ))}
+                        </div>
+                        <div className="text-xs text-slate-500 text-right">{Math.round(((dayIndex + 1) / itinerary.length) * 100)}% Complete</div>
+                    </div>
 
-                    <div className="mt-8 text-xs font-bold text-slate-400 px-2 mb-2">OVERVIEW</div>
-                    <button
-                        onClick={() => setViewMode('dashboard')}
-                        className={`w-full text-left p-3 rounded-xl transition-all flex items-center gap-3 ${viewMode === 'dashboard'
-                                ? 'bg-indigo-600 text-white shadow-lg'
-                                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-                            }`}
-                    >
-                        <LayoutGrid size={18} />
-                        <span className="font-bold">Dashboard/Stats</span>
-                    </button>
-                </div>
-
-                <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex gap-2">
-                    <button onClick={() => setIsEditMode(!isEditMode)} className={`flex-1 p-2 rounded-lg font-bold text-xs flex items-center justify-center gap-2 transition-colors ${isEditMode ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>
-                        <Edit2 size={14} /> {isEditMode ? '編集モード' : '閲覧モード'}
-                    </button>
-                    <button onClick={toggleDark} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
-                        {darkMode ? <Sun size={16} /> : <Moon size={16} />}
-                    </button>
-                </div>
-            </aside>
-
-            {/* MOBILE HEADER */}
-            <header className="md:hidden sticky top-0 z-30 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
-                <div className="flex items-center justify-between px-4 py-3">
-                    <h1 className="font-black text-lg dark:text-white">Winter Trip</h1>
                     <div className="flex gap-2">
                         <button
                             onClick={() => setIsEditMode(!isEditMode)}
-                            className={`p-2 rounded-full ${isEditMode ? 'bg-amber-100 text-amber-600' : 'text-slate-400'}`}
+                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-colors ${isEditMode ? 'bg-amber-100 text-amber-900 dark:bg-amber-900/30 dark:text-amber-100' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700'}`}
                         >
+                            <Edit2 size={16} /> {isEditMode ? 'Editing' : 'Edit'}
+                        </button>
+                        <button onClick={toggleDark} className="p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                            {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+                        </button>
+                    </div>
+                </div>
+            </aside>
+
+            {/* MAIN CONTENT Area */}
+            <main className="max-w-4xl mx-auto p-4 md:p-10 pb-24 md:pb-10">
+
+                {/* Mobile Header */}
+                <header className="md:hidden flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white">
+                            <Plane size={16} className="-rotate-45" />
+                        </div>
+                        <span className="font-black text-lg">Winter Trip</span>
+                    </div>
+                    <div className="flex gap-2">
+                        <button onClick={() => setIsEditMode(!isEditMode)} className={`p-2 rounded-full transition-colors ${isEditMode ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-500 dark:bg-slate-800'}`}>
                             <Edit2 size={20} />
                         </button>
                     </div>
-                </div>
-                {/* Horizontal Scroll Days */}
-                <div className="flex overflow-x-auto pb-3 px-4 gap-2 scrollbar-none">
-                    <button
-                        onClick={() => setViewMode('dashboard')}
-                        className={`shrink-0 px-4 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${viewMode === 'dashboard' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-500 dark:bg-slate-800'
-                            }`}
-                    >
-                        <LayoutGrid size={16} />
-                    </button>
-                    {itinerary.map(day => (
+                </header>
+
+                {/* Mobile Day Tabs */}
+                <div className="md:hidden flex overflow-x-auto gap-2 pb-4 mb-4 scrollbar-hide -mx-4 px-4">
+                    {itinerary.map((day, idx) => (
                         <button
                             key={day.id}
-                            onClick={() => { setSelectedDayId(day.id); setViewMode('list'); }}
-                            className={`shrink-0 px-4 py-2 rounded-full text-sm font-bold transition-all shadow-sm ${selectedDayId === day.id && viewMode === 'list'
-                                    ? 'bg-indigo-600 text-white'
-                                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-100 dark:border-slate-700'
+                            onClick={() => setSelectedDayId(day.id)}
+                            className={`shrink-0 flex flex-col items-center justify-center w-14 h-16 rounded-2xl border transition-all ${selectedDayId === day.id
+                                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-500/30'
+                                    : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-500'
                                 }`}
                         >
-                            {day.date} <span className="text-[10px] opacity-70 ml-1">{day.dayOfWeek}</span>
+                            <span className="text-[10px] font-bold uppercase">{day.dayOfWeek}</span>
+                            <span className="text-lg font-black">{day.date.split('/')[1]}</span>
                         </button>
                     ))}
                 </div>
-            </header>
 
-            {/* CONTENT AREA */}
-            <main className="max-w-3xl mx-auto p-4 md:p-8">
-
-                {viewMode === 'dashboard' ? (
-                    /* DASHBOARD VIEW */
-                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="col-span-2 bg-gradient-to-br from-indigo-600 to-purple-700 rounded-3xl p-6 text-white shadow-xl shadow-indigo-500/20 relative overflow-hidden">
-                                <div className="relative z-10">
-                                    <div className="text-indigo-200 text-sm font-bold mb-1">TOTAL TRIP</div>
-                                    <div className="text-4xl font-black mb-2">5 Days</div>
-                                    <div className="flex gap-2 text-sm opacity-80">
-                                        <span className="bg-white/20 px-2 py-1 rounded">沖縄</span>
-                                        <span className="bg-white/20 px-2 py-1 rounded">愛知</span>
-                                        <span className="bg-white/20 px-2 py-1 rounded">岐阜</span>
-                                    </div>
-                                </div>
-                                <div className="absolute right-[-20px] bottom-[-20px] opacity-20">
-                                    <Plane size={140} />
-                                </div>
-                            </div>
-
-                            <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-100 dark:border-slate-800 shadow-sm">
-                                <div className="text-slate-400 text-xs font-bold mb-2">EVENTS</div>
-                                <div className="text-3xl font-black dark:text-white">
-                                    {itinerary.reduce((acc, day) => acc + day.events.length, 0)}
-                                </div>
-                                <div className="text-xs text-slate-500 mt-1">Total Activities</div>
-                            </div>
-
-                            <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-100 dark:border-slate-800 shadow-sm">
-                                <div className="text-slate-400 text-xs font-bold mb-2">STATUS</div>
-                                <div className="flex gap-1 mt-1">
-                                    <div className="h-2 flex-1 bg-emerald-500 rounded-full" />
-                                    <div className="h-2 flex-1 bg-emerald-500 rounded-full" />
-                                    <div className="h-2 flex-1 bg-emerald-500 rounded-full" />
-                                    <div className="h-2 flex-1 bg-slate-200 dark:bg-slate-700 rounded-full" />
-                                </div>
-                                <div className="text-xs text-slate-500 mt-2">60% Completed</div>
-                            </div>
-                        </div>
-
-                        <div className="space-y-3">
-                            <h3 className="font-bold text-slate-500 px-2">QUICK ACCESS</h3>
-                            {itinerary.map(day => (
-                                <div key={day.id} onClick={() => { setSelectedDayId(day.id); setViewMode('list'); }} className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 flex items-center gap-4 cursor-pointer hover:scale-[1.01] transition-transform">
-                                    <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex flex-col items-center justify-center text-slate-600 dark:text-slate-400 font-bold leading-none">
-                                        <span className="text-sm">{day.date}</span>
-                                        <span className="text-[10px]">{day.dayOfWeek}</span>
-                                    </div>
-                                    <div>
-                                        <div className="font-bold text-sm dark:text-white">{day.title}</div>
-                                        <div className="text-xs text-slate-400">{day.location}</div>
-                                    </div>
-                                    <ChevronRight className="ml-auto text-slate-300" size={18} />
-                                </div>
-                            ))}
-                        </div>
+                {/* Day Header */}
+                <div className="mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="flex items-center gap-3 mb-2">
+                        <span className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-xs font-bold uppercase tracking-wider text-slate-500">
+                            Day {dayIndex + 1}
+                        </span>
+                        <span className="flex items-center gap-1 text-xs font-bold text-indigo-500">
+                            <MapPin size={12} /> {selectedDay.location}
+                        </span>
+                        {selectedDay.weather && (
+                            <span className="flex items-center gap-1 text-xs font-bold text-slate-400">
+                                {selectedDay.weather.condition === 'Cloudy' ? '☁️' : selectedDay.weather.condition === 'Sunny' ? '☀️' : '❄️'} {selectedDay.weather.temp}
+                            </span>
+                        )}
                     </div>
-                ) : (
-                    /* LIST VIEW */
-                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        {/* Header Card */}
-                        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 md:p-8 shadow-sm border border-slate-100 dark:border-slate-800 mb-6 relative overflow-hidden">
-                            <div className="absolute top-0 right-0 p-6 opacity-10">
-                                <MapPin size={100} />
-                            </div>
-                            <div className="relative z-10">
-                                <div className="inline-flex items-center gap-2 px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 rounded-full text-xs font-bold mb-3">
-                                    <CalendarDays size={12} /> Day {itinerary.findIndex(d => d.id === selectedDayId) + 1}
-                                </div>
-                                <h2 className="text-2xl md:text-3xl font-black mb-2 dark:text-white leading-tight">{selectedDay.title}</h2>
-                                <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed max-w-lg">{selectedDay.summary}</p>
+                    <h2 className="text-3xl md:text-5xl font-black tracking-tight leading-[1.1] mb-4 dark:text-white">
+                        {selectedDay.title}
+                    </h2>
+                    <Card className="p-4 md:p-6 bg-slate-50 border-none dark:bg-slate-900 shadow-none">
+                        <p className="text-sm md:text-base text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
+                            {selectedDay.summary}
+                        </p>
+                    </Card>
+                </div>
 
-                                <div className="flex gap-4 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-                                    <div className="text-xs">
-                                        <span className="block text-slate-400 font-bold">AREA</span>
-                                        <span className="font-bold dark:text-white">{selectedDay.location}</span>
+                {/* Timeline */}
+                <div className="space-y-6 relative pl-6 md:pl-0 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
+
+                    {/* Line */}
+                    <div className="absolute left-[35px] md:left-[108px] top-4 bottom-8 w-px bg-slate-200 dark:bg-slate-800" />
+
+                    {selectedDay.events.map((event) => {
+                        const styles = eventColors[event.category] || eventColors.default;
+                        const Icon = styles.icon;
+
+                        return (
+                            <div key={event.id} className="relative z-10 flex gap-4 md:gap-8 group">
+
+                                {/* Time (Desktop) */}
+                                <div className="hidden md:flex w-20 flex-col items-end pt-5 shrink-0">
+                                    <span className="font-black text-lg text-slate-900 dark:text-white">{event.time}</span>
+                                    <span className="text-xs font-medium text-slate-400">{event.endTime}</span>
+                                </div>
+
+                                {/* Icon */}
+                                <div className="pt-2 shrink-0">
+                                    <div className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center border-[3px] border-white dark:border-slate-950 shadow-sm ${styles.bg} ${styles.text}`}>
+                                        <Icon size={20} className="md:w-6 md:h-6" />
                                     </div>
-                                    {selectedDay.weather && (
-                                        <div className="text-xs">
-                                            <span className="block text-slate-400 font-bold">WEATHER</span>
-                                            <span className="font-bold dark:text-white">{selectedDay.weather.temp} {selectedDay.weather.condition}</span>
-                                        </div>
-                                    )}
                                 </div>
-                            </div>
-                        </div>
 
-                        {/* Timeline Events */}
-                        <div className="space-y-4 relative pl-4 md:pl-0">
-                            {/* Vertical Line */}
-                            <div className="absolute left-[27px] top-4 bottom-4 w-0.5 bg-slate-200 dark:bg-slate-800 md:hidden" />
-
-                            {selectedDay.events.map((event, index) => {
-                                const Icon = categoryIcons[event.category] || CheckCircle;
-                                const colorClass = categoryColors[event.category] || categoryColors.default;
-
-                                return (
-                                    <div key={event.id} className="relative group">
-                                        <div className="flex gap-4">
-                                            {/* Time Column (Desktop) */}
-                                            <div className="hidden md:block w-24 text-right pt-4 shrink-0">
-                                                <div className="font-black text-lg dark:text-white">{event.time}</div>
-                                                {event.endTime && <div className="text-xs text-slate-400">{event.endTime}</div>}
+                                {/* Content Card */}
+                                <div className="flex-1">
+                                    <Card
+                                        onClick={isEditMode ? () => { setEditItem(event); setModalOpen(true); } : undefined}
+                                        className={`p-5 md:p-6 relative overflow-hidden group-hover:border-indigo-200 dark:group-hover:border-indigo-900/50 ${isEditMode ? 'hover:ring-2 hover:ring-indigo-500 hover:ring-offset-2 dark:hover:ring-offset-slate-950' : ''}`}
+                                    >
+                                        {/* Top Row */}
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-3">
+                                                <span className="md:hidden text-xs font-black text-indigo-500">{event.time} {event.endTime && `- ${event.endTime}`}</span>
+                                                <h3 className="text-lg font-bold text-slate-900 dark:text-white">{event.name}</h3>
                                             </div>
-
-                                            {/* Icon Bubble */}
-                                            <div className="relative z-10 pt-2 shrink-0">
-                                                <div className={`w-10 h-10 md:w-12 md:h-12 rounded-2xl flex items-center justify-center shadow-sm border-2 border-white dark:border-slate-950 ${colorClass}`}>
-                                                    <Icon size={18} />
-                                                </div>
-                                            </div>
-
-                                            {/* Card */}
-                                            <div
-                                                onClick={() => isEditMode && openEditModal(selectedDay.id, event)}
-                                                className={`flex-1 bg-white dark:bg-slate-900 rounded-2xl p-4 md:p-5 border border-slate-100 dark:border-slate-800 shadow-sm transition-all ${isEditMode ? 'cursor-pointer hover:border-indigo-400 hover:shadow-md' : ''
-                                                    }`}
-                                            >
-                                                <div className="flex justify-between items-start mb-1">
-                                                    <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-3">
-                                                        <span className="md:hidden font-bold text-indigo-600 dark:text-indigo-400 text-xs">{event.time}</span>
-                                                        <h4 className="font-bold text-base md:text-lg dark:text-white">{event.name}</h4>
-                                                    </div>
-                                                    {isEditMode && <Edit2 size={14} className="text-slate-300" />}
-                                                </div>
-
-                                                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-2">{event.description || ((event.place && event.to) ? `${event.place} ➔ ${event.to}` : event.place)}</p>
-
-                                                {event.details && (
-                                                    <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-2 text-xs text-slate-600 dark:text-slate-300 font-mono">
-                                                        {event.details}
-                                                    </div>
-                                                )}
-
-                                                {/* Status Tag */}
-                                                <div className="mt-3 flex gap-2">
-                                                    {event.status === 'confirmed' && <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full dark:bg-emerald-900/30 dark:text-emerald-300">確定</span>}
-                                                    {event.status === 'suggested' && <span className="text-[10px] font-bold px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full dark:bg-amber-900/30 dark:text-amber-300">提案</span>}
-                                                </div>
-                                            </div>
+                                            {isEditMode && <div className="p-1 bg-slate-100 dark:bg-slate-800 rounded-full"><Edit2 size={12} className="text-slate-400" /></div>}
                                         </div>
 
-                                        {/* Add Button Gap */}
-                                        {isEditMode && (
-                                            <div className="flex justify-center py-2 -ml-12 md:ml-0">
-                                                <button
-                                                    onClick={() => openAddModal(selectedDay.id)}
-                                                    className="w-8 h-8 rounded-full bg-slate-100 hover:bg-indigo-100 text-slate-400 hover:text-indigo-600 flex items-center justify-center transition-colors"
-                                                >
-                                                    <Plus size={16} />
-                                                </button>
+                                        {/* Detail Row (Transport) */}
+                                        {(event.category === 'flight' || event.category === 'train' || event.category === 'bus') && event.place && event.to && (
+                                            <div className="flex items-center gap-3 my-3 p-3 bg-slate-50 dark:bg-slate-950/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
+                                                <div className="flex-1 text-center">
+                                                    <div className="text-[10px] uppercase font-bold text-slate-400">Dep</div>
+                                                    <div className="font-bold text-sm truncate">{event.place}</div>
+                                                </div>
+                                                <ArrowRight size={14} className="text-slate-300" />
+                                                <div className="flex-1 text-center">
+                                                    <div className="text-[10px] uppercase font-bold text-slate-400">Arr</div>
+                                                    <div className="font-bold text-sm truncate">{event.to}</div>
+                                                </div>
                                             </div>
                                         )}
-                                    </div>
-                                );
-                            })}
 
-                            {/* Empty State / Add at end */}
-                            {selectedDay.events.length === 0 && (
-                                <div className="text-center py-10 opacity-50">
-                                    <p>予定がありません</p>
+                                        {/* Description */}
+                                        {(event.description || event.details) && (
+                                            <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-3">
+                                                {event.description || event.details}
+                                            </p>
+                                        )}
+
+                                        {/* Footer */}
+                                        <div className="flex items-center gap-2 mt-auto pt-2">
+                                            <Badge type={event.status} text={event.status} />
+                                            {event.category === 'hotel' && <Badge type="suggested" text="Check-in" />}
+                                        </div>
+
+                                    </Card>
                                 </div>
-                            )}
-                            {isEditMode && selectedDay.events.length === 0 && (
-                                <button
-                                    onClick={() => openAddModal(selectedDay.id)}
-                                    className="w-full py-4 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 hover:text-indigo-500 hover:border-indigo-200 transition-colors flex items-center justify-center gap-2"
-                                >
-                                    <Plus size={20} /> 予定を追加
-                                </button>
-                            )}
-                        </div>
+                            </div>
+                        );
+                    })}
 
-                        <div className="h-24" /> {/* Bottom spacer */}
-                    </div>
-                )}
+                    {/* Add Button */}
+                    {isEditMode && (
+                        <div className="flex justify-center pt-4">
+                            <button
+                                onClick={() => { setEditItem(null); setModalOpen(true); }}
+                                className="flex flex-col items-center gap-2 group"
+                            >
+                                <div className="w-12 h-12 rounded-full bg-indigo-50 border-2 border-indigo-200 text-indigo-600 flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg shadow-indigo-100 dark:shadow-none dark:bg-indigo-900/20 dark:border-indigo-800 dark:text-indigo-400">
+                                    <Plus size={24} />
+                                </div>
+                                <span className="text-xs font-bold text-indigo-500">Add Event</span>
+                            </button>
+                        </div>
+                    )}
+
+                    <div className="h-20" /> {/* Spacer */}
+                </div>
+
             </main>
 
-            {/* MOBILE FLOATING ACTION BUTTON */}
-            {isEditMode && viewMode === 'list' && (
+            {/* FAB Mobile */}
+            {isEditMode && (
                 <button
-                    onClick={() => openAddModal(selectedDayId)}
-                    className="fixed bottom-6 right-6 w-14 h-14 bg-indigo-600 text-white rounded-full shadow-xl shadow-indigo-500/40 flex items-center justify-center z-40 active:scale-95 transition-transform"
+                    onClick={() => { setEditItem(null); setModalOpen(true); }}
+                    className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-indigo-600 text-white rounded-2xl shadow-xl shadow-indigo-600/40 flex items-center justify-center z-40 active:scale-90 transition-transform"
                 >
                     <Plus size={28} />
                 </button>
             )}
 
-            {/* EDITOR MODAL */}
+            {/* Modals */}
             <EditModal
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
-                item={editingItem}
-                onSave={handleSave}
-                onDelete={handleDelete}
+                isOpen={modalOpen}
+                onClose={() => setModalOpen(false)}
+                item={editItem}
+                onSave={handleSaveEvent}
+                onDelete={handleDeleteEvent}
             />
 
         </div>

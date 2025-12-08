@@ -236,7 +236,7 @@ const TicketList = ({ itinerary }) => {
     if (tickets.length === 0) return <div className="p-10 text-center text-gray-400 font-bold">表示できるチケット情報がありません</div>;
 
     return (
-        <div className="space-y-4 pt-4">
+        <div className="space-y-4 pt-4 overflow-hidden">
             {tickets.map(t => (
                 <div key={t.id} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex flex-col gap-3 relative overflow-hidden group">
                     <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-150"></div>
@@ -298,7 +298,7 @@ const MapView = ({ mapUrl, itinerary }) => {
     }, [itinerary]);
 
     return (
-        <div className="pt-4 space-y-4">
+        <div className="pt-4 space-y-4 overflow-hidden">
             <div className="bg-white rounded-2xl p-2 shadow-sm border border-gray-100 overflow-hidden mb-6">
                 {mapUrl ? (
                     <div className="relative">
@@ -629,7 +629,7 @@ export default function TravelApp() {
 
                     {/* Content Area */}
                     {activeTab === 'timeline' && selectedDay && (
-                        <div className="pt-4">
+                        <div className="pt-4 overflow-hidden">
 
                             {/* Summary Card */}
                             <div className="bg-white rounded-2xl p-4 shadow-sm mb-4 border border-gray-100">

@@ -1,12 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     Plane,
     Train,
     Hotel,
     MapPin,
     Clock,
-    ChevronDown,
-    ChevronRight,
     Utensils,
     Camera,
     Mountain,
@@ -19,12 +17,22 @@ import {
     X,
     Moon,
     Sun,
-    Wind,
-    Droplets,
-    Thermometer
+    Share2,
+    Printer,
+    Home,
+    Map,
+    Settings,
+    ChevronLeft,
+    ChevronRight,
+    Check,
+    Copy,
+    ExternalLink
 } from 'lucide-react';
 
-// --- Data (Preserved) ---
+// ============================================================================
+// DATA (PRESERVED - NO CHANGES)
+// ============================================================================
+
 const initialItinerary = [
     {
         date: '12/28',
@@ -307,7 +315,9 @@ const initialItinerary = [
     },
 ];
 
-// --- Utilities & Logic ---
+// ============================================================================
+// UTILITIES
+// ============================================================================
 
 function getTimelineEvents(day) {
     const events = [];
@@ -323,133 +333,259 @@ function getTimelineEvents(day) {
     if (day.stay) {
         const timeMatch = day.stay.checkIn.match(/(\d{1,2}:\d{2})/);
         const checkInTime = timeMatch ? timeMatch[0] : '17:00';
-        events.push({
-            type: 'stay',
-            time: checkInTime,
-            data: day.stay,
-            sortTime: checkInTime
-        });
+        events.push({ type: 'stay', time: checkInTime, data: day.stay, sortTime: checkInTime });
     }
 
     return events.sort((a, b) => a.sortTime.localeCompare(b.sortTime));
 }
 
-// --- Components ---
-
-const TimelineNode = ({ type, isLast }) => {
-    let icon;
-    let colorClass = 'bg-gray-200 text-gray-500';
-
-    if (type === 'transport') {
-        icon = <ArrowRight size={14} />;
-        colorClass = 'bg-blue-100 text-blue-600 ring-4 ring-white dark:ring-slate-900';
-    } else if (type === 'activity') {
-        icon = <MapPin size={14} />;
-        colorClass = 'bg-emerald-100 text-emerald-600 ring-4 ring-white dark:ring-slate-900';
-    } else if (type === 'stay') {
-        icon = <Hotel size={14} />;
-        colorClass = 'bg-indigo-100 text-indigo-600 ring-4 ring-white dark:ring-slate-900';
+const getTransportColor = (type) => {
+    switch (type) {
+        case 'flight': return 'bg-sky-500';
+        case 'train': return 'bg-rose-500';
+        case 'bus': return 'bg-amber-500';
+        default: return 'bg-slate-500';
     }
+};
 
+const getTransportIcon = (type) => {
+    switch (type) {
+        case 'flight': return <Plane size={16} />;
+        case 'train': return <Train size={16} />;
+        case 'bus': return <Bus size={16} />;
+        default: return <Mountain size={16} />;
+    }
+};
+
+// ============================================================================
+// COMPONENTS
+// ============================================================================
+
+// --- Status Badge ---
+const StatusBadge = ({ status }) => {
+    if (status === 'confirmed') {
+        return (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300">
+                <CheckCircle size={12} /> 確定
+            </span>
+        );
+    }
+    if (status === 'suggested') {
+        return (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300">
+                <AlertCircle size={12} /> 提案
+            </span>
+        );
+    }
     return (
-        <div className="absolute left-0 top-0 bottom-0 flex flex-col items-center w-8">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center z-10 ${colorClass} transition-colors duration-300`}>
-                {icon}
-            </div>
-            {!isLast && <div className="w-0.5 bg-gray-200 dark:bg-slate-700 flex-1 my-1"></div>}
-        </div>
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+            <Clock size={12} /> 予定
+        </span>
     );
 };
 
-const TransportItem = ({ item }) => (
-    <div className="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-gray-100 dark:border-slate-700 hover:scale-[1.01] hover:shadow-lg transition-all relative overflow-hidden group">
-        <div className={`absolute top-0 left-0 w-1 h-full ${item.type === 'flight' ? 'bg-sky-500' :
-                item.type === 'train' ? 'bg-red-500' :
-                    item.type === 'bus' ? 'bg-orange-500' : 'bg-gray-500'}`}
-        />
+// --- Transport Card ---
+const TransportCard = ({ item }) => (
+    <div className="bg-white dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl p-4 md:p-5 shadow-sm border border-slate-100 dark:border-slate-700/50 hover:shadow-lg hover:scale-[1.01] transition-all duration-300 relative overflow-hidden group">
+        {/* Color Accent */}
+        <div className={`absolute top-0 left-0 w-1.5 h-full ${getTransportColor(item.type)} rounded-l-2xl`} />
 
-        <div className="flex justify-between items-start mb-3 pl-3">
-            <div className="flex items-center gap-2">
-                {item.type === 'flight' && <Plane size={18} className="text-gray-400 dark:text-gray-500" />}
-                {item.type === 'train' && <Train size={18} className="text-gray-400 dark:text-gray-500" />}
-                {item.type === 'bus' && <Bus size={18} className="text-gray-400 dark:text-gray-500" />}
-                {item.type === 'other' && <Mountain size={18} className="text-gray-400 dark:text-gray-500" />}
-                <span className="text-sm font-bold text-gray-500 dark:text-gray-400">{item.name}</span>
-            </div>
-            <div className="flex items-center gap-2">
-                {item.status === 'confirmed' && <CheckCircle size={16} className="text-emerald-500" />}
-                {item.status === 'suggested' && <span className="text-[10px] bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200 px-2 py-0.5 rounded-full font-bold">提案</span>}
-            </div>
-        </div>
-
-        <div className="flex items-center gap-4 pl-3">
-            <div className="text-center min-w-[60px]">
-                <div className="text-2xl font-display font-bold text-gray-900 dark:text-white leading-none">{item.departureTime}</div>
-                <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 mt-1">{item.departurePlace}</div>
-            </div>
-            <div className="flex-1 flex flex-col items-center">
-                <div className="w-full h-px bg-gray-200 dark:bg-slate-700 relative">
-                    <div className="absolute right-0 top-[-3px] w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-slate-500"></div>
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4 pl-3">
+            <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-xl ${getTransportColor(item.type)} text-white shadow-lg`}>
+                    {getTransportIcon(item.type)}
                 </div>
-                <span className="text-[10px] text-gray-300 dark:text-slate-600 mt-1 font-mono">---</span>
+                <div>
+                    <div className="font-bold text-slate-900 dark:text-white text-sm md:text-base">{item.name}</div>
+                    <div className="text-xs text-slate-400">{item.type === 'flight' ? 'Flight' : item.type === 'train' ? 'Train' : item.type === 'bus' ? 'Bus' : 'Other'}</div>
+                </div>
             </div>
-            <div className="text-center min-w-[60px]">
-                <div className="text-2xl font-display font-bold text-gray-900 dark:text-white leading-none">{item.arrivalTime}</div>
-                <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 mt-1">{item.arrivalPlace}</div>
+            <StatusBadge status={item.status} />
+        </div>
+
+        {/* Time Block */}
+        <div className="flex items-center gap-3 md:gap-4 pl-3 mb-4">
+            <div className="text-center flex-1">
+                <div className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">{item.departureTime}</div>
+                <div className="text-[10px] md:text-xs text-slate-400 font-medium mt-1 truncate">{item.departurePlace}</div>
+            </div>
+            <div className="flex-shrink-0 flex flex-col items-center">
+                <div className="w-8 md:w-12 h-px bg-slate-200 dark:bg-slate-600 relative">
+                    <ArrowRight size={14} className="absolute -right-1 -top-[7px] text-slate-300 dark:text-slate-500" />
+                </div>
+            </div>
+            <div className="text-center flex-1">
+                <div className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">{item.arrivalTime}</div>
+                <div className="text-[10px] md:text-xs text-slate-400 font-medium mt-1 truncate">{item.arrivalPlace}</div>
             </div>
         </div>
 
-        {item.bookingRef && (
-            <div className="mt-4 pl-3 pt-3 border-t border-dashed border-gray-100 dark:border-slate-700 flex justify-between items-center text-xs">
-                <span className="font-mono text-gray-400 dark:text-gray-500 select-all">Ref: {item.bookingRef}</span>
+        {/* Details */}
+        {item.details && (
+            <div className="pl-3 pt-3 border-t border-dashed border-slate-100 dark:border-slate-700">
+                <p className="text-xs text-slate-500 dark:text-slate-400">{item.details}</p>
             </div>
         )}
     </div>
 );
 
+// --- Activity Card ---
 const ActivityCard = ({ item }) => (
-    <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-slate-700 hover:scale-[1.01] hover:shadow-lg transition-all flex gap-4 items-start">
-        <div className="mt-1 p-2 bg-gray-50 dark:bg-slate-700 text-gray-500 dark:text-gray-300 rounded-lg">
-            {item.icon}
+    <div className="bg-white dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl p-4 md:p-5 shadow-sm border border-slate-100 dark:border-slate-700/50 hover:shadow-lg hover:scale-[1.01] transition-all duration-300 flex gap-4">
+        <div className="p-3 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-xl shrink-0">
+            {item.icon || <MapPin size={20} />}
         </div>
-        <div className="flex-1">
-            <div className="flex justify-between items-baseline">
-                <span className="font-display font-bold text-gray-900 dark:text-white text-lg">{item.title}</span>
-                <span className="text-sm font-display text-gray-400 font-medium">{item.time}</span>
+        <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2 mb-1">
+                <h4 className="font-bold text-slate-900 dark:text-white text-sm md:text-base truncate">{item.title}</h4>
+                <span className="text-sm font-bold text-slate-400 shrink-0">{item.time}</span>
             </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">{item.description}</p>
+            <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{item.description}</p>
+            {item.status === 'suggested' && (
+                <div className="mt-2">
+                    <StatusBadge status="suggested" />
+                </div>
+            )}
         </div>
     </div>
 );
 
+// --- Stay Card ---
 const StayCard = ({ item }) => (
-    <div className="bg-gradient-to-br from-[#1e293b] to-[#0f172a] dark:from-[#020617] dark:to-[#1e293b] rounded-xl p-6 shadow-xl text-white relative overflow-hidden group hover:scale-[1.01] transition-all">
-        <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform duration-500">
-            <Hotel size={100} />
+    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-800 p-5 md:p-6 text-white shadow-xl group hover:shadow-2xl transition-all duration-300">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-10">
+            <div className="absolute top-4 right-4"><Hotel size={100} /></div>
         </div>
-        <div className="relative z-10">
-            <div className="text-xs font-bold text-indigo-300 uppercase tracking-widest mb-1">Accommodation</div>
-            <div className="text-2xl font-display font-bold mb-4">{item.name}</div>
 
-            <div className="grid grid-cols-2 gap-6 text-sm opacity-90">
+        <div className="relative z-10">
+            <div className="flex items-center justify-between mb-4">
+                <span className="text-xs font-bold text-indigo-200 uppercase tracking-widest">宿泊</span>
+                <StatusBadge status={item.status} />
+            </div>
+
+            <h3 className="text-xl md:text-2xl font-black mb-4">{item.name}</h3>
+
+            <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                    <div className="text-[10px] text-gray-400 uppercase tracking-wider">Check-in</div>
-                    <div className="font-mono text-lg">{item.checkIn}</div>
+                    <div className="text-[10px] text-indigo-200 uppercase tracking-wider mb-1">チェックイン</div>
+                    <div className="font-bold text-lg">{item.checkIn}</div>
                 </div>
                 {item.bookingRef && (
                     <div>
-                        <div className="text-[10px] text-gray-400 uppercase tracking-wider">Reference</div>
-                        <div className="font-mono text-lg select-all">{item.bookingRef}</div>
+                        <div className="text-[10px] text-indigo-200 uppercase tracking-wider mb-1">予約番号</div>
+                        <div className="font-mono text-sm select-all">{item.bookingRef.replace('予約番号: ', '')}</div>
                     </div>
                 )}
             </div>
-            {item.details && <div className="mt-4 text-xs text-xs text-gray-400 pt-3 border-t border-gray-700/50">{item.details}</div>}
+
+            {item.details && (
+                <div className="mt-4 pt-4 border-t border-white/20 text-sm text-indigo-100">
+                    {item.details}
+                </div>
+            )}
         </div>
     </div>
 );
 
-// --- Auth & Security ---
+// --- Day Progress Indicator ---
+const DayProgress = ({ currentIndex, total, onSelect, days }) => (
+    <div className="flex items-center justify-center gap-2 py-3">
+        {days.map((day, i) => (
+            <button
+                key={day.date}
+                onClick={() => onSelect(day)}
+                className={`w-8 h-8 md:w-10 md:h-10 rounded-full font-bold text-xs md:text-sm transition-all duration-300 ${i === currentIndex
+                        ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 scale-110 shadow-lg'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                    }`}
+                aria-label={`Day ${i + 1}: ${day.date}`}
+            >
+                {i + 1}
+            </button>
+        ))}
+    </div>
+);
+
+// --- Share Dialog ---
+const ShareDialog = ({ isOpen, onClose }) => {
+    const [copied, setCopied] = useState(false);
+    const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
+
+    const handleCopy = async () => {
+        try {
+            await navigator.clipboard.writeText(shareUrl);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch (err) {
+            console.error('Failed to copy:', err);
+        }
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
+            <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">旅程を共有</h3>
+                    <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors">
+                        <X size={20} className="text-slate-500" />
+                    </button>
+                </div>
+
+                <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">このリンクを家族に送信して、旅程を共有しましょう。</p>
+
+                <div className="flex gap-2">
+                    <input
+                        type="text"
+                        value={shareUrl}
+                        readOnly
+                        className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-600 dark:text-slate-300 truncate"
+                    />
+                    <button
+                        onClick={handleCopy}
+                        className={`px-4 py-2 rounded-lg font-bold text-sm transition-all duration-300 ${copied
+                                ? 'bg-emerald-500 text-white'
+                                : 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-700 dark:hover:bg-slate-200'
+                            }`}
+                    >
+                        {copied ? <Check size={18} /> : <Copy size={18} />}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// --- Bottom Navigation (Mobile) ---
+const BottomNav = ({ onShare, onPrint, darkMode, onToggleDarkMode }) => (
+    <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg border-t border-slate-200 dark:border-slate-700 safe-area-pb">
+        <div className="flex items-center justify-around py-2">
+            <button className="flex flex-col items-center gap-1 p-2 text-sky-600 dark:text-sky-400">
+                <CalendarDays size={22} />
+                <span className="text-[10px] font-bold">日程</span>
+            </button>
+            <button onClick={onShare} className="flex flex-col items-center gap-1 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+                <Share2 size={22} />
+                <span className="text-[10px] font-medium">共有</span>
+            </button>
+            <button onClick={onPrint} className="flex flex-col items-center gap-1 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+                <Printer size={22} />
+                <span className="text-[10px] font-medium">印刷</span>
+            </button>
+            <button onClick={onToggleDarkMode} className="flex flex-col items-center gap-1 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+                {darkMode ? <Sun size={22} /> : <Moon size={22} />}
+                <span className="text-[10px] font-medium">{darkMode ? 'ライト' : 'ダーク'}</span>
+            </button>
+        </div>
+    </nav>
+);
+
+// --- Login Screen ---
 const PASSCODE = "2025";
+
 const LoginScreen = ({ onLogin }) => {
     const [input, setInput] = useState('');
     const [error, setError] = useState(false);
@@ -465,43 +601,61 @@ const LoginScreen = ({ onLogin }) => {
     };
 
     return (
-        <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
-            <div className="w-full max-w-sm bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-8 text-center space-y-6">
-                <div className="w-16 h-16 bg-sky-500 rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-sky-500/30">
-                    <Plane className="text-white transform -rotate-45" size={32} />
+        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
+            <div className="w-full max-w-sm">
+                <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl p-8 text-center space-y-6">
+                    <div className="w-20 h-20 bg-gradient-to-br from-sky-400 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-sky-500/30 transform -rotate-6">
+                        <Plane className="text-white transform rotate-6" size={36} />
+                    </div>
+
+                    <div>
+                        <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Winter Trip</h1>
+                        <p className="text-slate-400 text-sm mt-2">2024-2025 家族旅行</p>
+                    </div>
+
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div>
+                            <input
+                                type="password"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                value={input}
+                                onChange={(e) => { setInput(e.target.value); setError(false); }}
+                                className="w-full text-center text-3xl font-black tracking-[0.5em] py-4 border-2 border-slate-200 dark:border-slate-600 rounded-xl bg-slate-50 dark:bg-slate-700 focus:border-sky-500 focus:ring-4 focus:ring-sky-500/20 focus:outline-none dark:text-white transition-all"
+                                placeholder="••••"
+                                autoFocus
+                                aria-label="パスコード入力"
+                            />
+                        </div>
+
+                        {error && <p className="text-red-500 text-sm font-bold animate-pulse">パスコードが違います</p>}
+
+                        <button
+                            type="submit"
+                            className="w-full bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-200 text-white dark:text-slate-900 font-bold py-4 rounded-xl hover:shadow-lg hover:scale-[1.02] transition-all duration-300"
+                        >
+                            旅を始める
+                        </button>
+                    </form>
                 </div>
-                <div>
-                    <h1 className="text-2xl font-display font-bold text-slate-900 dark:text-white">Winter Trip</h1>
-                    <p className="text-slate-500 dark:text-slate-400 text-sm mt-2">Enter passcode to view itinerary</p>
-                </div>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <input
-                        type="password"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        value={input}
-                        onChange={(e) => { setInput(e.target.value); setError(false); }}
-                        className="w-full text-center text-3xl font-display font-bold tracking-widest py-3 border-b-2 border-slate-200 dark:border-slate-700 bg-transparent focus:border-sky-500 focus:outline-none dark:text-white placeholder-slate-300 transition-colors"
-                        placeholder="••••"
-                        autoFocus
-                    />
-                    {error && <p className="text-red-500 text-sm font-bold animate-pulse">Incorrect passcode</p>}
-                    <button type="submit" className="w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold py-4 rounded-xl hover:bg-slate-800 dark:hover:bg-slate-200 transition-colors shadow-lg">
-                        Unlock Journey
-                    </button>
-                </form>
             </div>
         </div>
     );
 };
 
-// --- Main App ---
+// ============================================================================
+// MAIN APP
+// ============================================================================
+
 export default function TravelApp() {
     const [selectedDay, setSelectedDay] = useState(initialItinerary[0]);
-    const [isSidebarOpen, setSidebarOpen] = useState(false);
+    const [currentDayIndex, setCurrentDayIndex] = useState(0);
     const [darkMode, setDarkMode] = useState(false);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [showShareDialog, setShowShareDialog] = useState(false);
+    const [isSidebarOpen, setSidebarOpen] = useState(false);
 
+    // Initialize
     useEffect(() => {
         if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
             setDarkMode(true);
@@ -524,177 +678,252 @@ export default function TravelApp() {
         else document.documentElement.classList.remove('dark');
     };
 
+    const selectDay = (day) => {
+        setSelectedDay(day);
+        setCurrentDayIndex(initialItinerary.findIndex(d => d.date === day.date));
+        setSidebarOpen(false);
+    };
+
+    const handlePrint = () => {
+        window.print();
+    };
+
+    const handleShare = () => {
+        setShowShareDialog(true);
+    };
+
+    const goToPrevDay = () => {
+        if (currentDayIndex > 0) {
+            selectDay(initialItinerary[currentDayIndex - 1]);
+        }
+    };
+
+    const goToNextDay = () => {
+        if (currentDayIndex < initialItinerary.length - 1) {
+            selectDay(initialItinerary[currentDayIndex + 1]);
+        }
+    };
+
     if (!isAuthenticated) return <LoginScreen onLogin={handleLogin} />;
 
+    const events = getTimelineEvents(selectedDay);
+
     return (
-        <div className="flex h-[100dvh] bg-[#F8FAFC] dark:bg-slate-950 font-sans text-slate-800 dark:text-slate-100 transition-colors duration-300 overflow-hidden text-sm md:text-base">
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-white transition-colors duration-300 print:bg-white">
 
-            {/* Mobile Sidebar & Header Logic is tricky with full scren, so we keep a drawer for mobile */}
-
-            {/* Sidebar (Desktop: Fixed Left, Mobile: Drawer) */}
+            {/* Desktop Sidebar */}
             <aside className={`
-         fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transform transition-transform duration-300 ease-in-out flex flex-col pt-16 md:pt-0
-         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} // Hidden on mobile by default
+        fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transform transition-transform duration-300 print:hidden
+        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0
       `}>
-                {/* Close button for mobile */}
-                <button onClick={() => setSidebarOpen(false)} className="md:hidden absolute top-4 right-4 text-slate-600 dark:text-slate-300"><X size={24} /></button>
+                <button onClick={() => setSidebarOpen(false)} className="md:hidden absolute top-4 right-4 p-2 text-slate-500 hover:text-slate-700">
+                    <X size={24} />
+                </button>
 
-                <div className="p-8 hidden md:block">
-                    <div className="flex items-center gap-3 mb-1">
-                        <div className="w-8 h-8 bg-slate-900 dark:bg-white rounded-lg flex items-center justify-center text-white dark:text-slate-900">
-                            <Plane size={18} className="-rotate-45" />
+                <div className="p-6 border-b border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gradient-to-br from-sky-400 to-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg">
+                            <Plane size={20} className="-rotate-45" />
                         </div>
-                        <span className="font-display font-bold text-xl tracking-tight dark:text-white">Tabi Log</span>
+                        <div>
+                            <h1 className="font-black text-lg tracking-tight">Winter Trip</h1>
+                            <p className="text-xs text-slate-400">2024-2025</p>
+                        </div>
                     </div>
-                    <div className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-11">2025-2026</div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto px-4 pb-4">
-                    <div className="space-y-1">
-                        {initialItinerary.map((day) => (
+                <div className="p-4 flex-1 overflow-y-auto h-[calc(100vh-180px)]">
+                    <div className="space-y-2">
+                        {initialItinerary.map((day, i) => (
                             <button
                                 key={day.date}
-                                onClick={() => { setSelectedDay(day); setSidebarOpen(false); }}
-                                className={`w-full text-left p-4 rounded-xl transition-all border flex flex-col gap-1 group ${selectedDay.date === day.date
-                                        ? 'bg-slate-900 dark:bg-slate-700 text-white border-slate-900 dark:border-slate-600 shadow-lg scale-[1.02]'
-                                        : 'bg-transparent text-slate-600 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-800'
+                                onClick={() => selectDay(day)}
+                                className={`w-full text-left p-4 rounded-xl transition-all duration-200 ${selectedDay.date === day.date
+                                        ? 'bg-slate-900 dark:bg-slate-700 text-white shadow-lg'
+                                        : 'bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                                     }`}
                             >
-                                <div className="flex justify-between items-center">
-                                    <span className="font-display font-bold text-lg">{day.date}</span>
-                                    <span className={`text-xs font-bold px-2 py-1 rounded ${selectedDay.date === day.date ? 'bg-white/20' : 'bg-slate-100 dark:bg-slate-800'
+                                <div className="flex items-center justify-between mb-1">
+                                    <span className="font-bold">{day.date}</span>
+                                    <span className={`text-xs font-bold px-2 py-0.5 rounded ${selectedDay.date === day.date ? 'bg-white/20' : 'bg-slate-200 dark:bg-slate-700'
                                         }`}>{day.dayOfWeek}</span>
                                 </div>
-                                <span className={`text-xs font-medium truncate ${selectedDay.date === day.date ? 'text-slate-300 dark:text-slate-400' : 'text-slate-500 dark:text-slate-500'
-                                    }`}>
-                                    {day.title}
-                                </span>
+                                <p className="text-xs truncate opacity-70">{day.title}</p>
                             </button>
                         ))}
                     </div>
                 </div>
 
-                <div className="p-4 border-t border-slate-200 dark:border-slate-800">
-                    <button
-                        onClick={toggleDarkMode}
-                        className="flex items-center justify-center gap-3 w-full p-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white transition-colors font-bold"
-                    >
-                        {darkMode ? <Sun size={20} /> : <Moon size={20} />}
-                        <span className="text-sm">{darkMode ? 'Light Mode' : 'Dark Mode'}</span>
-                    </button>
+                {/* Sidebar Footer */}
+                <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
+                    <div className="flex gap-2">
+                        <button onClick={handleShare} className="flex-1 flex items-center justify-center gap-2 py-2 px-3 bg-slate-100 dark:bg-slate-800 rounded-lg text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                            <Share2 size={16} /> 共有
+                        </button>
+                        <button onClick={handlePrint} className="flex-1 flex items-center justify-center gap-2 py-2 px-3 bg-slate-100 dark:bg-slate-800 rounded-lg text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                            <Printer size={16} /> 印刷
+                        </button>
+                        <button onClick={toggleDarkMode} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                            {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+                        </button>
+                    </div>
                 </div>
             </aside>
 
-            {/* Main Dashboard Area */}
-            <main className="flex-1 md:ml-72 flex flex-col md:flex-row overflow-hidden relative">
+            {/* Main Content */}
+            <main className="md:ml-72 pb-24 md:pb-8">
 
-                {/* Mobile Header (Only visible on small screens) */}
-                <div className="md:hidden flex justify-between items-center p-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shrink-0 z-40">
-                    <div className="font-display font-bold text-xl text-slate-900 dark:text-white">Winter Trip</div>
-                    <button onClick={() => setSidebarOpen(true)} className="text-slate-900 dark:text-white">
-                        <Menu size={24} />
-                    </button>
-                </div>
+                {/* Mobile Header */}
+                <header className="md:hidden sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg border-b border-slate-200 dark:border-slate-700 print:hidden">
+                    <div className="flex items-center justify-between px-4 py-3">
+                        <button onClick={() => setSidebarOpen(true)} className="p-2 -ml-2 text-slate-700 dark:text-white">
+                            <Menu size={24} />
+                        </button>
+                        <h1 className="font-black text-lg">Winter Trip</h1>
+                        <div className="w-10"></div>
+                    </div>
 
-                {/* Left Panel: Dashboard / Info (Scrollable on mobile, Fixed on Desktop) */}
-                <div className="w-full md:w-5/12 xl:w-1/3 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col shrink-0 overflow-y-auto md:overflow-hidden relative">
+                    {/* Day Progress */}
+                    <DayProgress
+                        currentIndex={currentDayIndex}
+                        total={initialItinerary.length}
+                        onSelect={selectDay}
+                        days={initialItinerary}
+                    />
+                </header>
 
-                    {/* Hero Image Background for Left Panel */}
-                    <div className="absolute inset-x-0 top-0 h-64 opacity-100">
+                {/* Day Header */}
+                <div className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white overflow-hidden print:bg-white print:text-black">
+                    {/* Background Pattern */}
+                    <div className="absolute inset-0 opacity-20">
                         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1542640244-7e67286feb8f?auto=format&fit=crop&q=80')] bg-cover bg-center"></div>
-                        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-slate-50/80 to-slate-50 dark:via-slate-900/80 dark:to-slate-900"></div>
                     </div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/80 to-transparent"></div>
 
-                    <div className="relative z-10 p-6 md:p-8 flex-1 flex flex-col">
-                        {/* Date & Title */}
-                        <div className="mt-8 md:mt-12 mb-8">
-                            <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400 font-bold uppercase tracking-widest text-xs mb-3">
+                    <div className="relative z-10 px-4 md:px-8 py-8 md:py-12">
+                        <div className="max-w-4xl mx-auto">
+                            {/* Navigation Arrows (Desktop) */}
+                            <div className="hidden md:flex items-center justify-between mb-6">
+                                <button
+                                    onClick={goToPrevDay}
+                                    disabled={currentDayIndex === 0}
+                                    className="p-2 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                >
+                                    <ChevronLeft size={24} />
+                                </button>
+                                <div className="text-center">
+                                    <span className="text-sm font-bold text-white/60">Day {currentDayIndex + 1} of {initialItinerary.length}</span>
+                                </div>
+                                <button
+                                    onClick={goToNextDay}
+                                    disabled={currentDayIndex === initialItinerary.length - 1}
+                                    className="p-2 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                >
+                                    <ChevronRight size={24} />
+                                </button>
+                            </div>
+
+                            {/* Date & Location */}
+                            <div className="flex items-center gap-2 text-sky-400 text-sm font-bold mb-3">
                                 <MapPin size={14} />
-                                {selectedDay.location}
+                                <span>{selectedDay.location}</span>
                             </div>
-                            <h1 className="text-3xl md:text-5xl font-display font-black text-slate-900 dark:text-white leading-tight tracking-tight mb-4">
+
+                            {/* Title */}
+                            <h2 className="text-3xl md:text-5xl font-black tracking-tight mb-3 leading-tight print:text-2xl print:text-black">
                                 {selectedDay.title}
-                            </h1>
-                            <div className="flex items-center gap-4 text-slate-600 dark:text-slate-400 font-medium">
-                                <div className="flex items-center gap-2 px-3 py-1 bg-white dark:bg-slate-800 rounded-full shadow-sm border border-slate-200 dark:border-slate-700">
-                                    <CalendarDays size={16} />
-                                    {selectedDay.date} <span className="text-slate-400">/</span> {selectedDay.dayOfWeek}
+                            </h2>
+
+                            {/* Meta */}
+                            <div className="flex flex-wrap items-center gap-4 text-white/70 text-sm">
+                                <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-full">
+                                    <CalendarDays size={14} />
+                                    <span>{selectedDay.date} ({selectedDay.dayOfWeek})</span>
                                 </div>
+                                {selectedDay.weather && (
+                                    <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-full">
+                                        <Sun size={14} />
+                                        <span>{selectedDay.weather.temp} / {selectedDay.weather.condition}</span>
+                                    </div>
+                                )}
                             </div>
                         </div>
+                    </div>
+                </div>
 
-                        {/* Widgets Grid */}
-                        <div className="grid grid-cols-1 gap-4 mb-8">
-                            {/* Weather Widget */}
-                            <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 flex items-center justify-between">
+                {/* Content */}
+                <div className="max-w-4xl mx-auto px-4 md:px-8 py-6 md:py-10">
+
+                    {/* Summary Card */}
+                    {selectedDay.summary && (
+                        <div className="mb-8 p-5 bg-amber-50 dark:bg-amber-900/20 rounded-2xl border border-amber-100 dark:border-amber-800/30 print:bg-yellow-50 print:border-yellow-200">
+                            <div className="flex items-start gap-3">
+                                <AlertCircle size={20} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                                 <div>
-                                    <div className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">Weather Forecast</div>
-                                    <div className="text-xl font-bold text-slate-700 dark:text-slate-200">{selectedDay.weather?.temp || '--'} / {selectedDay.weather?.condition || 'Unknown'}</div>
-                                </div>
-                                <div className="w-10 h-10 bg-sky-100 dark:bg-slate-700 rounded-full flex items-center justify-center text-sky-600 dark:text-sky-400">
-                                    <Thermometer size={20} />
-                                </div>
-                            </div>
-
-                            {/* Note Widget */}
-                            <div className="bg-orange-50 dark:bg-orange-950/20 p-5 rounded-2xl border border-orange-100 dark:border-orange-900/30">
-                                <div className="flex items-start gap-3">
-                                    <AlertCircle size={20} className="text-orange-600 dark:text-orange-400 shrink-0 mt-0.5" />
-                                    <div>
-                                        <h4 className="font-bold text-orange-900 dark:text-orange-200 mb-2">Traveler Notes</h4>
-                                        <p className="text-sm text-orange-800 dark:text-orange-300 leading-relaxed">
-                                            {selectedDay.summary}
-                                        </p>
-                                    </div>
+                                    <h3 className="font-bold text-amber-900 dark:text-amber-200 mb-1">今日のポイント</h3>
+                                    <p className="text-sm text-amber-800 dark:text-amber-300 leading-relaxed">{selectedDay.summary}</p>
                                 </div>
                             </div>
                         </div>
+                    )}
 
-                        {/* Decorative / Spacer */}
-                        <div className="hidden md:flex flex-1 items-end opacity-20 dark:opacity-10 justify-center pb-8">
-                            <Mountain size={120} className="text-slate-400" />
+                    {/* Timeline */}
+                    <div className="space-y-4 md:space-y-6">
+                        {events.map((event, i) => (
+                            <div key={i} className="relative">
+                                {/* Time Marker */}
+                                <div className="flex items-center gap-3 mb-3">
+                                    <div className="w-12 text-right">
+                                        <span className="text-sm font-black text-slate-400">{event.time}</span>
+                                    </div>
+                                    <div className={`w-3 h-3 rounded-full ${event.type === 'transport' ? 'bg-sky-500' :
+                                            event.type === 'activity' ? 'bg-emerald-500' :
+                                                'bg-indigo-500'
+                                        }`}></div>
+                                    <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700"></div>
+                                </div>
+
+                                {/* Card */}
+                                <div className="ml-[72px]">
+                                    {event.type === 'transport' && <TransportCard item={event.data} />}
+                                    {event.type === 'activity' && <ActivityCard item={event.data} />}
+                                    {event.type === 'stay' && <StayCard item={event.data} />}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* End of Day */}
+                    <div className="mt-12 text-center">
+                        <div className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 rounded-full text-sm font-bold text-slate-400">
+                            <Check size={16} />
+                            <span>Day {currentDayIndex + 1} Complete</span>
                         </div>
                     </div>
                 </div>
-
-                {/* Right Panel: Scrollable Timeline */}
-                <div className="flex-1 bg-white dark:bg-slate-950 overflow-y-auto relative scroll-smooth px-4 py-8 md:p-12">
-                    <div className="max-w-3xl mx-auto pb-20">
-                        <h3 className="font-display font-bold text-xl text-slate-800 dark:text-white mb-8 flex items-center gap-2">
-                            <Clock size={20} className="text-sky-500" />
-                            Timeline
-                        </h3>
-
-                        <div className="relative border-l-2 border-slate-100 dark:border-slate-800 ml-4 md:ml-3 space-y-12">
-                            {getTimelineEvents(selectedDay).map((event, i, arr) => (
-                                <div key={i} className="relative pl-8 md:pl-12 group">
-                                    {/* Absolute Timeline Dot */}
-                                    <div className="absolute -left-[9px] top-0 bg-white dark:bg-slate-950 py-1">
-                                        <div className={`w-4 h-4 rounded-full border-4 ${event.type === 'transport' ? 'border-blue-500 bg-white' :
-                                                event.type === 'activity' ? 'border-emerald-500 bg-white' :
-                                                    'border-indigo-500 bg-white'
-                                            }`}></div>
-                                    </div>
-
-                                    {/* Content */}
-                                    <div className="transform transition-all duration-300 hover:translate-x-2">
-                                        {event.type === 'transport' && <TransportItem item={event.data} />}
-                                        {event.type === 'activity' && <ActivityCard item={event.data} />}
-                                        {event.type === 'stay' && <StayCard item={event.data} />}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="mt-20 text-center">
-                            <div className="inline-block px-4 py-2 rounded-full bg-slate-100 dark:bg-slate-900 text-slate-400 text-xs font-bold uppercase tracking-widest">
-                                End of Day
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
             </main>
+
+            {/* Mobile Bottom Nav */}
+            <BottomNav
+                onShare={handleShare}
+                onPrint={handlePrint}
+                darkMode={darkMode}
+                onToggleDarkMode={toggleDarkMode}
+            />
+
+            {/* Share Dialog */}
+            <ShareDialog isOpen={showShareDialog} onClose={() => setShowShareDialog(false)} />
+
+            {/* Print Styles */}
+            <style>{`
+        @media print {
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .print\\:hidden { display: none !important; }
+          .print\\:bg-white { background: white !important; }
+          .print\\:text-black { color: black !important; }
+        }
+        .safe-area-pb { padding-bottom: env(safe-area-inset-bottom); }
+      `}</style>
         </div>
     );
 }

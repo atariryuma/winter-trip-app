@@ -298,7 +298,7 @@ const MapView = ({ mapUrl, itinerary }) => {
     }, [itinerary]);
 
     return (
-        <div className="pt-4 space-y-6">
+        <div className="pt-4 space-y-4">
             <div className="bg-white rounded-2xl p-2 shadow-sm border border-gray-100 overflow-hidden mb-6">
                 {mapUrl ? (
                     <div className="relative">
@@ -313,8 +313,8 @@ const MapView = ({ mapUrl, itinerary }) => {
                 )}
             </div>
 
-            <div className="space-y-3">
-                <div className="flex items-center gap-2 px-2">
+            <div className="space-y-4">
+                <div className="flex items-center gap-2">
                     <MapPin size={16} className="text-blue-500" />
                     <h3 className="font-bold text-gray-800">スポット一覧</h3>
                 </div>
@@ -323,7 +323,7 @@ const MapView = ({ mapUrl, itinerary }) => {
                         key={i}
                         href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(m.name)}`}
                         target="_blank" rel="noopener noreferrer"
-                        className="flex items-center justify-between bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:bg-gray-50 transition active:scale-[0.98]"
+                        className="flex items-center justify-between bg-white p-5 rounded-xl shadow-sm border border-gray-100 hover:bg-gray-50 transition active:scale-[0.98]"
                     >
                         <div className="flex items-center gap-4">
                             <div className={`w-10 h-10 rounded-full flex items-center justify-center ${m.type === 'hotel' ? 'bg-indigo-50 text-indigo-500' : 'bg-blue-50 text-blue-500'}`}>
@@ -636,8 +636,8 @@ export default function TravelApp() {
                                 <div className="flex justify-between items-start mb-3 gap-4">
                                     <div className="flex-1">
                                         <div className="lg:hidden text-xs text-blue-600 font-bold mb-1">Day {dayIndex + 1}</div>
-                                        <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-800">{selectedDay.title}</h2>
-                                        <p className="text-xs sm:text-sm text-gray-500 mt-1 flex items-center gap-1">
+                                        <h2 className="text-lg font-bold text-gray-800">{selectedDay.title}</h2>
+                                        <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
                                             <MapPin size={14} /> {selectedDay.location}
                                         </p>
                                     </div>
@@ -646,7 +646,7 @@ export default function TravelApp() {
                                         <span className="text-sm font-bold text-gray-700 mt-1">{selectedDay.weather?.temp}</span>
                                     </div>
                                 </div>
-                                <p className="text-sm sm:text-base text-gray-600 leading-relaxed bg-gray-50 p-3 sm:p-4 rounded-xl border border-gray-100">
+                                <p className="text-sm text-gray-600 leading-relaxed bg-gray-50 p-3 rounded-xl border border-gray-100">
                                     {selectedDay.summary}
                                 </p>
                             </div>
@@ -690,7 +690,7 @@ export default function TravelApp() {
                                                         {getIcon(event.category, event.type)}
                                                     </div>
                                                     <div className="flex items-baseline gap-2">
-                                                        <span className="text-lg sm:text-xl font-bold text-gray-800 font-mono">{event.time}</span>
+                                                        <span className="text-lg font-bold text-gray-800 font-mono">{event.time}</span>
                                                         {event.endTime && (
                                                             <>
                                                                 <ArrowRight size={12} className="text-gray-400" />
@@ -702,7 +702,7 @@ export default function TravelApp() {
                                                 <StatusBadge status={event.status} />
                                             </div>
 
-                                            <h3 className="font-bold text-gray-800 text-lg sm:text-xl mb-1 mt-1">{event.name}</h3>
+                                            <h3 className="font-bold text-gray-800 text-lg mb-1 mt-1">{event.name}</h3>
 
                                             {event.type === 'transport' && event.place && event.to && (
                                                 <div className="flex items-center gap-2 text-sm text-gray-600 mb-2 flex-wrap">
@@ -722,7 +722,7 @@ export default function TravelApp() {
                                             {event.bookingRef && (
                                                 <div
                                                     onClick={(e) => { e.stopPropagation(); handleCopy(event.bookingRef); }}
-                                                    className="mt-3 bg-white/80 backdrop-blur-sm border border-gray-200 rounded-lg p-2 sm:p-3 flex items-center justify-between cursor-pointer active:bg-gray-100 group"
+                                                    className="mt-3 bg-white/80 backdrop-blur-sm border border-gray-200 rounded-lg p-2 flex items-center justify-between cursor-pointer active:bg-gray-100 group"
                                                 >
                                                     <div className="flex items-center gap-2">
                                                         <Ticket size={14} className="text-blue-500" />

@@ -605,8 +605,8 @@ export default function TravelApp() {
 
                 {/* ========== DATE TABS (Only for Timeline) ========== */}
                 {activeTab === 'timeline' && (
-                    <div className="px-4 -mt-6 relative z-20 mb-2 overflow-x-hidden">
-                        <div className="flex overflow-x-auto gap-3 pb-4 pt-1 scrollbar-hide snap-x max-w-full">
+                    <div className="px-4 -mt-6 relative z-20 mb-2">
+                        <div className="flex flex-wrap gap-2 pb-2 pt-1">
                             {itinerary.map(day => (
                                 <button
                                     key={day.id}

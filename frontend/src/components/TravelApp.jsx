@@ -190,17 +190,21 @@ const EditModal = ({ isOpen, onClose, item, onSave, onDelete }) => {
 // MAIN APP
 // ============================================================================
 
+// API URL - same origin for GAS deployment
+const API_BASE = typeof google !== 'undefined'
+    ? '' // GAS環境: 同一オリジン
+    : 'https://script.google.com/macros/s/AKfycbzWeb3xkGQyZ8lG3LA1LkJboSVoAV8vMAUoNHY93sXwzhv7_JOFRAVVHJdznDkc-gBStQ/exec';
+
 export default function TravelApp() {
-    const [itinerary, setItinerary] = useState(() => {
-        const saved = sessionStorage.getItem('trip_data_v6');
-        return saved ? JSON.parse(saved) : initialItinerary;
-    });
-    const [selectedDayId, setSelectedDayId] = useState(initialItinerary[0].id);
+    const [itinerary, setItinerary] = useState([]);
+    const [selectedDayId, setSelectedDayId] = useState(null);
     const [isEditMode, setIsEditMode] = useState(false);
     const [auth, setAuth] = useState(false);
     const [modalOpen, setModalOpen] = useState(false);
     const [editItem, setEditItem] = useState(null);
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     const selectedDay = useMemo(() => itinerary.find(d => d.id === selectedDayId), [itinerary, selectedDayId]);
     const sortedEvents = useMemo(() => {
@@ -209,12 +213,45 @@ export default function TravelApp() {
     }, [selectedDay]);
     const dayIndex = useMemo(() => itinerary.findIndex(d => d.id === selectedDayId), [itinerary, selectedDayId]);
 
+    // Auth check
     useEffect(() => {
         if (sessionStorage.getItem('trip_auth') === 'true') setAuth(true);
     }, []);
 
+    // Fetch data from Spreadsheet via GAS API
     useEffect(() => {
-        sessionStorage.setItem('trip_data_v6', JSON.stringify(itinerary));
+        const fetchData = async () => {
+            try {
+                setLoading(true);
+                // Try GAS API first
+                const url = API_BASE ? `${API_BASE}?action=getData` : '?action=getData';
+                const res = await fetch(url);
+                if (!res.ok) throw new Error('API Error');
+                const data = await res.json();
+                if (data && data.length > 0) {
+                    setItinerary(data);
+                    setSelectedDayId(data[0].id);
+                } else {
+                    throw new Error('No data');
+                }
+            } catch (err) {
+                console.error('Fetch error:', err);
+                // Fallback to hardcoded data
+                setItinerary(initialItinerary);
+                setSelectedDayId(initialItinerary[0].id);
+                setError('スプレッドシートから読み込めませんでした。ローカルデータを使用します。');
+            } finally {
+                setLoading(false);
+            }
+        };
+        if (auth) fetchData();
+    }, [auth]);
+
+    // Save to session (local edits)
+    useEffect(() => {
+        if (itinerary.length > 0) {
+            sessionStorage.setItem('trip_data_v7', JSON.stringify(itinerary));
+        }
     }, [itinerary]);
 
     const handleCopy = (text) => { navigator.clipboard.writeText(text); alert(`コピーしました: ${text}`); };
@@ -260,8 +297,28 @@ export default function TravelApp() {
         );
     }
 
+    // Loading
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-blue-600 to-indigo-800 flex items-center justify-center p-6">
+                <div className="text-center text-white">
+                    <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
+                    <p className="font-bold">スプレッドシートからデータを読み込み中...</p>
+                </div>
+            </div>
+        );
+    }
+
+    // Error banner (optional - show above main content)
+    const ErrorBanner = error ? (
+        <div className="bg-yellow-100 border-b border-yellow-200 text-yellow-800 text-sm p-3 text-center">
+            ⚠️ {error}
+        </div>
+    ) : null;
+
     return (
         <div className="min-h-screen bg-gray-100 lg:flex">
+            {ErrorBanner}
 
             {/* ========== DESKTOP SIDEBAR (lg+) ========== */}
             <aside className="hidden lg:flex flex-col w-80 bg-white border-r border-gray-200 fixed inset-y-0 left-0 z-40">

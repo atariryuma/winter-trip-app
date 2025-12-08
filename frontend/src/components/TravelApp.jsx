@@ -199,11 +199,11 @@ const EditModal = ({ isOpen, onClose, item, onSave, onDelete }) => {
                     <div className="grid grid-cols-2 gap-3">
                         <div className="min-w-0 overflow-hidden">
                             <label className="text-[10px] font-bold text-gray-500 uppercase mb-1.5 block">開始時刻</label>
-                            <input type="time" value={formData.time || ''} onChange={e => setFormData({ ...formData, time: e.target.value })} className="w-full p-2 bg-gray-50 rounded-xl border border-gray-200 text-gray-800 text-xs" />
+                            <input type="time" value={formData.time || ''} onChange={e => setFormData({ ...formData, time: e.target.value })} className="w-full p-2 bg-gray-50 rounded-lg border border-gray-200 text-gray-800 text-sm appearance-none" />
                         </div>
                         <div className="min-w-0 overflow-hidden">
                             <label className="text-[10px] font-bold text-gray-500 uppercase mb-1.5 block">終了時刻</label>
-                            <input type="time" value={formData.endTime || ''} onChange={e => setFormData({ ...formData, endTime: e.target.value })} className="w-full p-2 bg-gray-50 rounded-xl border border-gray-200 text-gray-800 text-xs" />
+                            <input type="time" value={formData.endTime || ''} onChange={e => setFormData({ ...formData, endTime: e.target.value })} className="w-full p-2 bg-gray-50 rounded-lg border border-gray-200 text-gray-800 text-sm appearance-none" />
                         </div>
                     </div>
                     <div>

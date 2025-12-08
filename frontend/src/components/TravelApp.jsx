@@ -252,7 +252,7 @@ const TicketList = ({ itinerary }) => {
                     {t.details && <p className="text-sm text-gray-500 mt-1">{t.details}</p>}
                 </div>
             ))}
-            <div className="h-24"></div>
+            <div className="h-16"></div>
         </div>
     );
 };
@@ -317,7 +317,7 @@ const MapView = ({ mapUrl, itinerary }) => {
                     </a>
                 ))}
             </div>
-            <div className="h-24"></div>
+            <div className="h-16"></div>
         </div>
     );
 };
@@ -557,7 +557,7 @@ export default function TravelApp() {
             {SavingOverlay}
             {ErrorBanner}
 
-            <div className="w-full max-w-[600px] bg-white shadow-2xl min-h-[100dvh] relative flex flex-col">
+            <div className="w-full max-w-[600px] bg-white shadow-2xl min-h-[100dvh] relative flex flex-col overflow-x-hidden">
 
                 {/* ========== HEADER ========== */}
                 <div className="bg-gradient-to-br from-blue-600 to-indigo-800 p-6 text-white pt-12 pb-20 relative overflow-hidden shrink-0">
@@ -601,7 +601,7 @@ export default function TravelApp() {
                 )}
 
                 {/* ========== MAIN CONTENT ========== */}
-                <main className="flex-1 px-4 sm:px-8 pb-32">
+                <main className="flex-1 px-4 sm:px-8 pb-24">
 
                     {/* Content Area */}
                     {activeTab === 'timeline' && selectedDay && (
@@ -705,7 +705,7 @@ export default function TravelApp() {
                                 )}
                             </div>
 
-                            <div className="h-20"></div>
+                            <div className="h-16"></div>
                         </div>
                     )}
 
@@ -717,26 +717,26 @@ export default function TravelApp() {
                 </main>
 
                 {/* ========== BOTTOM NAV ========== */}
-                <div className="sticky bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-200 px-6 py-2 flex justify-around items-center z-30 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
+                <div className="sticky bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-200 px-6 py-1 flex justify-around items-center z-30 pb-[calc(0.25rem+env(safe-area-inset-bottom))]">
                     <button
                         onClick={() => setActiveTab('timeline')}
-                        className={`flex flex-col items-center gap-1.5 p-2 transition-transform active:scale-95 ${activeTab === 'timeline' ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
+                        className={`flex flex-col items-center gap-1 p-2 transition-transform active:scale-95 ${activeTab === 'timeline' ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
                     >
-                        <Calendar size={22} strokeWidth={activeTab === 'timeline' ? 2.5 : 2} />
+                        <Calendar size={20} strokeWidth={activeTab === 'timeline' ? 2.5 : 2} />
                         <span className="text-[10px] font-bold tracking-tight">旅程</span>
                     </button>
                     <button
                         onClick={() => setActiveTab('tickets')}
-                        className={`flex flex-col items-center gap-1.5 p-2 transition-transform active:scale-95 ${activeTab === 'tickets' ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
+                        className={`flex flex-col items-center gap-1 p-2 transition-transform active:scale-95 ${activeTab === 'tickets' ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
                     >
-                        <Ticket size={22} strokeWidth={activeTab === 'tickets' ? 2.5 : 2} />
+                        <Ticket size={20} strokeWidth={activeTab === 'tickets' ? 2.5 : 2} />
                         <span className="text-[10px] font-bold tracking-tight">チケット</span>
                     </button>
                     <button
                         onClick={() => setActiveTab('map')}
-                        className={`flex flex-col items-center gap-1.5 p-2 transition-transform active:scale-95 ${activeTab === 'map' ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
+                        className={`flex flex-col items-center gap-1 p-2 transition-transform active:scale-95 ${activeTab === 'map' ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
                     >
-                        <MapPin size={22} strokeWidth={activeTab === 'map' ? 2.5 : 2} />
+                        <MapPin size={20} strokeWidth={activeTab === 'map' ? 2.5 : 2} />
                         <span className="text-[10px] font-bold tracking-tight">マップ</span>
                     </button>
                 </div>

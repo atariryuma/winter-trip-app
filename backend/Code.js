@@ -17,16 +17,35 @@ function doGet(e) {
 
 function doPost(e) {
     try {
-        let jsonString = e.postData.contents;
-        if (!jsonString) {
-            try {
-                jsonString = e.postData.getDataAsString();
-            } catch (err) {
-                // ignore
+        let jsonString;
+
+        // 1. Try 'data' parameter (Form URL Encoded) - Most reliable for no-cors
+        if (e.parameter && e.parameter.data) {
+            jsonString = e.parameter.data;
+        }
+
+        // 2. Try raw postData content
+        if (!jsonString && e.postData) {
+            jsonString = e.postData.contents;
+            if (!jsonString) {
+                try {
+                    jsonString = e.postData.getDataAsString();
+                } catch (err) { }
             }
         }
 
-        if (!jsonString) throw new Error('No valid post data');
+        // --- DEBUG LOGGING START ---
+        try {
+            const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+            let logSheet = ss.getSheetByName('DebugLog');
+            if (!logSheet) logSheet = ss.insertSheet('DebugLog');
+            logSheet.appendRow([new Date(), 'POST Received', jsonString ? jsonString.substring(0, 100) : 'Empty/Null']);
+        } catch (logErr) {
+            // ignore logging errors
+        }
+        // --- DEBUG LOGGING END ---
+
+        if (!jsonString) throw new Error('No valid post data found');
 
         const data = JSON.parse(jsonString);
 
@@ -39,6 +58,13 @@ function doPost(e) {
         })).setMimeType(ContentService.MimeType.JSON);
 
     } catch (error) {
+        // Log error too
+        try {
+            const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+            let logSheet = ss.getSheetByName('DebugLog');
+            if (logSheet) logSheet.appendRow([new Date(), 'ERROR', error.toString()]);
+        } catch (e) { }
+
         return ContentService.createTextOutput(JSON.stringify({
             status: 'error',
             message: error.toString()

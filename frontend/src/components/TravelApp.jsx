@@ -229,20 +229,20 @@ const server = {
                 .withFailureHandler(reject)
                 .saveItineraryData(data); // Call backend directly
         } else {
-            // Local fallback (Dev)
-            const API_URL = 'https://script.google.com/macros/s/AKfycbwBNcUr1d66mceV0HTDeZpeqZx3EaHGhuZcIyGy7r3-3cJQuVtUzJOD6xuAItrkPoyz3A/exec';
+            // Production URL (Stable v31)
+            const API_URL = 'https://script.google.com/macros/s/AKfycbz8n83AZgzOazn4aWvkcYB6aDD3xn0NEPwnB9RDx8sNq8rJAmxLZjv35CuKQIUretPGfw/exec';
 
-            // For doPost, we MUST use no-cors to avoid blocking.
-            // This means we cannot read the response, but the data will be sent.
+            // Use URLSearchParams to send data as 'application/x-www-form-urlencoded'
+            // This ensures GAS receives it in e.parameter.data, which is more reliable than raw body in no-cors.
+            const params = new URLSearchParams();
+            params.append('data', JSON.stringify(data));
+
             fetch(API_URL, {
                 method: 'POST',
                 mode: 'no-cors',
-                body: JSON.stringify(data),
-                headers: {
-                    "Content-Type": "text/plain;charset=utf-8"
-                }
+                body: params
             })
-                .then(() => resolve({ status: 'success' })) // Opaque response always resolves
+                .then(() => resolve({ status: 'success' }))
                 .catch(reject);
         }
     })

@@ -425,6 +425,21 @@ export default function TravelApp() {
     }, [selectedDay]);
     const dayIndex = useMemo(() => itinerary.findIndex(d => d.id === selectedDayId), [itinerary, selectedDayId]);
 
+    // Calculate year range from itinerary dates
+    const yearRange = useMemo(() => {
+        if (itinerary.length === 0) return '';
+        const parseDate = (dateStr) => {
+            // Format: "12/28" or "1/1"
+            const [month, day] = dateStr.split('/').map(Number);
+            // Assume year based on month: 12 = current year end, 1 = next year start
+            const baseYear = new Date().getFullYear();
+            return month >= 10 ? baseYear : baseYear + 1;
+        };
+        const firstYear = parseDate(itinerary[0].date);
+        const lastYear = parseDate(itinerary[itinerary.length - 1].date);
+        return firstYear === lastYear ? `${firstYear}` : `${firstYear}-${lastYear}`;
+    }, [itinerary]);
+
     // Auth check
     useEffect(() => {
         if (sessionStorage.getItem('trip_auth') === 'true') setAuth(true);
@@ -591,7 +606,7 @@ export default function TravelApp() {
                     </div>
                     <div className="relative z-10 mx-auto">
                         <div className="flex items-center justify-between mb-2">
-                            <span className="bg-white/20 px-3 py-1 rounded-full text-xs font-bold backdrop-blur-sm">2024-2025</span>
+                            <span className="bg-white/20 px-3 py-1 rounded-full text-xs font-bold backdrop-blur-sm">{yearRange}</span>
                             <button
                                 onClick={() => setIsEditMode(!isEditMode)}
                                 className={`p-2 rounded-full transition-colors ${isEditMode ? 'bg-yellow-400 text-yellow-900 shadow-md' : 'bg-white/10 text-white hover:bg-white/20'}`}

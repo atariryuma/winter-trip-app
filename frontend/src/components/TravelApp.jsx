@@ -584,7 +584,7 @@ export default function TravelApp() {
             <div className="w-full max-w-[600px] bg-white shadow-2xl min-h-[100dvh] relative flex flex-col overflow-x-hidden">
 
                 {/* ========== HEADER ========== */}
-                <div className="bg-gradient-to-br from-blue-600 to-indigo-800 p-6 text-white pt-12 pb-20 relative overflow-hidden shrink-0">
+                <div className="bg-gradient-to-br from-blue-600 to-indigo-800 p-6 text-white pt-10 pb-16 relative overflow-hidden shrink-0">
                     <div className="absolute top-0 right-0 p-4 opacity-20">
                         <Plane size={140} className="transform rotate-[-10deg] translate-x-4 translate-y-4" />
                     </div>
@@ -598,26 +598,26 @@ export default function TravelApp() {
                                 <Edit2 size={18} />
                             </button>
                         </div>
-                        <h1 className="text-3xl font-bold mb-1 tracking-tight">Winter Journey</h1>
+                        <h1 className="text-2xl font-bold mb-1 tracking-tight">Winter Journey</h1>
                         <p className="opacity-90 text-sm font-medium">Okinawa <span className="opacity-60 mx-1">✈</span> Takayama</p>
                     </div>
                 </div>
 
                 {/* ========== DATE TABS (Only for Timeline) ========== */}
                 {activeTab === 'timeline' && (
-                    <div className="px-4 -mt-8 relative z-20 mb-2 overflow-x-hidden">
+                    <div className="px-4 -mt-6 relative z-20 mb-2 overflow-x-hidden">
                         <div className="flex overflow-x-auto gap-3 pb-4 pt-1 scrollbar-hide snap-x max-w-full">
                             {itinerary.map(day => (
                                 <button
                                     key={day.id}
                                     onClick={() => setSelectedDayId(day.id)}
-                                    className={`flex-shrink-0 snap-center flex flex-col items-center justify-center w-[4.5rem] h-20 rounded-2xl shadow-sm transition-all duration-300 border border-gray-100/50 ${selectedDayId === day.id
-                                        ? "bg-white text-blue-600 ring-4 ring-blue-500/20 translate-y-0 z-10 shadow-lg scale-105"
+                                    className={`flex-shrink-0 snap-center flex flex-col items-center justify-center w-16 h-16 rounded-2xl shadow-sm transition-all duration-300 border border-gray-100/50 ${selectedDayId === day.id
+                                        ? "bg-white text-blue-600 ring-2 ring-blue-500/30 shadow-md"
                                         : "bg-white/90 text-gray-500 hover:bg-white hover:shadow-md"
                                         }`}
                                 >
-                                    <span className="text-xs font-bold uppercase tracking-wider">{day.dayOfWeek}</span>
-                                    <span className="text-xl font-black leading-none mt-1">{day.date.split('/')[1]}</span>
+                                    <span className="text-[10px] font-bold uppercase tracking-wider">{day.dayOfWeek}</span>
+                                    <span className="text-lg font-black leading-none mt-0.5">{day.date.split('/')[1]}</span>
                                 </button>
                             ))}
                         </div>
@@ -632,7 +632,7 @@ export default function TravelApp() {
                         <div className="pt-4">
 
                             {/* Summary Card */}
-                            <div className="bg-white rounded-2xl p-5 shadow-sm mb-6 border border-gray-100">
+                            <div className="bg-white rounded-2xl p-4 shadow-sm mb-4 border border-gray-100">
                                 <div className="flex justify-between items-start mb-3 gap-4">
                                     <div className="flex-1">
                                         <div className="lg:hidden text-xs text-blue-600 font-bold mb-1">Day {dayIndex + 1}</div>

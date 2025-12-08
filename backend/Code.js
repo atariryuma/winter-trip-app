@@ -52,6 +52,12 @@ function doPost(e) {
         // Full Sync: Overwrite sheet with new data
         saveItineraryData(data);
 
+        // Invalidate Cache
+        try {
+            const cache = CacheService.getScriptCache();
+            cache.remove('itinerary_json');
+        } catch (e) { }
+
         return ContentService.createTextOutput(JSON.stringify({
             status: 'success',
             message: 'Data saved successfully'
@@ -76,6 +82,15 @@ function doPost(e) {
  * Read itinerary data from Google Spreadsheet and transform to app format
  */
 function getItineraryData() {
+    // Check Cache first
+    try {
+        const cache = CacheService.getScriptCache();
+        const cachedData = cache.get('itinerary_json');
+        if (cachedData) {
+            return JSON.parse(cachedData);
+        }
+    } catch (e) { }
+
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     const sheet = ss.getSheetByName(SHEET_NAME);
     const data = sheet.getDataRange().getDisplayValues();
@@ -85,6 +100,8 @@ function getItineraryData() {
 
     // Group by date
     const daysMap = {};
+    // Track all locations for the map
+    const mapMarkers = [];
 
     rows.forEach((row, idx) => {
         const [
@@ -93,6 +110,13 @@ function getItineraryData() {
             status, details, hotelName, checkInTime, bookingRef, hotelDetails
         ] = row;
 
+        // Collect locations for map (Airport, Hotel, Sightseeing)
+        if (category === '宿泊' && hotelName) mapMarkers.push(hotelName);
+        if (category === '交通' && departurePlace) mapMarkers.push(departurePlace);
+        if (category === '交通' && arrivalPlace) mapMarkers.push(arrivalPlace);
+        if (category === 'アクティビティ' && name) mapMarkers.push(name);
+
+        // ... (existing logic) ...
         // Create or get day object
         if (!daysMap[date]) {
             daysMap[date] = {
@@ -148,13 +172,49 @@ function getItineraryData() {
         }
     });
 
+    // Generate Static Map URL (if markers exist)
+    let mapUrl = null;
+    if (mapMarkers.length > 0) {
+        try {
+            // Using unique locations only to save URL length
+            const uniqueLocations = [...new Set(mapMarkers)].slice(0, 15); // Limit to 15 to avoid URL limit
+            if (uniqueLocations.length > 0) {
+                const map = Maps.newStaticMap()
+                    .setSize(600, 400)
+                    .setLanguage('ja');
+                uniqueLocations.forEach((loc, i) => {
+                    map.addMarker(loc);
+                    // Add path? Maybe too complex for simple view. Markers are fine.
+                });
+                // We cannot return the Blob URL directly to frontend efficiently without base64 or hosting.
+                // Best for GAS Web App: Return Base64 data URI
+                const blob = map.getBlob();
+                const base64 = Utilities.base64Encode(blob.getBytes());
+                mapUrl = 'data:image/png;base64,' + base64;
+            }
+        } catch (e) {
+            // Map generation failed (quota or bad address), ignore
+            mapUrl = null;
+        }
+    }
+
     // Convert to array and sort events by time
     const result = Object.values(daysMap).map(day => ({
         ...day,
         events: day.events.sort((a, b) => (a.time || '23:59').localeCompare(b.time || '23:59'))
     }));
 
-    return result;
+    const response = {
+        days: result,
+        mapUrl: mapUrl
+    };
+
+    // Cache the response (JSON string) for 30 minutes (1800 seconds)
+    try {
+        cache.put('itinerary_json', JSON.stringify(response), 1800);
+    } catch (e) { }
+
+    return response;
 }
 
 /**
@@ -239,4 +299,10 @@ function saveItineraryData(days) {
     if (rows.length > 0) {
         sheet.getRange(2, 1, rows.length, 20).setValues(rows);
     }
+
+    // Invalidate Cache
+    try {
+        const cache = CacheService.getScriptCache();
+        cache.remove('itinerary_json');
+    } catch (e) { }
 }

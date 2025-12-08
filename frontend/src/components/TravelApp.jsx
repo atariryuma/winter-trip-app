@@ -187,8 +187,128 @@ const EditModal = ({ isOpen, onClose, item, onSave, onDelete }) => {
 };
 
 // ============================================================================
-// MAIN APP
+// TICKET VIEW COMPONENT
 // ============================================================================
+
+const TicketList = ({ itinerary }) => {
+    const tickets = useMemo(() => {
+        return itinerary.flatMap(day =>
+            day.events
+                .filter(e => e.bookingRef || e.type === 'stay' || (e.type === 'transport' && e.status === 'confirmed'))
+                .map(e => ({ ...e, date: day.date }))
+        );
+    }, [itinerary]);
+
+    if (tickets.length === 0) return <div className="p-10 text-center text-gray-400 font-bold">表示できるチケット情報がありません</div>;
+
+    return (
+        <div className="space-y-4 pt-4">
+            {tickets.map(t => (
+                <div key={t.id} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex flex-col gap-3 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-150"></div>
+                    <div className="flex justify-between items-start z-10">
+                        <div>
+                            <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{t.date} • {t.category}</span>
+                            <h3 className="text-xl font-bold text-gray-800 mt-1">{t.name}</h3>
+                        </div>
+                        <div className="p-2 bg-gray-50 rounded-lg">
+                            {getIcon(t.category, t.type)}
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 my-2 border-t border-b border-gray-100 py-3">
+                        <div>
+                            <span className="text-xs text-gray-400 block mb-1">TIME</span>
+                            <span className="text-lg font-mono font-bold text-gray-700">{t.time}{t.endTime && ` - ${t.endTime}`}</span>
+                        </div>
+                        <div>
+                            <span className="text-xs text-gray-400 block mb-1">STATUS</span>
+                            <StatusBadge status={t.status} />
+                        </div>
+                    </div>
+
+                    {t.bookingRef && (
+                        <div className="bg-blue-50 rounded-xl p-3 flex justify-between items-center cursor-pointer hover:bg-blue-100 transition" onClick={() => { navigator.clipboard.writeText(t.bookingRef); alert('予約番号をコピーしました'); }}>
+                            <div>
+                                <span className="text-[10px] text-blue-400 block uppercase font-bold">BOOKING REF</span>
+                                <span className="font-mono font-black text-blue-600 text-lg tracking-widest">{t.bookingRef}</span>
+                            </div>
+                            <Copy size={16} className="text-blue-300" />
+                        </div>
+                    )}
+
+                    {t.details && <p className="text-sm text-gray-500 mt-1">{t.details}</p>}
+                </div>
+            ))}
+            <div className="h-24"></div>
+        </div>
+    );
+};
+
+// ============================================================================
+// MAP VIEW COMPONENT
+// ============================================================================
+
+const MapView = ({ mapUrl, itinerary }) => {
+    const markers = useMemo(() => {
+        return itinerary.flatMap(day => {
+            const locs = [];
+            // if(day.location) locs.push({name: day.location, type: 'day'}); // Too generic often
+            day.events.forEach(e => {
+                if (e.place) locs.push({ name: e.place, type: 'transport' });
+                if (e.to) locs.push({ name: e.to, type: 'transport' });
+                if (e.category === 'hotel') locs.push({ name: e.name, type: 'hotel' });
+                if (e.category === 'sightseeing') locs.push({ name: e.name, type: 'sightseeing' });
+            });
+            return locs;
+        }).filter((v, i, a) => a.findIndex(t => (t.name === v.name)) === i);
+    }, [itinerary]);
+
+    return (
+        <div className="pt-4 space-y-6">
+            <div className="bg-white rounded-2xl p-2 shadow-sm border border-gray-100 overflow-hidden mb-6">
+                {mapUrl ? (
+                    <div className="relative">
+                        <img src={mapUrl} alt="Trip Map" className="w-full h-auto object-cover rounded-xl bg-gray-100 min-h-[200px]" />
+                        <div className="absolute bottom-2 right-2 bg-white/80 backdrop-blur px-2 py-1 rounded text-[10px] text-gray-500">Google Maps Data</div>
+                    </div>
+                ) : (
+                    <div className="w-full h-48 bg-gray-50 rounded-xl flex items-center justify-center text-gray-400 flex-col gap-2 border-2 border-dashed border-gray-200">
+                        <MapPin size={32} className="opacity-20" />
+                        <span className="text-xs font-bold">マップ画像を生成できませんでした</span>
+                    </div>
+                )}
+            </div>
+
+            <div className="space-y-3">
+                <div className="flex items-center gap-2 px-2">
+                    <MapPin size={16} className="text-blue-500" />
+                    <h3 className="font-bold text-gray-800">スポット一覧</h3>
+                </div>
+                {markers.map((m, i) => (
+                    <a
+                        key={i}
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(m.name)}`}
+                        target="_blank" rel="noopener noreferrer"
+                        className="flex items-center justify-between bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:bg-gray-50 transition active:scale-[0.98]"
+                    >
+                        <div className="flex items-center gap-4">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${m.type === 'hotel' ? 'bg-indigo-50 text-indigo-500' : 'bg-blue-50 text-blue-500'}`}>
+                                {m.type === 'hotel' ? <BedDouble size={18} /> : (m.type === 'sightseeing' ? <Camera size={18} /> : <MapPin size={18} />)}
+                            </div>
+                            <div>
+                                <div className="font-bold text-gray-700">{m.name}</div>
+                                <div className="text-xs text-gray-400 uppercase font-bold">{m.type}</div>
+                            </div>
+                        </div>
+                        <ArrowRight size={16} className="text-gray-300" />
+                    </a>
+                ))}
+            </div>
+            <div className="h-24"></div>
+        </div>
+    );
+};
 
 // API URL - same origin for GAS deployment
 // Server Communication Adapter
@@ -205,8 +325,8 @@ const server = {
                 .getItineraryData();
         } else {
             console.log('Using local fetch fallback');
-            // Production URL (Stable v30)
-            const API_URL = 'https://script.google.com/macros/s/AKfycbwKOdGi1NEEw763LIxTHrqb4PtpxHA272YdqNAUIQ8yiQCBfGElMzNzbziwdMxmLq7tsQ/exec';
+            // Production URL (Stable v33)
+            const API_URL = 'https://script.google.com/macros/s/AKfycbzmeZyyhBmEAvCHk-AaQQzRgB0BIWczVOLmYD6SUZj7sUFWD0GUZuLOc0hQd33ha-Z8xg/exec';
 
             // Use simple GET request which mimics browser navigation to follow 302 redirects
             // Note: If GAS script permissions are set to ANYONE, this works.
@@ -229,8 +349,8 @@ const server = {
                 .withFailureHandler(reject)
                 .saveItineraryData(data); // Call backend directly
         } else {
-            // Production URL (Stable v31)
-            const API_URL = 'https://script.google.com/macros/s/AKfycbz8n83AZgzOazn4aWvkcYB6aDD3xn0NEPwnB9RDx8sNq8rJAmxLZjv35CuKQIUretPGfw/exec';
+            // Production URL (Stable v33)
+            const API_URL = 'https://script.google.com/macros/s/AKfycbzmeZyyhBmEAvCHk-AaQQzRgB0BIWczVOLmYD6SUZj7sUFWD0GUZuLOc0hQd33ha-Z8xg/exec';
 
             // Use URLSearchParams to send data as 'application/x-www-form-urlencoded'
             // This ensures GAS receives it in e.parameter.data, which is more reliable than raw body in no-cors.
@@ -251,6 +371,8 @@ const server = {
 export default function TravelApp() {
     const [itinerary, setItinerary] = useState([]);
     const [selectedDayId, setSelectedDayId] = useState(null);
+    const [activeTab, setActiveTab] = useState('timeline');
+    const [mapUrl, setMapUrl] = useState(null);
     const [isEditMode, setIsEditMode] = useState(false);
     const [auth, setAuth] = useState(false);
     const [modalOpen, setModalOpen] = useState(false);
@@ -279,9 +401,18 @@ export default function TravelApp() {
             try {
                 setLoading(true);
                 const data = await server.getData();
-                if (data && data.length > 0) {
-                    setItinerary(data);
-                    setSelectedDayId(data[0].id);
+                // Handle new API structure { days, mapUrl } or fallback to array
+                let daysData = [];
+                if (Array.isArray(data)) {
+                    daysData = data;
+                } else if (data && data.days) {
+                    daysData = data.days;
+                    if (data.mapUrl) setMapUrl(data.mapUrl);
+                }
+
+                if (daysData && daysData.length > 0) {
+                    setItinerary(daysData);
+                    setSelectedDayId(daysData[0].id);
                     setError(null);
                 } else {
                     throw new Error('No data');
@@ -431,30 +562,32 @@ export default function TravelApp() {
                     </div>
                 </div>
 
-                {/* ========== DATE TABS ========== */}
-                <div className="px-4 -mt-8 relative z-20 mb-2">
-                    <div className="flex overflow-x-auto gap-3 pb-4 pt-1 scrollbar-hide snap-x">
-                        {itinerary.map(day => (
-                            <button
-                                key={day.id}
-                                onClick={() => setSelectedDayId(day.id)}
-                                className={`flex-shrink-0 snap-center flex flex-col items-center justify-center w-[4.5rem] h-20 rounded-2xl shadow-sm transition-all duration-300 border border-gray-100/50 ${selectedDayId === day.id
-                                    ? "bg-white text-blue-600 ring-4 ring-blue-500/20 translate-y-0 z-10 shadow-lg scale-105"
-                                    : "bg-white/90 text-gray-500 hover:bg-white hover:shadow-md"
-                                    }`}
-                            >
-                                <span className="text-xs font-bold uppercase tracking-wider">{day.dayOfWeek}</span>
-                                <span className="text-xl font-black leading-none mt-1">{day.date.split('/')[1]}</span>
-                            </button>
-                        ))}
+                {/* ========== DATE TABS (Only for Timeline) ========== */}
+                {activeTab === 'timeline' && (
+                    <div className="px-4 -mt-8 relative z-20 mb-2">
+                        <div className="flex overflow-x-auto gap-3 pb-4 pt-1 scrollbar-hide snap-x">
+                            {itinerary.map(day => (
+                                <button
+                                    key={day.id}
+                                    onClick={() => setSelectedDayId(day.id)}
+                                    className={`flex-shrink-0 snap-center flex flex-col items-center justify-center w-[4.5rem] h-20 rounded-2xl shadow-sm transition-all duration-300 border border-gray-100/50 ${selectedDayId === day.id
+                                        ? "bg-white text-blue-600 ring-4 ring-blue-500/20 translate-y-0 z-10 shadow-lg scale-105"
+                                        : "bg-white/90 text-gray-500 hover:bg-white hover:shadow-md"
+                                        }`}
+                                >
+                                    <span className="text-xs font-bold uppercase tracking-wider">{day.dayOfWeek}</span>
+                                    <span className="text-xl font-black leading-none mt-1">{day.date.split('/')[1]}</span>
+                                </button>
+                            ))}
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {/* ========== MAIN CONTENT ========== */}
                 <main className="flex-1 px-4 sm:px-8 pb-32">
 
                     {/* Content Area */}
-                    {selectedDay && (
+                    {activeTab === 'timeline' && selectedDay && (
                         <div className="pt-2">
 
                             {/* Summary Card */}
@@ -553,20 +686,35 @@ export default function TravelApp() {
                             <div className="h-20"></div>
                         </div>
                     )}
+
+                    {/* NEW: Ticket View */}
+                    {activeTab === 'tickets' && <TicketList itinerary={itinerary} />}
+
+                    {/* NEW: Map View */}
+                    {activeTab === 'map' && <MapView mapUrl={mapUrl} itinerary={itinerary} />}
                 </main>
 
                 {/* ========== BOTTOM NAV ========== */}
                 <div className="sticky bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-200 px-6 py-2 flex justify-around items-center z-30 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
-                    <button className="flex flex-col items-center gap-1.5 p-2 text-blue-600 transition-transform active:scale-95">
-                        <Calendar size={22} strokeWidth={2.5} />
+                    <button
+                        onClick={() => setActiveTab('timeline')}
+                        className={`flex flex-col items-center gap-1.5 p-2 transition-transform active:scale-95 ${activeTab === 'timeline' ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
+                    >
+                        <Calendar size={22} strokeWidth={activeTab === 'timeline' ? 2.5 : 2} />
                         <span className="text-[10px] font-bold tracking-tight">旅程</span>
                     </button>
-                    <button className="flex flex-col items-center gap-1.5 p-2 text-gray-400 hover:text-gray-600 transition-transform active:scale-95">
-                        <Ticket size={22} strokeWidth={2.5} />
+                    <button
+                        onClick={() => setActiveTab('tickets')}
+                        className={`flex flex-col items-center gap-1.5 p-2 transition-transform active:scale-95 ${activeTab === 'tickets' ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
+                    >
+                        <Ticket size={22} strokeWidth={activeTab === 'tickets' ? 2.5 : 2} />
                         <span className="text-[10px] font-bold tracking-tight">チケット</span>
                     </button>
-                    <button className="flex flex-col items-center gap-1.5 p-2 text-gray-400 hover:text-gray-600 transition-transform active:scale-95">
-                        <MapPin size={22} strokeWidth={2.5} />
+                    <button
+                        onClick={() => setActiveTab('map')}
+                        className={`flex flex-col items-center gap-1.5 p-2 transition-transform active:scale-95 ${activeTab === 'map' ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
+                    >
+                        <MapPin size={22} strokeWidth={activeTab === 'map' ? 2.5 : 2} />
                         <span className="text-[10px] font-bold tracking-tight">マップ</span>
                     </button>
                 </div>

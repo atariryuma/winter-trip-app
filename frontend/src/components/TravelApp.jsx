@@ -761,6 +761,13 @@ const server = {
                 .then(() => resolve({ status: 'success' }))
                 .catch(reject);
         }
+    }),
+    validatePasscode: (code) => new Promise((resolve) => {
+        const API_URL = 'https://script.google.com/macros/s/AKfycbzmeZyyhBmEAvCHk-AaQQzRgB0BIWczVOLmYD6SUZj7sUFWD0GUZuLOc0hQd33ha-Z8xg/exec';
+        fetch(`${API_URL}?action=validatePasscode&code=${encodeURIComponent(code)}`, { method: 'GET' })
+            .then(res => res.json())
+            .then(data => resolve(data.valid === true))
+            .catch(() => resolve(code === '2025')); // Fallback to default if API fails
     })
 };
 
@@ -931,6 +938,16 @@ export default function TravelApp() {
 
     // Login
     if (!auth) {
+        const handlePasscodeChange = async (e) => {
+            const code = e.target.value;
+            if (code.length >= 4) {
+                const valid = await server.validatePasscode(code);
+                if (valid) {
+                    setAuth(true);
+                    sessionStorage.setItem('trip_auth', 'true');
+                }
+            }
+        };
         return (
             <div className="min-h-screen bg-gradient-to-br from-blue-600 to-indigo-800 flex items-center justify-center p-4">
                 <div className="w-full max-w-sm bg-white/90 backdrop-blur-xl rounded-3xl p-8 text-center shadow-2xl border border-white/20">
@@ -945,7 +962,7 @@ export default function TravelApp() {
                         pattern="[0-9]*"
                         autoFocus
                         placeholder="PASSCODE"
-                        onChange={e => e.target.value === '2025' && (setAuth(true), sessionStorage.setItem('trip_auth', 'true'))}
+                        onChange={handlePasscodeChange}
                         className="w-full p-4 text-center text-3xl font-bold tracking-[0.5em] text-gray-900 bg-gray-50 rounded-2xl border border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 outline-none transition-all placeholder:text-gray-300 placeholder:tracking-normal placeholder:text-sm"
                     />
                 </div>

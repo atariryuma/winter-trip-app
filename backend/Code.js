@@ -9,6 +9,15 @@ function doGet(e) {
             .setMimeType(ContentService.MimeType.JSON);
     }
 
+    // Validate Passcode
+    if (e && e.parameter && e.parameter.action === 'validatePasscode') {
+        const inputCode = e.parameter.code || '';
+        const storedCode = PropertiesService.getScriptProperties().getProperty('APP_PASSCODE') || '2025';
+        const valid = inputCode === storedCode;
+        return ContentService.createTextOutput(JSON.stringify({ valid }))
+            .setMimeType(ContentService.MimeType.JSON);
+    }
+
     // Default: return HTML app
     return HtmlService.createHtmlOutputFromFile('index')
         .setTitle('Winter Trip')

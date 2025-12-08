@@ -191,9 +191,42 @@ const EditModal = ({ isOpen, onClose, item, onSave, onDelete }) => {
 // ============================================================================
 
 // API URL - same origin for GAS deployment
-const API_BASE = typeof google !== 'undefined'
-    ? '' // GAS環境: 同一オリジン
-    : 'https://script.google.com/macros/s/AKfycbzWeb3xkGQyZ8lG3LA1LkJboSVoAV8vMAUoNHY93sXwzhv7_JOFRAVVHJdznDkc-gBStQ/exec';
+// Server Communication Adapter
+const server = {
+    getData: () => new Promise((resolve, reject) => {
+        if (typeof google === 'object' && google.script && google.script.run) {
+            google.script.run
+                .withSuccessHandler(resolve)
+                .withFailureHandler(reject)
+                .getItineraryData();
+        } else {
+            // Local fallback (Dev)
+            const API_URL = 'https://script.google.com/macros/s/AKfycbxxLTv4zSNqkbvLm25ArfbZYirOGmW3qbbmXNkKi9wT2fZrECJX56xEe0iqwJ6SxwRdHQ/exec';
+            fetch(`${API_URL}?action=getData`)
+                .then(res => res.json())
+                .then(resolve)
+                .catch(reject);
+        }
+    }),
+    saveData: (data) => new Promise((resolve, reject) => {
+        if (typeof google === 'object' && google.script && google.script.run) {
+            google.script.run
+                .withSuccessHandler(resolve)
+                .withFailureHandler(reject)
+                .saveItineraryData(data); // Call backend directly
+        } else {
+            // Local fallback (Dev)
+            const API_URL = 'https://script.google.com/macros/s/AKfycbxxLTv4zSNqkbvLm25ArfbZYirOGmW3qbbmXNkKi9wT2fZrECJX56xEe0iqwJ6SxwRdHQ/exec';
+            fetch(API_URL, {
+                method: 'POST',
+                body: JSON.stringify(data)
+            })
+                .then(res => res.json())
+                .then(resolve)
+                .catch(reject);
+        }
+    })
+};
 
 export default function TravelApp() {
     const [itinerary, setItinerary] = useState([]);
@@ -220,18 +253,16 @@ export default function TravelApp() {
     }, []);
 
     // Fetch data from Spreadsheet via GAS API
+    // Fetch data from Spreadsheet via GAS Adapter
     useEffect(() => {
         const fetchData = async () => {
             try {
                 setLoading(true);
-                // Try GAS API first
-                const url = API_BASE ? `${API_BASE}?action=getData` : '?action=getData';
-                const res = await fetch(url);
-                if (!res.ok) throw new Error('API Error');
-                const data = await res.json();
+                const data = await server.getData();
                 if (data && data.length > 0) {
                     setItinerary(data);
                     setSelectedDayId(data[0].id);
+                    setError(null);
                 } else {
                     throw new Error('No data');
                 }
@@ -261,27 +292,7 @@ export default function TravelApp() {
     const saveToSpreadsheet = async (newItinerary) => {
         try {
             setSaving(true);
-            const url = API_BASE || ''; // If empty, using relative path (not possible in current setup due to different domains, so must use full URL if dev or relative if deployed on same origin... wait. Code.js handles POST. If local dev, we need URL. If on GAS, we might need absolute URL too unless relative works?)
-            // Actually, for GAS web app, POST usually needs to go to the exec URL.
-            // Our API_BASE handles this.
-
-            const targetUrl = API_BASE ? API_BASE : window.location.href; // Fallback for deployed
-
-            // Use fetch with no-cors if needed? No, we need response.
-            // GAS POST requires text/plain or application/json.
-            // We set CORS in GAS? No, GAS auto-handles CORS if we return correct headers.
-            // ContentService returns JSON, so we should be good.
-
-            const res = await fetch(targetUrl, {
-                method: 'POST',
-                body: JSON.stringify(newItinerary)
-            });
-
-            const result = await res.json();
-            if (result.status !== 'success') throw new Error(result.message || 'Save failed');
-
-            // Success indication?
-            // Maybe just clear saving state
+            await server.saveData(newItinerary);
         } catch (err) {
             console.error('Save error:', err);
             alert('保存に失敗しました。ネット接続を確認してください。');

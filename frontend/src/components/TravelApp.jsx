@@ -170,11 +170,11 @@ const EditModal = ({ isOpen, onClose, item, onSave, onDelete }) => {
                     <h3 className="font-bold text-lg text-gray-800">{item ? '予定を編集' : '新しい予定'}</h3>
                     <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full"><X size={20} className="text-gray-500" /></button>
                 </div>
-                <div className="p-6 overflow-y-auto space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 overflow-y-auto space-y-5">
+                    <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">カテゴリ</label>
-                            <select value={formData.category || ''} onChange={e => setFormData({ ...formData, category: e.target.value })} className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-gray-800">
+                            <label className="text-[10px] font-bold text-gray-500 uppercase mb-1.5 block">カテゴリ</label>
+                            <select value={formData.category || ''} onChange={e => setFormData({ ...formData, category: e.target.value })} className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-gray-800 text-sm">
                                 <option value="flight">飛行機</option>
                                 <option value="train">電車</option>
                                 <option value="bus">バス</option>
@@ -184,8 +184,8 @@ const EditModal = ({ isOpen, onClose, item, onSave, onDelete }) => {
                             </select>
                         </div>
                         <div>
-                            <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">ステータス</label>
-                            <select value={formData.status || ''} onChange={e => setFormData({ ...formData, status: e.target.value })} className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-gray-800">
+                            <label className="text-[10px] font-bold text-gray-500 uppercase mb-1.5 block">ステータス</label>
+                            <select value={formData.status || ''} onChange={e => setFormData({ ...formData, status: e.target.value })} className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-gray-800 text-sm">
                                 <option value="planned">計画中</option>
                                 <option value="confirmed">確定</option>
                                 <option value="suggested">候補</option>
@@ -193,22 +193,22 @@ const EditModal = ({ isOpen, onClose, item, onSave, onDelete }) => {
                         </div>
                     </div>
                     <div>
-                        <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">名称</label>
-                        <input type="text" value={formData.name || ''} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-gray-800 font-bold" placeholder="予定の名前" />
+                        <label className="text-[10px] font-bold text-gray-500 uppercase mb-1.5 block">名称</label>
+                        <input type="text" value={formData.name || ''} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-gray-800 font-bold text-sm" placeholder="予定の名前" />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">開始時刻</label>
-                            <input type="time" value={formData.time || ''} onChange={e => setFormData({ ...formData, time: e.target.value })} className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-gray-800" />
+                            <label className="text-[10px] font-bold text-gray-500 uppercase mb-1.5 block">開始時刻</label>
+                            <input type="time" value={formData.time || ''} onChange={e => setFormData({ ...formData, time: e.target.value })} className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-gray-800 text-sm" />
                         </div>
                         <div>
-                            <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">終了時刻</label>
-                            <input type="time" value={formData.endTime || ''} onChange={e => setFormData({ ...formData, endTime: e.target.value })} className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-gray-800" />
+                            <label className="text-[10px] font-bold text-gray-500 uppercase mb-1.5 block">終了時刻</label>
+                            <input type="time" value={formData.endTime || ''} onChange={e => setFormData({ ...formData, endTime: e.target.value })} className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-gray-800 text-sm" />
                         </div>
                     </div>
                     <div>
-                        <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">詳細・メモ</label>
-                        <textarea value={formData.details || formData.description || ''} onChange={e => setFormData({ ...formData, details: e.target.value, description: e.target.value })} className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-gray-800 h-24 resize-none" placeholder="予約番号や注意事項など" />
+                        <label className="text-[10px] font-bold text-gray-500 uppercase mb-1.5 block">詳細・メモ</label>
+                        <textarea value={formData.details || formData.description || ''} onChange={e => setFormData({ ...formData, details: e.target.value, description: e.target.value })} className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-gray-800 h-20 resize-none text-sm" placeholder="予約番号や注意事項など" />
                     </div>
                 </div>
                 <div className="p-4 border-t border-gray-100 flex gap-3">

@@ -196,13 +196,13 @@ const EditModal = ({ isOpen, onClose, item, onSave, onDelete }) => {
                         <label className="text-[10px] font-bold text-gray-500 uppercase mb-1.5 block">名称</label>
                         <input type="text" value={formData.name || ''} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-gray-800 font-bold text-sm" placeholder="予定の名前" />
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className="text-[10px] font-bold text-gray-500 uppercase mb-1.5 block">開始時刻</label>
+                    <div className="flex gap-3">
+                        <div className="flex-1">
+                            <label className="text-[10px] font-bold text-gray-500 uppercase mb-1.5 block">開始</label>
                             <input type="time" value={formData.time || ''} onChange={e => setFormData({ ...formData, time: e.target.value })} className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-gray-800 text-sm" />
                         </div>
-                        <div>
-                            <label className="text-[10px] font-bold text-gray-500 uppercase mb-1.5 block">終了時刻</label>
+                        <div className="flex-1">
+                            <label className="text-[10px] font-bold text-gray-500 uppercase mb-1.5 block">終了</label>
                             <input type="time" value={formData.endTime || ''} onChange={e => setFormData({ ...formData, endTime: e.target.value })} className="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-gray-800 text-sm" />
                         </div>
                     </div>

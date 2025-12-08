@@ -232,20 +232,17 @@ const server = {
             // Local fallback (Dev)
             const API_URL = 'https://script.google.com/macros/s/AKfycbwBNcUr1d66mceV0HTDeZpeqZx3EaHGhuZcIyGy7r3-3cJQuVtUzJOD6xuAItrkPoyz3A/exec';
 
-            // For doPost, simple fetch often fails CORS preflight on GAS.
-            // Using no-cors prevents reading response, which is bad for error checking but allows transmission.
-            // However, we need to know if it success.
-            // Best bet: text/plain content type avoids preflight OPTIONS for simple POST.
+            // For doPost, we MUST use no-cors to avoid blocking.
+            // This means we cannot read the response, but the data will be sent.
             fetch(API_URL, {
                 method: 'POST',
+                mode: 'no-cors',
                 body: JSON.stringify(data),
                 headers: {
                     "Content-Type": "text/plain;charset=utf-8"
-                },
-                redirect: "follow"
+                }
             })
-                .then(res => res.json())
-                .then(resolve)
+                .then(() => resolve({ status: 'success' })) // Opaque response always resolves
                 .catch(reject);
         }
     })

@@ -781,27 +781,27 @@ export default function TravelApp() {
                 </main>
 
                 {/* ========== BOTTOM NAV ========== */}
-                <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[600px] bg-white/95 backdrop-blur-md border-t border-gray-200 px-6 py-1.5 flex justify-around items-center z-30 pb-[calc(0.25rem+env(safe-area-inset-bottom))]">
+                <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[600px] bg-white/95 backdrop-blur-md border-t border-gray-200 px-6 py-1 flex justify-around items-center z-30 pb-[calc(0.25rem+env(safe-area-inset-bottom))]">
                     <button
                         onClick={() => setActiveTab('timeline')}
-                        className={`flex flex-col items-center gap-0.5 p-2 transition-transform active:scale-95 ${activeTab === 'timeline' ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
+                        className={`flex flex-col items-center gap-0.5 p-1 transition-transform active:scale-95 ${activeTab === 'timeline' ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
                     >
-                        <Calendar size={24} strokeWidth={activeTab === 'timeline' ? 2.5 : 2} />
-                        <span className="text-[11px] font-bold">旅程</span>
+                        <Calendar size={22} strokeWidth={activeTab === 'timeline' ? 2.5 : 2} />
+                        <span className="text-[10px] font-bold">旅程</span>
                     </button>
                     <button
                         onClick={() => setActiveTab('tickets')}
-                        className={`flex flex-col items-center gap-0.5 p-2 transition-transform active:scale-95 ${activeTab === 'tickets' ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
+                        className={`flex flex-col items-center gap-0.5 p-1 transition-transform active:scale-95 ${activeTab === 'tickets' ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
                     >
-                        <Ticket size={24} strokeWidth={activeTab === 'tickets' ? 2.5 : 2} />
-                        <span className="text-[11px] font-bold">チケット</span>
+                        <Ticket size={22} strokeWidth={activeTab === 'tickets' ? 2.5 : 2} />
+                        <span className="text-[10px] font-bold">チケット</span>
                     </button>
                     <button
                         onClick={() => setActiveTab('map')}
-                        className={`flex flex-col items-center gap-0.5 p-2 transition-transform active:scale-95 ${activeTab === 'map' ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
+                        className={`flex flex-col items-center gap-0.5 p-1 transition-transform active:scale-95 ${activeTab === 'map' ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
                     >
-                        <MapPin size={24} strokeWidth={activeTab === 'map' ? 2.5 : 2} />
-                        <span className="text-[11px] font-bold">マップ</span>
+                        <MapPin size={22} strokeWidth={activeTab === 'map' ? 2.5 : 2} />
+                        <span className="text-[10px] font-bold">マップ</span>
                     </button>
                 </div>
 

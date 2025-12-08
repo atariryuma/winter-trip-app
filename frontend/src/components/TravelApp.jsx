@@ -3,7 +3,7 @@ import {
     Plane, Train, Bus, MapPin, BedDouble, Calendar,
     Sun, Cloud, Snowflake, Camera, ArrowRight, Utensils,
     CheckCircle2, Circle, AlertCircle, Copy, Ticket, Mountain,
-    Edit2, Plus, X, Save, Trash2, Moon, Menu
+    Edit2, Plus, X, Save, Trash2, Moon, Menu, Smartphone
 } from 'lucide-react';
 
 // ============================================================================
@@ -83,6 +83,18 @@ const initialItinerary = [
         ]
     },
 ];
+
+// ============================================================================
+// PORTRAIT LOCK COMPONENT
+// ============================================================================
+
+const PortraitLock = () => (
+    <div className="fixed inset-0 z-[10000] bg-slate-900 text-white flex flex-col items-center justify-center p-10 text-center hidden landscape:flex md:hidden">
+        <Smartphone className="text-blue-500 mb-6 animate-pulse" size={64} style={{ transform: 'rotate(90deg)' }} />
+        <h2 className="text-2xl font-bold mb-2">スマートフォンを<br />縦にしてください</h2>
+        <p className="opacity-70 text-sm">このアプリは縦画面での利用に<br />最適化されています。</p>
+    </div>
+);
 
 // ============================================================================
 // UTILITIES
@@ -541,6 +553,7 @@ export default function TravelApp() {
 
     return (
         <div className="min-h-[100dvh] bg-[#F0F2F5] flex justify-center pb-[env(safe-area-inset-bottom)]">
+            <PortraitLock />
             {SavingOverlay}
             {ErrorBanner}
 

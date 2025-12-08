@@ -1,0 +1,17 @@
+{
+    "short_name": "WinterTrip",
+    "name": "Winter Trip Journey",
+    "description": "Travel Itinerary for Okinawa to Takayama",
+    "start_url": ".",
+    "display": "standalone",
+    "orientation": "portrait",
+    "theme_color": "#2563EB",
+    "background_color": "#F0F2F5",
+    "icons": [
+        {
+            "src": "vite.svg",
+            "sizes": "192x192 512x512",
+            "type": "image/svg+xml"
+        }
+    ]
+}

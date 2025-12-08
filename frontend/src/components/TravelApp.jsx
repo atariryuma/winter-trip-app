@@ -274,7 +274,6 @@ const TicketList = ({ itinerary }) => {
                     {t.details && <p className="text-sm text-gray-500 mt-1">{t.details}</p>}
                 </div>
             ))}
-            <div className="h-16"></div>
         </div>
     );
 };
@@ -339,7 +338,6 @@ const MapView = ({ mapUrl, itinerary }) => {
                     </a>
                 ))}
             </div>
-            <div className="h-16"></div>
         </div>
     );
 };
@@ -578,7 +576,7 @@ export default function TravelApp() {
     ) : null;
 
     return (
-        <div className="min-h-[100dvh] bg-[#F0F2F5] flex justify-center pb-[env(safe-area-inset-bottom)]">
+        <div className="min-h-[100dvh] bg-[#F0F2F5] flex justify-center">
             <PortraitLock />
             {SavingOverlay}
             {ErrorBanner}
@@ -756,7 +754,6 @@ export default function TravelApp() {
                                 )}
                             </div>
 
-                            <div className="h-16"></div>
                         </div>
                     )}
 
@@ -768,7 +765,7 @@ export default function TravelApp() {
                 </main>
 
                 {/* ========== BOTTOM NAV ========== */}
-                <div className="sticky bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-200 px-6 py-1 flex justify-around items-center z-30 pb-[calc(0.25rem+env(safe-area-inset-bottom))]">
+                <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[600px] bg-white/95 backdrop-blur-md border-t border-gray-200 px-6 py-1 flex justify-around items-center z-30 pb-[calc(0.25rem+env(safe-area-inset-bottom))]">
                     <button
                         onClick={() => setActiveTab('timeline')}
                         className={`flex flex-col items-center gap-1 p-2 transition-transform active:scale-95 ${activeTab === 'timeline' ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}

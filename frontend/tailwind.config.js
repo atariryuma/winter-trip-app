@@ -5,7 +5,21 @@ export default {
         "./src/**/*.{js,ts,jsx,tsx}",
     ],
     theme: {
-        extend: {},
+        extend: {
+            fontFamily: {
+                sans: ['"Zen Kaku Gothic New"', 'Inter', 'sans-serif'],
+                display: ['Poppins', 'sans-serif'],
+            },
+            colors: {
+                brand: {
+                    50: '#f0f9ff',
+                    100: '#e0f2fe',
+                    500: '#0ea5e9', // Sky blue equivalent
+                    600: '#0284c7',
+                    900: '#0c4a6e',
+                }
+            }
+        },
     },
     plugins: [],
 }

@@ -1,7 +1,7 @@
 var TRIP_DATA = {
     "tripInfo": {
         "title": "冬の飛騨高山・下呂温泉・名古屋 4泊5日",
-        "period": "2024/12/28 - 2026/1/1",
+        "period": "2024/12/28 - 2025/1/1",
         "travelers": "家族旅行"
     },
     "schedules": [
@@ -54,7 +54,7 @@ var TRIP_DATA = {
             ]
         },
         {
-            "date": "2026-01-01",
+            "date": "2025-01-01",
             "day": "木",
             "location": "帰路",
             "events": [

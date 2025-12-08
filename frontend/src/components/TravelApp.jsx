@@ -127,6 +127,28 @@ const StatusBadge = ({ status }) => {
     if (status === 'planned') return <span className="flex items-center gap-1 text-xs font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full"><Circle size={12} /> 計画中</span>;
     if (status === 'suggested') return <span className="flex items-center gap-1 text-xs font-bold text-yellow-600 bg-yellow-100 px-2 py-0.5 rounded-full"><AlertCircle size={12} /> 候補</span>;
     return null;
+
+};
+
+const toMinutes = (timeStr) => {
+    if (!timeStr) return 9999;
+    const [h, m] = timeStr.split(':').map(Number);
+    return h * 60 + m;
+};
+
+const toTimeStr = (minutes) => {
+    const h = Math.floor(minutes / 60);
+    const m = Math.floor(minutes % 60);
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+};
+
+const getMidTime = (t1, t2) => {
+    if (!t1 && !t2) return '12:00';
+    if (!t1) return toTimeStr(toMinutes(t2) - 60); // 1 hour before
+    if (!t2) return toTimeStr(toMinutes(t1) + 60); // 1 hour after
+    const m1 = toMinutes(t1);
+    const m2 = toMinutes(t2);
+    return toTimeStr(m1 + (m2 - m1) / 2);
 };
 
 // ============================================================================
@@ -397,7 +419,11 @@ export default function TravelApp() {
     const selectedDay = useMemo(() => itinerary.find(d => d.id === selectedDayId), [itinerary, selectedDayId]);
     const sortedEvents = useMemo(() => {
         if (!selectedDay) return [];
-        return [...selectedDay.events].sort((a, b) => (a.time || '23:59').localeCompare(b.time || '23:59'));
+        return [...selectedDay.events].sort((a, b) => {
+            const t1 = (a.time || '23:59').padStart(5, '0');
+            const t2 = (b.time || '23:59').padStart(5, '0');
+            return t1.localeCompare(t2);
+        });
     }, [selectedDay]);
     const dayIndex = useMemo(() => itinerary.findIndex(d => d.id === selectedDayId), [itinerary, selectedDayId]);
 
@@ -629,8 +655,27 @@ export default function TravelApp() {
 
                             {/* Timeline - Simplified List for Mobile */}
                             <div className="space-y-4">
-                                {sortedEvents.map(event => (
+                                {sortedEvents.map((event, index) => (
                                     <div key={event.id} className="relative">
+
+                                        {/* Insert Between Divider (Only in Edit Mode) */}
+                                        {isEditMode && (
+                                            <div
+                                                className="h-6 -my-3 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer group z-10 relative"
+                                                onClick={() => {
+                                                    const prevTime = index > 0 ? sortedEvents[index - 1].time : null;
+                                                    const nextTime = event.time;
+                                                    const midTime = getMidTime(prevTime, nextTime);
+                                                    setEditItem({ type: 'activity', category: 'sightseeing', status: 'planned', time: midTime, name: '' });
+                                                    setModalOpen(true);
+                                                }}
+                                            >
+                                                <div className="w-full h-0.5 bg-blue-300 transform scale-x-90 group-hover:scale-x-100 transition-transform"></div>
+                                                <div className="absolute bg-blue-500 text-white rounded-full p-1 shadow-sm transform scale-0 group-hover:scale-100 transition-transform">
+                                                    <Plus size={14} />
+                                                </div>
+                                            </div>
+                                        )}
 
                                         <div
                                             onClick={isEditMode ? () => { setEditItem(event); setModalOpen(true); } : undefined}
@@ -695,8 +740,14 @@ export default function TravelApp() {
 
                                 {isEditMode && (
                                     <div className="pt-4">
+                                        {/* Final Append Button with Smart Time */}
                                         <button
-                                            onClick={() => { setEditItem(null); setModalOpen(true); }}
+                                            onClick={() => {
+                                                const lastTime = sortedEvents.length > 0 ? sortedEvents[sortedEvents.length - 1].time : '09:00';
+                                                const nextTime = toTimeStr(toMinutes(lastTime) + 60);
+                                                setEditItem({ type: 'activity', category: 'sightseeing', status: 'planned', time: nextTime, name: '' });
+                                                setModalOpen(true);
+                                            }}
                                             className="w-full py-4 border-2 border-dashed border-gray-300 rounded-2xl text-gray-400 hover:text-blue-500 hover:border-blue-300 transition flex items-center justify-center gap-2"
                                         >
                                             <Plus size={20} /> 予定を追加

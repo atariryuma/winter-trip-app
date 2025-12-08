@@ -384,208 +384,172 @@ export default function TravelApp() {
     ) : null;
 
     return (
-        <div className="min-h-screen bg-gray-100 lg:flex">
+        <div className="min-h-screen bg-[#F0F2F5] flex justify-center pb-[env(safe-area-inset-bottom)]">
             {SavingOverlay}
             {ErrorBanner}
 
-            {/* ========== DESKTOP SIDEBAR (lg+) ========== */}
-            <aside className="hidden lg:flex flex-col w-80 bg-white border-r border-gray-200 fixed inset-y-0 left-0 z-40">
-                <div className="p-6 bg-gradient-to-br from-blue-600 to-indigo-800 text-white">
-                    <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                            <Plane size={20} className="-rotate-45" />
-                        </div>
-                        <div>
-                            <h1 className="font-bold text-lg">Winter Journey</h1>
-                            <p className="text-xs text-blue-200">Okinawa ✈ Takayama</p>
-                        </div>
-                    </div>
-                </div>
+            <div className="w-full max-w-[800px] bg-white shadow-2xl min-h-screen relative flex flex-col">
 
-                <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                    {itinerary.map((day, idx) => (
-                        <button
-                            key={day.id}
-                            onClick={() => setSelectedDayId(day.id)}
-                            className={`w-full text-left p-4 rounded-2xl transition-all ${selectedDayId === day.id
-                                ? 'bg-blue-600 text-white shadow-lg'
-                                : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
-                                }`}
-                        >
-                            <div className="flex justify-between items-center mb-1">
-                                <span className="font-bold">Day {idx + 1}</span>
-                                <span className="text-xs opacity-70">{day.date} ({day.dayOfWeek})</span>
-                            </div>
-                            <p className={`text-sm truncate ${selectedDayId === day.id ? 'text-blue-100' : 'text-gray-500'}`}>{day.title}</p>
-                        </button>
-                    ))}
-                </div>
-
-                <div className="p-4 border-t border-gray-100">
-                    <button
-                        onClick={() => setIsEditMode(!isEditMode)}
-                        className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold transition-colors ${isEditMode ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                    >
-                        <Edit2 size={18} /> {isEditMode ? '編集モード ON' : '編集モード'}
-                    </button>
-                </div>
-            </aside>
-
-            {/* ========== MAIN CONTENT ========== */}
-            <main className="flex-1 lg:ml-80 pb-24 lg:pb-8">
-
-                {/* Mobile/Tablet Header */}
-                <div className="lg:hidden bg-gradient-to-br from-blue-600 to-indigo-800 p-4 sm:p-6 text-white pt-8 sm:pt-10 pb-14 sm:pb-16 relative overflow-hidden">
+                {/* ========== HEADER ========== */}
+                <div className="bg-gradient-to-br from-blue-600 to-indigo-800 p-6 text-white pt-12 pb-16 relative overflow-hidden shrink-0">
                     <div className="absolute top-0 right-0 p-4 opacity-20">
-                        <Plane size={100} className="sm:w-32 sm:h-32" />
+                        <Plane size={140} className="transform rotate-[-10deg] translate-x-4 translate-y-4" />
                     </div>
-                    <div className="relative z-10 max-w-3xl mx-auto">
-                        <h1 className="text-xl sm:text-2xl font-bold mb-1">Winter Journey</h1>
-                        <p className="opacity-90 text-sm">Okinawa ✈ Takayama</p>
+                    <div className="relative z-10 mx-auto">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="bg-white/20 px-3 py-1 rounded-full text-xs font-bold backdrop-blur-sm">2024-2025</span>
+                            <button
+                                onClick={() => setIsEditMode(!isEditMode)}
+                                className={`p-2 rounded-full transition-colors ${isEditMode ? 'bg-yellow-400 text-yellow-900 shadow-md' : 'bg-white/10 text-white hover:bg-white/20'}`}
+                            >
+                                <Edit2 size={18} />
+                            </button>
+                        </div>
+                        <h1 className="text-3xl font-bold mb-1 tracking-tight">Winter Journey</h1>
+                        <p className="opacity-90 text-sm font-medium">Okinawa <span className="opacity-60 mx-1">✈</span> Takayama</p>
                     </div>
-                    <button
-                        onClick={() => setIsEditMode(!isEditMode)}
-                        className={`absolute top-4 right-4 p-2 rounded-full transition-colors ${isEditMode ? 'bg-yellow-400 text-yellow-900' : 'bg-white/20 text-white'}`}
-                    >
-                        <Edit2 size={18} />
-                    </button>
                 </div>
 
-                {/* Date Tabs - Mobile/Tablet */}
-                <div className="lg:hidden px-2 sm:px-4 -mt-8 relative z-10 max-w-3xl mx-auto">
-                    <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-hide">
+                {/* ========== DATE TABS ========== */}
+                <div className="px-4 -mt-8 relative z-20 mb-2">
+                    <div className="flex overflow-x-auto gap-3 pb-4 pt-1 scrollbar-hide snap-x">
                         {itinerary.map(day => (
                             <button
                                 key={day.id}
                                 onClick={() => setSelectedDayId(day.id)}
-                                className={`flex-shrink-0 flex flex-col items-center justify-center w-14 h-18 sm:w-16 sm:h-20 rounded-2xl shadow-sm transition-all duration-300 ${selectedDayId === day.id
-                                    ? "bg-white text-blue-600 ring-2 ring-blue-500 -translate-y-1"
-                                    : "bg-white/80 text-gray-500 hover:bg-white"
+                                className={`flex-shrink-0 snap-center flex flex-col items-center justify-center w-[4.5rem] h-20 rounded-2xl shadow-sm transition-all duration-300 border border-gray-100/50 ${selectedDayId === day.id
+                                    ? "bg-white text-blue-600 ring-4 ring-blue-500/20 translate-y-0 z-10 shadow-lg scale-105"
+                                    : "bg-white/90 text-gray-500 hover:bg-white hover:shadow-md"
                                     }`}
                             >
-                                <span className="text-xs font-medium">{day.dayOfWeek}</span>
-                                <span className="text-lg font-bold">{day.date.split('/')[1]}</span>
+                                <span className="text-xs font-bold uppercase tracking-wider">{day.dayOfWeek}</span>
+                                <span className="text-xl font-black leading-none mt-1">{day.date.split('/')[1]}</span>
                             </button>
                         ))}
                     </div>
                 </div>
 
-                {/* Content Area */}
-                {selectedDay && (
-                    <div className="px-4 sm:px-6 lg:px-8 pt-4 max-w-4xl mx-auto">
+                {/* ========== MAIN CONTENT ========== */}
+                <main className="flex-1 px-4 sm:px-8 pb-32">
 
-                        {/* Summary Card */}
-                        <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm mb-6 border border-gray-100">
-                            <div className="flex justify-between items-start mb-3 gap-4">
-                                <div className="flex-1">
-                                    <div className="lg:hidden text-xs text-blue-600 font-bold mb-1">Day {dayIndex + 1}</div>
-                                    <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-800">{selectedDay.title}</h2>
-                                    <p className="text-xs sm:text-sm text-gray-500 mt-1 flex items-center gap-1">
-                                        <MapPin size={14} /> {selectedDay.location}
-                                    </p>
-                                </div>
-                                <div className="flex flex-col items-center pl-4 border-l border-gray-100">
-                                    {getWeatherIcon(selectedDay.weather?.condition)}
-                                    <span className="text-sm font-bold text-gray-700 mt-1">{selectedDay.weather?.temp}</span>
-                                </div>
-                            </div>
-                            <p className="text-sm sm:text-base text-gray-600 leading-relaxed bg-gray-50 p-3 sm:p-4 rounded-xl border border-gray-100">
-                                {selectedDay.summary}
-                            </p>
-                        </div>
+                    {/* Content Area */}
+                    {selectedDay && (
+                        <div className="pt-2">
 
-                        {/* Timeline - Responsive Grid for Tablet+ */}
-                        <div className="relative pl-4 sm:pl-6 space-y-4 sm:space-y-6">
-                            <div className="absolute left-4 sm:left-6 top-2 bottom-4 w-0.5 bg-gray-200"></div>
-
-                            {sortedEvents.map(event => (
-                                <div key={event.id} className="relative pl-6 sm:pl-8">
-                                    <div className={`absolute left-0 top-3 w-8 h-8 sm:w-10 sm:h-10 rounded-full border-4 border-gray-100 bg-white flex items-center justify-center shadow-sm z-10 -translate-x-1/2 ${event.type === 'stay' ? 'ring-2 ring-indigo-100' : ''}`}>
-                                        {getIcon(event.category, event.type)}
+                            {/* Summary Card */}
+                            <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm mb-6 border border-gray-100">
+                                <div className="flex justify-between items-start mb-3 gap-4">
+                                    <div className="flex-1">
+                                        <div className="lg:hidden text-xs text-blue-600 font-bold mb-1">Day {dayIndex + 1}</div>
+                                        <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-800">{selectedDay.title}</h2>
+                                        <p className="text-xs sm:text-sm text-gray-500 mt-1 flex items-center gap-1">
+                                            <MapPin size={14} /> {selectedDay.location}
+                                        </p>
                                     </div>
+                                    <div className="flex flex-col items-center pl-4 border-l border-gray-100">
+                                        {getWeatherIcon(selectedDay.weather?.condition)}
+                                        <span className="text-sm font-bold text-gray-700 mt-1">{selectedDay.weather?.temp}</span>
+                                    </div>
+                                </div>
+                                <p className="text-sm sm:text-base text-gray-600 leading-relaxed bg-gray-50 p-3 sm:p-4 rounded-xl border border-gray-100">
+                                    {selectedDay.summary}
+                                </p>
+                            </div>
 
-                                    <div
-                                        onClick={isEditMode ? () => { setEditItem(event); setModalOpen(true); } : undefined}
-                                        className={`rounded-2xl p-4 sm:p-5 shadow-sm border border-gray-100 transition bg-white ${event.type === 'stay' ? 'bg-indigo-50/50 border-indigo-100' : ''} ${isEditMode ? 'cursor-pointer hover:shadow-md hover:border-blue-300' : ''}`}
-                                    >
-                                        <div className="flex justify-between items-start mb-2 flex-wrap gap-2">
-                                            <div className="flex items-baseline gap-2">
-                                                <span className="text-lg sm:text-xl font-bold text-gray-800 font-mono">{event.time}</span>
-                                                {event.endTime && (
-                                                    <>
-                                                        <ArrowRight size={12} className="text-gray-400" />
-                                                        <span className="text-sm text-gray-500 font-mono">{event.endTime}</span>
-                                                    </>
-                                                )}
-                                            </div>
-                                            <StatusBadge status={event.status} />
+                            {/* Timeline - Responsive Grid for Tablet+ */}
+                            <div className="relative pl-4 sm:pl-6 space-y-4 sm:space-y-6">
+                                <div className="absolute left-4 sm:left-6 top-2 bottom-4 w-0.5 bg-gray-200"></div>
+
+                                {sortedEvents.map(event => (
+                                    <div key={event.id} className="relative pl-6 sm:pl-8">
+                                        <div className={`absolute left-0 top-3 w-8 h-8 sm:w-10 sm:h-10 rounded-full border-4 border-gray-100 bg-white flex items-center justify-center shadow-sm z-10 -translate-x-1/2 ${event.type === 'stay' ? 'ring-2 ring-indigo-100' : ''}`}>
+                                            {getIcon(event.category, event.type)}
                                         </div>
 
-                                        <h3 className="font-bold text-gray-800 text-lg sm:text-xl mb-1">{event.name}</h3>
-
-                                        {event.type === 'transport' && event.place && event.to && (
-                                            <div className="flex items-center gap-2 text-sm text-gray-600 mb-2 flex-wrap">
-                                                <span>{event.place}</span>
-                                                <ArrowRight size={14} />
-                                                <span>{event.to}</span>
-                                            </div>
-                                        )}
-
-                                        {(event.description || event.details) && (
-                                            <div className="mt-3 pt-3 border-t border-dashed border-gray-200 text-sm text-gray-600 space-y-1">
-                                                {event.description && <p>{event.description}</p>}
-                                                {event.details && <p>{event.details}</p>}
-                                            </div>
-                                        )}
-
-                                        {event.bookingRef && (
-                                            <div
-                                                onClick={(e) => { e.stopPropagation(); handleCopy(event.bookingRef); }}
-                                                className="mt-3 bg-white border border-gray-200 rounded-lg p-2 sm:p-3 flex items-center justify-between cursor-pointer active:bg-gray-100 group"
-                                            >
-                                                <div className="flex items-center gap-2">
-                                                    <Ticket size={14} className="text-blue-500" />
-                                                    <span className="text-xs text-gray-500">予約番号:</span>
-                                                    <span className="font-mono font-bold text-gray-700">{event.bookingRef}</span>
+                                        <div
+                                            onClick={isEditMode ? () => { setEditItem(event); setModalOpen(true); } : undefined}
+                                            className={`rounded-2xl p-4 sm:p-5 shadow-sm border border-gray-100 transition bg-white ${event.type === 'stay' ? 'bg-indigo-50/50 border-indigo-100' : ''} ${isEditMode ? 'cursor-pointer hover:shadow-md hover:border-blue-300' : ''}`}
+                                        >
+                                            <div className="flex justify-between items-start mb-2 flex-wrap gap-2">
+                                                <div className="flex items-baseline gap-2">
+                                                    <span className="text-lg sm:text-xl font-bold text-gray-800 font-mono">{event.time}</span>
+                                                    {event.endTime && (
+                                                        <>
+                                                            <ArrowRight size={12} className="text-gray-400" />
+                                                            <span className="text-sm text-gray-500 font-mono">{event.endTime}</span>
+                                                        </>
+                                                    )}
                                                 </div>
-                                                <Copy size={14} className="text-gray-400 group-hover:text-blue-500" />
+                                                <StatusBadge status={event.status} />
                                             </div>
-                                        )}
+
+                                            <h3 className="font-bold text-gray-800 text-lg sm:text-xl mb-1">{event.name}</h3>
+
+                                            {event.type === 'transport' && event.place && event.to && (
+                                                <div className="flex items-center gap-2 text-sm text-gray-600 mb-2 flex-wrap">
+                                                    <span>{event.place}</span>
+                                                    <ArrowRight size={14} />
+                                                    <span>{event.to}</span>
+                                                </div>
+                                            )}
+
+                                            {(event.description || event.details) && (
+                                                <div className="mt-3 pt-3 border-t border-dashed border-gray-200 text-sm text-gray-600 space-y-1">
+                                                    {event.description && <p>{event.description}</p>}
+                                                    {event.details && <p>{event.details}</p>}
+                                                </div>
+                                            )}
+
+                                            {event.bookingRef && (
+                                                <div
+                                                    onClick={(e) => { e.stopPropagation(); handleCopy(event.bookingRef); }}
+                                                    className="mt-3 bg-white border border-gray-200 rounded-lg p-2 sm:p-3 flex items-center justify-between cursor-pointer active:bg-gray-100 group"
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        <Ticket size={14} className="text-blue-500" />
+                                                        <span className="text-xs text-gray-500">予約番号:</span>
+                                                        <span className="font-mono font-bold text-gray-700">{event.bookingRef}</span>
+                                                    </div>
+                                                    <Copy size={14} className="text-gray-400 group-hover:text-blue-500" />
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                ))}
 
-                            {isEditMode && (
-                                <div className="pl-6 sm:pl-8 pt-4">
-                                    <button
-                                        onClick={() => { setEditItem(null); setModalOpen(true); }}
-                                        className="w-full py-4 border-2 border-dashed border-gray-300 rounded-2xl text-gray-400 hover:text-blue-500 hover:border-blue-300 transition flex items-center justify-center gap-2"
-                                    >
-                                        <Plus size={20} /> 予定を追加
-                                    </button>
-                                </div>
-                            )}
+                                {isEditMode && (
+                                    <div className="pl-6 sm:pl-8 pt-4">
+                                        <button
+                                            onClick={() => { setEditItem(null); setModalOpen(true); }}
+                                            className="w-full py-4 border-2 border-dashed border-gray-300 rounded-2xl text-gray-400 hover:text-blue-500 hover:border-blue-300 transition flex items-center justify-center gap-2"
+                                        >
+                                            <Plus size={20} /> 予定を追加
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="h-20"></div>
                         </div>
+                    )}
+                </main>
 
-                        <div className="h-20"></div>
-                    </div>
-                )}
-            </main>
+                {/* ========== BOTTOM NAV ========== */}
+                <div className="sticky bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-200 px-6 py-2 flex justify-around items-center z-30 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
+                    <button className="flex flex-col items-center gap-1.5 p-2 text-blue-600 transition-transform active:scale-95">
+                        <Calendar size={22} strokeWidth={2.5} />
+                        <span className="text-[10px] font-bold tracking-tight">旅程</span>
+                    </button>
+                    <button className="flex flex-col items-center gap-1.5 p-2 text-gray-400 hover:text-gray-600 transition-transform active:scale-95">
+                        <Ticket size={22} strokeWidth={2.5} />
+                        <span className="text-[10px] font-bold tracking-tight">チケット</span>
+                    </button>
+                    <button className="flex flex-col items-center gap-1.5 p-2 text-gray-400 hover:text-gray-600 transition-transform active:scale-95">
+                        <MapPin size={22} strokeWidth={2.5} />
+                        <span className="text-[10px] font-bold tracking-tight">マップ</span>
+                    </button>
+                </div>
 
-            {/* Bottom Nav - Mobile/Tablet Only */}
-            <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-200 px-6 py-3 flex justify-around items-center z-30">
-                <button className="flex flex-col items-center gap-1 text-blue-600">
-                    <Calendar size={20} />
-                    <span className="text-[10px] font-bold">旅程</span>
-                </button>
-                <button className="flex flex-col items-center gap-1 text-gray-400 hover:text-gray-600">
-                    <Ticket size={20} />
-                    <span className="text-[10px] font-bold">チケット</span>
-                </button>
-                <button className="flex flex-col items-center gap-1 text-gray-400 hover:text-gray-600">
-                    <MapPin size={20} />
-                    <span className="text-[10px] font-bold">マップ</span>
-                </button>
             </div>
 
             {/* Edit Modal */}

@@ -12,7 +12,7 @@ function doGet(e) {
     // Default: return HTML app
     return HtmlService.createHtmlOutputFromFile('index')
         .setTitle('Winter Trip')
-        .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+        .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover');
 }
 
 function doPost(e) {

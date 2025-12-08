@@ -445,12 +445,70 @@ const StayCard = ({ item }) => (
     </div>
 );
 
+// --- Passcode Protection ---
+const PASSCODE = "2025";
+
+const LoginScreen = ({ onLogin }) => {
+    const [input, setInput] = useState('');
+    const [error, setError] = useState(false);
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        if (input === PASSCODE) {
+            onLogin();
+        } else {
+            setError(true);
+            setInput('');
+        }
+    };
+
+    return (
+        <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
+            <div className="w-full max-w-sm bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-8 text-center space-y-6">
+                <div className="w-16 h-16 bg-sky-500 rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-sky-500/30">
+                    <Plane className="text-white transform -rotate-45" size={32} />
+                </div>
+
+                <div>
+                    <h1 className="text-2xl font-display font-bold text-slate-900 dark:text-white">Winter Trip</h1>
+                    <p className="text-slate-500 dark:text-slate-400 text-sm mt-2">Enter passcode to view itinerary</p>
+                </div>
+
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                        <input
+                            type="password"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            value={input}
+                            onChange={(e) => { setInput(e.target.value); setError(false); }}
+                            className="w-full text-center text-3xl font-display font-bold tracking-widest py-3 border-b-2 border-slate-200 dark:border-slate-700 bg-transparent focus:border-sky-500 focus:outline-none dark:text-white placeholder-slate-300"
+                            placeholder="••••"
+                            autoFocus
+                        />
+                    </div>
+
+                    {error && <p className="text-red-500 text-sm font-bold animate-pulse">Incorrect passcode</p>}
+
+                    <button
+                        type="submit"
+                        className="w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold py-4 rounded-xl hover:bg-slate-800 dark:hover:bg-slate-200 transition-colors shadow-lg"
+                    >
+                        Unlock Journey
+                    </button>
+                </form>
+            </div>
+        </div>
+    );
+};
+
 // --- Main App ---
 
 export default function TravelApp() {
     const [selectedDay, setSelectedDay] = useState(initialItinerary[0]);
     const [isSidebarOpen, setSidebarOpen] = useState(false);
     const [darkMode, setDarkMode] = useState(false);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
 
     // Initialize Dark Mode based on system preference
     useEffect(() => {
@@ -458,7 +516,17 @@ export default function TravelApp() {
             setDarkMode(true);
             document.documentElement.classList.add('dark');
         }
+
+        // Check session storage for auth persistence
+        if (sessionStorage.getItem('trip_auth') === 'true') {
+            setIsAuthenticated(true);
+        }
     }, []);
+
+    const handleLogin = () => {
+        setIsAuthenticated(true);
+        sessionStorage.setItem('trip_auth', 'true');
+    };
 
     const toggleDarkMode = () => {
         const newMode = !darkMode;
@@ -469,6 +537,10 @@ export default function TravelApp() {
             document.documentElement.classList.remove('dark');
         }
     };
+
+    if (!isAuthenticated) {
+        return <LoginScreen onLogin={handleLogin} />;
+    }
 
     return (
         <div className="flex flex-col md:flex-row h-screen md:h-screen h-[100dvh] bg-[#F8FAFC] dark:bg-slate-900 font-sans text-slate-800 dark:text-slate-100 transition-colors duration-300 overflow-hidden">

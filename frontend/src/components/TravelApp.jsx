@@ -195,17 +195,31 @@ const EditModal = ({ isOpen, onClose, item, onSave, onDelete }) => {
 const server = {
     getData: () => new Promise((resolve, reject) => {
         if (typeof google === 'object' && google.script && google.script.run) {
+            console.log('Using google.script.run');
             google.script.run
                 .withSuccessHandler(resolve)
-                .withFailureHandler(reject)
+                .withFailureHandler((error) => {
+                    console.error('GAS Server Error:', error);
+                    reject(new Error('GAS Error: ' + (error.message || error)));
+                })
                 .getItineraryData();
         } else {
-            // Local fallback (Dev)
-            const API_URL = 'https://script.google.com/macros/s/AKfycbxxLTv4zSNqkbvLm25ArfbZYirOGmW3qbbmXNkKi9wT2fZrECJX56xEe0iqwJ6SxwRdHQ/exec';
-            fetch(`${API_URL}?action=getData`)
-                .then(res => res.json())
+            console.log('Using local fetch fallback');
+            // Production URL (Stable v25)
+            const API_URL = 'https://script.google.com/macros/s/AKfycbwBNcUr1d66mceV0HTDeZpeqZx3EaHGhuZcIyGy7r3-3cJQuVtUzJOD6xuAItrkPoyz3A/exec';
+
+            // Use simple GET request which mimics browser navigation to follow 302 redirects
+            // Note: If GAS script permissions are set to ANYONE, this works.
+            fetch(`${API_URL}?action=getData`, {
+                method: 'GET',
+                redirect: 'follow'
+            })
+                .then(res => {
+                    if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
+                    return res.json();
+                })
                 .then(resolve)
-                .catch(reject);
+                .catch(e => reject(new Error('Fetch Error: ' + e.message)));
         }
     }),
     saveData: (data) => new Promise((resolve, reject) => {
@@ -216,10 +230,19 @@ const server = {
                 .saveItineraryData(data); // Call backend directly
         } else {
             // Local fallback (Dev)
-            const API_URL = 'https://script.google.com/macros/s/AKfycbxxLTv4zSNqkbvLm25ArfbZYirOGmW3qbbmXNkKi9wT2fZrECJX56xEe0iqwJ6SxwRdHQ/exec';
+            const API_URL = 'https://script.google.com/macros/s/AKfycbwBNcUr1d66mceV0HTDeZpeqZx3EaHGhuZcIyGy7r3-3cJQuVtUzJOD6xuAItrkPoyz3A/exec';
+
+            // For doPost, simple fetch often fails CORS preflight on GAS.
+            // Using no-cors prevents reading response, which is bad for error checking but allows transmission.
+            // However, we need to know if it success.
+            // Best bet: text/plain content type avoids preflight OPTIONS for simple POST.
             fetch(API_URL, {
                 method: 'POST',
-                body: JSON.stringify(data)
+                body: JSON.stringify(data),
+                headers: {
+                    "Content-Type": "text/plain;charset=utf-8"
+                },
+                redirect: "follow"
             })
                 .then(res => res.json())
                 .then(resolve)
@@ -271,7 +294,8 @@ export default function TravelApp() {
                 // Fallback to hardcoded data
                 setItinerary(initialItinerary);
                 setSelectedDayId(initialItinerary[0].id);
-                setError('スプレッドシートから読み込めませんでした。ローカルデータを使用します。');
+                // Show detailed error
+                setError(`読込エラー: ${err.message}`);
             } finally {
                 setLoading(false);
             }

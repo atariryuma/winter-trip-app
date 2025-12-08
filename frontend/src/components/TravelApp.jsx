@@ -205,8 +205,8 @@ const server = {
                 .getItineraryData();
         } else {
             console.log('Using local fetch fallback');
-            // Production URL (Stable v28)
-            const API_URL = 'https://script.google.com/macros/s/AKfycbzen_qkBLclK5XZBzWeafWbSD84ma8fgKpcUfd2Pi3yLvukIXLyoDcjG-yWXvuZPjMcBA/exec';
+            // Production URL (Stable v30)
+            const API_URL = 'https://script.google.com/macros/s/AKfycbwKOdGi1NEEw763LIxTHrqb4PtpxHA272YdqNAUIQ8yiQCBfGElMzNzbziwdMxmLq7tsQ/exec';
 
             // Use simple GET request which mimics browser navigation to follow 302 redirects
             // Note: If GAS script permissions are set to ANYONE, this works.

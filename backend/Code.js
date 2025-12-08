@@ -17,7 +17,18 @@ function doGet(e) {
 
 function doPost(e) {
     try {
-        const data = JSON.parse(e.postData.contents);
+        let jsonString = e.postData.contents;
+        if (!jsonString) {
+            try {
+                jsonString = e.postData.getDataAsString();
+            } catch (err) {
+                // ignore
+            }
+        }
+
+        if (!jsonString) throw new Error('No valid post data');
+
+        const data = JSON.parse(jsonString);
 
         // Full Sync: Overwrite sheet with new data
         saveItineraryData(data);

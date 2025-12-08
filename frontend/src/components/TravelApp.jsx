@@ -309,10 +309,19 @@ function getTimelineEvents(day) {
     });
 
     if (day.stay) {
-        events.push({ type: 'stay', time: '17:00 (Check-in)', data: day.stay, sortTime: '24:00' }); // End of day typically
+        // Extract time from checkIn string (e.g. "15:00-18:00" -> "15:00")
+        // Fallback to 17:00 if no time found
+        const timeMatch = day.stay.checkIn.match(/(\d{1,2}:\d{2})/);
+        const checkInTime = timeMatch ? timeMatch[0] : '17:00';
+        events.push({
+            type: 'stay',
+            time: checkInTime, // Use merged sortTime
+            data: day.stay,
+            sortTime: checkInTime
+        });
     }
 
-    // Simple string sort works for "HH:MM"
+    // Stable sort by time string "HH:MM"
     return events.sort((a, b) => a.sortTime.localeCompare(b.sortTime));
 }
 
@@ -346,8 +355,8 @@ const TimelineNode = ({ type, isLast }) => {
 const TransportItem = ({ item }) => (
     <div className="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-gray-100 dark:border-slate-700 hover:shadow-md transition-shadow relative overflow-hidden group">
         <div className={`absolute top-0 left-0 w-1 h-full ${item.type === 'flight' ? 'bg-sky-500' :
-                item.type === 'train' ? 'bg-red-500' :
-                    item.type === 'bus' ? 'bg-orange-500' : 'bg-gray-500'}`}
+            item.type === 'train' ? 'bg-red-500' :
+                item.type === 'bus' ? 'bg-orange-500' : 'bg-gray-500'}`}
         />
 
         <div className="flex justify-between items-start mb-3 pl-3">
@@ -462,10 +471,10 @@ export default function TravelApp() {
     };
 
     return (
-        <div className="flex flex-col md:flex-row h-screen bg-[#F8FAFC] dark:bg-slate-900 font-sans text-slate-800 dark:text-slate-100 transition-colors duration-300">
+        <div className="flex flex-col md:flex-row h-screen md:h-screen h-[100dvh] bg-[#F8FAFC] dark:bg-slate-900 font-sans text-slate-800 dark:text-slate-100 transition-colors duration-300 overflow-hidden">
 
             {/* Mobile Nav Top */}
-            <div className="md:hidden flex justify-between items-center p-4 bg-white dark:bg-slate-900 border-b dark:border-slate-800 sticky top-0 z-50">
+            <div className="md:hidden flex justify-between items-center p-4 bg-white dark:bg-slate-900 border-b dark:border-slate-800 sticky top-0 z-40">
                 <div className="font-display font-bold text-xl tracking-tight text-slate-900 dark:text-white">Winter Trip</div>
                 <div className="flex gap-4">
                     <button onClick={toggleDarkMode} className="text-slate-600 dark:text-slate-300">
@@ -479,7 +488,7 @@ export default function TravelApp() {
 
             {/* Sidebar Navigation */}
             <aside className={`
-         fixed md:static inset-y-0 left-0 bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-800 w-72 z-50 transform transition-transform duration-300 ease-in-out
+         fixed md:static inset-y-0 left-0 bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-800 w-72 z-50 transform transition-transform duration-300 ease-in-out flex flex-col
          ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
       `}>
                 <div className="p-8 hidden md:flex justify-between items-start">
@@ -494,7 +503,7 @@ export default function TravelApp() {
                     </div>
                 </div>
 
-                <div className="px-4 py-2 md:py-0">
+                <div className="px-4 py-2 md:py-0 flex-1 overflow-y-auto">
                     <div className="flex justify-between items-center px-4 mb-4 md:hidden">
                         <span className="font-bold text-lg dark:text-white">Menu</span>
                         <button onClick={() => setSidebarOpen(false)} className="dark:text-white"><X size={24} /></button>
@@ -506,8 +515,8 @@ export default function TravelApp() {
                                 key={day.date}
                                 onClick={() => { setSelectedDay(day); setSidebarOpen(false); }}
                                 className={`w-full text-left p-4 rounded-xl transition-all border flex flex-col gap-1 group ${selectedDay.date === day.date
-                                        ? 'bg-slate-900 dark:bg-slate-700 text-white border-slate-900 dark:border-slate-600 shadow-lg scale-[1.02]'
-                                        : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700/50'
+                                    ? 'bg-slate-900 dark:bg-slate-700 text-white border-slate-900 dark:border-slate-600 shadow-lg scale-[1.02]'
+                                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700/50'
                                     }`}
                             >
                                 <div className="flex justify-between items-center">

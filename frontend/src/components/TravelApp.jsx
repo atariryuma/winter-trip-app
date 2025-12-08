@@ -204,6 +204,7 @@ export default function TravelApp() {
     const [editItem, setEditItem] = useState(null);
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
 
     const selectedDay = useMemo(() => itinerary.find(d => d.id === selectedDayId), [itinerary, selectedDayId]);
@@ -256,25 +257,72 @@ export default function TravelApp() {
 
     const handleCopy = (text) => { navigator.clipboard.writeText(text); alert(`コピーしました: ${text}`); };
 
+    // Save entire itinerary to Spreadsheet
+    const saveToSpreadsheet = async (newItinerary) => {
+        try {
+            setSaving(true);
+            const url = API_BASE || ''; // If empty, using relative path (not possible in current setup due to different domains, so must use full URL if dev or relative if deployed on same origin... wait. Code.js handles POST. If local dev, we need URL. If on GAS, we might need absolute URL too unless relative works?)
+            // Actually, for GAS web app, POST usually needs to go to the exec URL.
+            // Our API_BASE handles this.
+
+            const targetUrl = API_BASE ? API_BASE : window.location.href; // Fallback for deployed
+
+            // Use fetch with no-cors if needed? No, we need response.
+            // GAS POST requires text/plain or application/json.
+            // We set CORS in GAS? No, GAS auto-handles CORS if we return correct headers.
+            // ContentService returns JSON, so we should be good.
+
+            const res = await fetch(targetUrl, {
+                method: 'POST',
+                body: JSON.stringify(newItinerary)
+            });
+
+            const result = await res.json();
+            if (result.status !== 'success') throw new Error(result.message || 'Save failed');
+
+            // Success indication?
+            // Maybe just clear saving state
+        } catch (err) {
+            console.error('Save error:', err);
+            alert('保存に失敗しました。ネット接続を確認してください。');
+        } finally {
+            setSaving(false);
+        }
+    };
+
     const handleSaveEvent = (newItem) => {
-        setItinerary(prev => prev.map(day => {
-            if (day.id === selectedDayId) {
-                let newEvents = editItem
-                    ? day.events.map(e => e.id === newItem.id ? newItem : e)
-                    : [...day.events, { ...newItem, id: generateId(), type: newItem.category === 'hotel' ? 'stay' : (newItem.category === 'flight' || newItem.category === 'train' || newItem.category === 'bus' ? 'transport' : 'activity') }];
-                return { ...day, events: newEvents };
-            }
-            return day;
-        }));
+        let updatedItinerary;
+        setItinerary(prev => {
+            updatedItinerary = prev.map(day => {
+                if (day.id === selectedDayId) {
+                    let newEvents = editItem
+                        ? day.events.map(e => e.id === newItem.id ? newItem : e)
+                        : [...day.events, { ...newItem, id: generateId(), type: newItem.category === 'hotel' ? 'stay' : (newItem.category === 'flight' || newItem.category === 'train' || newItem.category === 'bus' ? 'transport' : 'activity') }];
+                    return { ...day, events: newEvents };
+                }
+                return day;
+            });
+            return updatedItinerary;
+        });
         setModalOpen(false);
         setEditItem(null);
+
+        // Trigger save
+        if (updatedItinerary) saveToSpreadsheet(updatedItinerary);
     };
 
     const handleDeleteEvent = (id) => {
         if (!window.confirm("削除しますか？")) return;
-        setItinerary(prev => prev.map(day => ({ ...day, events: day.events.filter(e => e.id !== id) })));
+        let updatedItinerary;
+        setItinerary(prev => {
+            updatedItinerary = prev.map(day => ({ ...day, events: day.events.filter(e => e.id !== id) }));
+            return updatedItinerary;
+        });
         setModalOpen(false);
         setEditItem(null);
+
+        // Trigger save
+        if (updatedItinerary) saveToSpreadsheet(updatedItinerary);
     };
 
     // Login
@@ -297,6 +345,14 @@ export default function TravelApp() {
         );
     }
 
+    // Creating Saving Overlay
+    const SavingOverlay = saving ? (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-black/80 text-white px-6 py-3 rounded-full shadow-xl z-[100] flex items-center gap-3 animate-pulse">
+            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+            <span className="font-bold text-sm">スプレッドシートに保存中...</span>
+        </div>
+    ) : null;
+
     // Loading
     if (loading) {
         return (
@@ -318,6 +374,7 @@ export default function TravelApp() {
 
     return (
         <div className="min-h-screen bg-gray-100 lg:flex">
+            {SavingOverlay}
             {ErrorBanner}
 
             {/* ========== DESKTOP SIDEBAR (lg+) ========== */}

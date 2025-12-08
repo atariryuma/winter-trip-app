@@ -41,7 +41,7 @@ function doPost(e) {
 function getItineraryData() {
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     const sheet = ss.getSheetByName(SHEET_NAME);
-    const data = sheet.getDataRange().getValues();
+    const data = sheet.getDataRange().getDisplayValues();
 
     // Skip header row
     const rows = data.slice(1).filter(row => row[0]); // Filter empty rows

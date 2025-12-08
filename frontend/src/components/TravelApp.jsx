@@ -540,7 +540,7 @@ export default function TravelApp() {
     ) : null;
 
     return (
-        <div className="min-h-[100dvh] bg-[#F2F4F7] flex justify-center pb-[env(safe-area-inset-bottom)]">
+        <div className="min-h-[100dvh] bg-[#F0F2F5] flex justify-center pb-[env(safe-area-inset-bottom)]">
             {SavingOverlay}
             {ErrorBanner}
 
@@ -614,34 +614,39 @@ export default function TravelApp() {
                                 </p>
                             </div>
 
-                            {/* Timeline - Responsive Grid for Tablet+ */}
-                            <div className="relative pl-4 sm:pl-6 space-y-4 sm:space-y-6">
-                                <div className="absolute left-4 sm:left-6 top-2 bottom-4 w-0.5 bg-gray-200"></div>
-
+                            {/* Timeline - Simplified List for Mobile */}
+                            <div className="space-y-4">
                                 {sortedEvents.map(event => (
-                                    <div key={event.id} className="relative pl-6 sm:pl-8">
-                                        <div className={`absolute left-0 top-3 w-8 h-8 sm:w-10 sm:h-10 rounded-full border-4 border-gray-100 bg-white flex items-center justify-center shadow-sm z-10 -translate-x-1/2 ${event.type === 'stay' ? 'ring-2 ring-indigo-100' : ''}`}>
-                                            {getIcon(event.category, event.type)}
-                                        </div>
+                                    <div key={event.id} className="relative">
 
                                         <div
                                             onClick={isEditMode ? () => { setEditItem(event); setModalOpen(true); } : undefined}
-                                            className={`rounded-2xl p-4 sm:p-5 shadow-sm border border-gray-100 transition bg-white ${event.type === 'stay' ? 'bg-indigo-50/50 border-indigo-100' : ''} ${isEditMode ? 'cursor-pointer hover:shadow-md hover:border-blue-300' : ''}`}
+                                            className={`rounded-2xl p-4 sm:p-5 shadow-sm border border-gray-100 transition bg-white relative overflow-hidden ${event.type === 'stay' ? 'bg-indigo-50/50 border-indigo-100' : ''} ${isEditMode ? 'cursor-pointer hover:shadow-md hover:border-blue-300' : ''}`}
                                         >
-                                            <div className="flex justify-between items-start mb-2 flex-wrap gap-2">
-                                                <div className="flex items-baseline gap-2">
-                                                    <span className="text-lg sm:text-xl font-bold text-gray-800 font-mono">{event.time}</span>
-                                                    {event.endTime && (
-                                                        <>
-                                                            <ArrowRight size={12} className="text-gray-400" />
-                                                            <span className="text-sm text-gray-500 font-mono">{event.endTime}</span>
-                                                        </>
-                                                    )}
+                                            {/* Icon Background Decoration */}
+                                            <div className="absolute top-0 right-0 p-3 opacity-10">
+                                                {getIcon(event.category, event.type)}
+                                            </div>
+
+                                            <div className="flex justify-between items-start mb-2 flex-wrap gap-2 relative z-10">
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${event.type === 'stay' ? 'bg-indigo-100 text-indigo-600' : (event.category === 'flight' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600')}`}>
+                                                        {getIcon(event.category, event.type)}
+                                                    </div>
+                                                    <div className="flex items-baseline gap-2">
+                                                        <span className="text-lg sm:text-xl font-bold text-gray-800 font-mono">{event.time}</span>
+                                                        {event.endTime && (
+                                                            <>
+                                                                <ArrowRight size={12} className="text-gray-400" />
+                                                                <span className="text-sm text-gray-500 font-mono">{event.endTime}</span>
+                                                            </>
+                                                        )}
+                                                    </div>
                                                 </div>
                                                 <StatusBadge status={event.status} />
                                             </div>
 
-                                            <h3 className="font-bold text-gray-800 text-lg sm:text-xl mb-1">{event.name}</h3>
+                                            <h3 className="font-bold text-gray-800 text-lg sm:text-xl mb-1 mt-1">{event.name}</h3>
 
                                             {event.type === 'transport' && event.place && event.to && (
                                                 <div className="flex items-center gap-2 text-sm text-gray-600 mb-2 flex-wrap">
@@ -652,7 +657,7 @@ export default function TravelApp() {
                                             )}
 
                                             {(event.description || event.details) && (
-                                                <div className="mt-3 pt-3 border-t border-dashed border-gray-200 text-sm text-gray-600 space-y-1">
+                                                <div className="mt-2 text-sm text-gray-600 space-y-1">
                                                     {event.description && <p>{event.description}</p>}
                                                     {event.details && <p>{event.details}</p>}
                                                 </div>
@@ -661,7 +666,7 @@ export default function TravelApp() {
                                             {event.bookingRef && (
                                                 <div
                                                     onClick={(e) => { e.stopPropagation(); handleCopy(event.bookingRef); }}
-                                                    className="mt-3 bg-white border border-gray-200 rounded-lg p-2 sm:p-3 flex items-center justify-between cursor-pointer active:bg-gray-100 group"
+                                                    className="mt-3 bg-white/80 backdrop-blur-sm border border-gray-200 rounded-lg p-2 sm:p-3 flex items-center justify-between cursor-pointer active:bg-gray-100 group"
                                                 >
                                                     <div className="flex items-center gap-2">
                                                         <Ticket size={14} className="text-blue-500" />
@@ -676,7 +681,7 @@ export default function TravelApp() {
                                 ))}
 
                                 {isEditMode && (
-                                    <div className="pl-6 sm:pl-8 pt-4">
+                                    <div className="pt-4">
                                         <button
                                             onClick={() => { setEditItem(null); setModalOpen(true); }}
                                             className="w-full py-4 border-2 border-dashed border-gray-300 rounded-2xl text-gray-400 hover:text-blue-500 hover:border-blue-300 transition flex items-center justify-center gap-2"

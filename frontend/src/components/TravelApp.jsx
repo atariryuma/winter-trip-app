@@ -511,7 +511,8 @@ export default function TravelApp() {
     };
 
     const handleDeleteEvent = (id) => {
-        if (!window.confirm("削除しますか？")) return;
+        if (!window.confirm("この予定を削除しますか？")) return;
+        if (!window.confirm("本当に削除しますか？\nこの操作は取り消せません。")) return;
         let updatedItinerary;
         setItinerary(prev => {
             updatedItinerary = prev.map(day => ({ ...day, events: day.events.filter(e => e.id !== id) }));

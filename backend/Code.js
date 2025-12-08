@@ -52,6 +52,11 @@ function doPost(e) {
         // Full Sync: Overwrite sheet with new data
         saveItineraryData(data);
 
+        // Save last update timestamp
+        const now = new Date();
+        const timestamp = Utilities.formatDate(now, 'Asia/Tokyo', 'yyyy/MM/dd HH:mm');
+        PropertiesService.getScriptProperties().setProperty('lastUpdate', timestamp);
+
         // Invalidate Cache
         try {
             const cache = CacheService.getScriptCache();
@@ -60,7 +65,8 @@ function doPost(e) {
 
         return ContentService.createTextOutput(JSON.stringify({
             status: 'success',
-            message: 'Data saved successfully'
+            message: 'Data saved successfully',
+            lastUpdate: timestamp
         })).setMimeType(ContentService.MimeType.JSON);
 
     } catch (error) {
@@ -206,7 +212,8 @@ function getItineraryData() {
 
     const response = {
         days: result,
-        mapUrl: mapUrl
+        mapUrl: mapUrl,
+        lastUpdate: PropertiesService.getScriptProperties().getProperty('lastUpdate') || null
     };
 
     // Cache the response (JSON string) for 30 minutes (1800 seconds)

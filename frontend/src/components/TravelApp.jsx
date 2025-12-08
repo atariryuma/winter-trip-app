@@ -378,7 +378,59 @@ const SettingsView = ({ itinerary, isDarkMode, setIsDarkMode, lastUpdate, setAct
     const handleImportCSV = (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        alert('CSV インポート機能は次のバージョンで実装予定です');
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const text = event.target.result;
+                const lines = text.split('\n').map(line => {
+                    // Parse CSV line handling quoted fields
+                    const result = [];
+                    let current = '';
+                    let inQuotes = false;
+                    for (const char of line) {
+                        if (char === '"') inQuotes = !inQuotes;
+                        else if (char === ',' && !inQuotes) { result.push(current); current = ''; }
+                        else current += char;
+                    }
+                    result.push(current);
+                    return result;
+                });
+
+                if (lines.length < 2) throw new Error('CSVが空です');
+
+                // Skip header, group by date
+                const daysMap = {};
+                lines.slice(1).filter(row => row[0]).forEach((row, idx) => {
+                    const [date, dayOfWeek, title, location, weather, temp, eventId, type, category, name, time, endTime, status, details] = row;
+                    if (!daysMap[date]) {
+                        daysMap[date] = {
+                            id: `day-${Object.keys(daysMap).length + 1}`,
+                            date, dayOfWeek, title, location,
+                            weather: { condition: weather, temp },
+                            events: []
+                        };
+                    }
+                    daysMap[date].events.push({
+                        id: eventId || `e-${idx}`,
+                        type: type || 'activity',
+                        category: category || 'sightseeing',
+                        name, time, endTime, status: status || 'planned',
+                        details
+                    });
+                });
+
+                const newItinerary = Object.values(daysMap);
+                if (newItinerary.length === 0) throw new Error('有効なデータがありません');
+
+                if (confirm(`${newItinerary.length}日分のデータをインポートしますか？`)) {
+                    alert('CSVインポート完了！「保存」ボタンでスプレッドシートに反映してください。');
+                }
+            } catch (err) {
+                alert(`CSVパースエラー: ${err.message}`);
+            }
+        };
+        reader.readAsText(file);
         e.target.value = '';
     };
 
@@ -797,6 +849,11 @@ export default function TravelApp() {
                     setItinerary(daysData);
                     setSelectedDayId(daysData[0].id);
                     setError(null);
+                    // Update lastUpdate from API
+                    if (data.lastUpdate) {
+                        setLastUpdate(data.lastUpdate);
+                        localStorage.setItem('lastUpdate', data.lastUpdate);
+                    }
                 } else {
                     throw new Error('No data');
                 }

@@ -18,7 +18,10 @@ import {
     CalendarDays,
     X,
     Moon,
-    Sun
+    Sun,
+    Wind,
+    Droplets,
+    Thermometer
 } from 'lucide-react';
 
 // --- Data (Preserved) ---
@@ -28,6 +31,8 @@ const initialItinerary = [
         dayOfWeek: '日',
         title: '沖縄から飛騨高山への大移動',
         location: '那覇 → 名古屋 → 高山',
+        weather: { temp: '8°C', condition: 'Cloudy' },
+        summary: '日本を縦断する移動日。那覇から名古屋を経て、雪の飛騨高山へ。移動そのものを楽しむ一日。',
         transports: [
             {
                 type: 'flight',
@@ -82,6 +87,8 @@ const initialItinerary = [
         dayOfWeek: '月',
         title: '世界遺産・白川郷の雪景色',
         location: '高山 ⇔ 白川郷',
+        weather: { temp: '-2°C', condition: 'Snow' },
+        summary: '白銀の世界遺産、白川郷へ。合掌造りの集落と雪景色を堪能し、高山の古い町並みで食べ歩き。',
         transports: [
             {
                 type: 'bus',
@@ -140,6 +147,8 @@ const initialItinerary = [
         dayOfWeek: '火',
         title: '北アルプスの絶景と下呂温泉',
         location: '高山 → 新穂高 → 下呂',
+        weather: { temp: '-5°C', condition: 'Clear' },
+        summary: '新穂高ロープウェイで雲上の絶景へ。その後、日本三名泉の一つ、下呂温泉で旅の疲れを癒やす。',
         transports: [
             {
                 type: 'bus',
@@ -204,6 +213,8 @@ const initialItinerary = [
         dayOfWeek: '水',
         title: '日本三名泉と名古屋の年越し',
         location: '下呂 → 名古屋',
+        weather: { temp: '5°C', condition: 'Sunny' },
+        summary: '温泉地ならではの朝を迎え、名古屋へ移動。大晦日の名古屋で年越しそばを楽しみ、新年を迎える準備。',
         transports: [
             {
                 type: 'train',
@@ -252,6 +263,8 @@ const initialItinerary = [
         dayOfWeek: '木',
         title: '初詣と帰路',
         location: '名古屋 → 那覇',
+        weather: { temp: '7°C', condition: 'Sunny' },
+        summary: '新年の幕開けは熱田神宮で。名古屋めしを最後に味わい、思い出と共に沖縄へ帰還。',
         transports: [
             {
                 type: 'train',
@@ -294,9 +307,8 @@ const initialItinerary = [
     },
 ];
 
-// --- Improved Components ---
+// --- Utilities & Logic ---
 
-// Combined function to get merged list of transport and activities for a true chronological timeline
 function getTimelineEvents(day) {
     const events = [];
 
@@ -309,21 +321,20 @@ function getTimelineEvents(day) {
     });
 
     if (day.stay) {
-        // Extract time from checkIn string (e.g. "15:00-18:00" -> "15:00")
-        // Fallback to 17:00 if no time found
         const timeMatch = day.stay.checkIn.match(/(\d{1,2}:\d{2})/);
         const checkInTime = timeMatch ? timeMatch[0] : '17:00';
         events.push({
             type: 'stay',
-            time: checkInTime, // Use merged sortTime
+            time: checkInTime,
             data: day.stay,
             sortTime: checkInTime
         });
     }
 
-    // Stable sort by time string "HH:MM"
     return events.sort((a, b) => a.sortTime.localeCompare(b.sortTime));
 }
+
+// --- Components ---
 
 const TimelineNode = ({ type, isLast }) => {
     let icon;
@@ -342,7 +353,7 @@ const TimelineNode = ({ type, isLast }) => {
 
     return (
         <div className="absolute left-0 top-0 bottom-0 flex flex-col items-center w-8">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center z-10 ${colorClass}`}>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center z-10 ${colorClass} transition-colors duration-300`}>
                 {icon}
             </div>
             {!isLast && <div className="w-0.5 bg-gray-200 dark:bg-slate-700 flex-1 my-1"></div>}
@@ -350,13 +361,11 @@ const TimelineNode = ({ type, isLast }) => {
     );
 };
 
-// --- New Cards ---
-
 const TransportItem = ({ item }) => (
-    <div className="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-gray-100 dark:border-slate-700 hover:shadow-md transition-shadow relative overflow-hidden group">
+    <div className="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-gray-100 dark:border-slate-700 hover:scale-[1.01] hover:shadow-lg transition-all relative overflow-hidden group">
         <div className={`absolute top-0 left-0 w-1 h-full ${item.type === 'flight' ? 'bg-sky-500' :
-            item.type === 'train' ? 'bg-red-500' :
-                item.type === 'bus' ? 'bg-orange-500' : 'bg-gray-500'}`}
+                item.type === 'train' ? 'bg-red-500' :
+                    item.type === 'bus' ? 'bg-orange-500' : 'bg-gray-500'}`}
         />
 
         <div className="flex justify-between items-start mb-3 pl-3">
@@ -367,14 +376,15 @@ const TransportItem = ({ item }) => (
                 {item.type === 'other' && <Mountain size={18} className="text-gray-400 dark:text-gray-500" />}
                 <span className="text-sm font-bold text-gray-500 dark:text-gray-400">{item.name}</span>
             </div>
-            {item.status === 'confirmed' && <CheckCircle size={16} className="text-emerald-500" />}
-            {item.status === 'suggested' && <span className="text-[10px] bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200 px-2 py-0.5 rounded-full font-bold">提案</span>}
-            {item.status === 'planned' && <Clock size={16} className="text-blue-400" />}
+            <div className="flex items-center gap-2">
+                {item.status === 'confirmed' && <CheckCircle size={16} className="text-emerald-500" />}
+                {item.status === 'suggested' && <span className="text-[10px] bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200 px-2 py-0.5 rounded-full font-bold">提案</span>}
+            </div>
         </div>
 
         <div className="flex items-center gap-4 pl-3">
             <div className="text-center min-w-[60px]">
-                <div className="text-xl font-display font-bold text-gray-900 dark:text-white">{item.departureTime}</div>
+                <div className="text-2xl font-display font-bold text-gray-900 dark:text-white leading-none">{item.departureTime}</div>
                 <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 mt-1">{item.departurePlace}</div>
             </div>
             <div className="flex-1 flex flex-col items-center">
@@ -384,70 +394,62 @@ const TransportItem = ({ item }) => (
                 <span className="text-[10px] text-gray-300 dark:text-slate-600 mt-1 font-mono">---</span>
             </div>
             <div className="text-center min-w-[60px]">
-                <div className="text-xl font-display font-bold text-gray-900 dark:text-white">{item.arrivalTime}</div>
+                <div className="text-2xl font-display font-bold text-gray-900 dark:text-white leading-none">{item.arrivalTime}</div>
                 <div className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 mt-1">{item.arrivalPlace}</div>
             </div>
         </div>
 
         {item.bookingRef && (
-            <div className="mt-4 pl-3 pt-3 border-t border-dashed border-gray-100 dark:border-slate-700 flex justify-between items-center">
-                <span className="text-xs font-mono text-gray-400 dark:text-gray-500">Ref: {item.bookingRef}</span>
-                {item.details && <span className="text-xs text-gray-500 dark:text-gray-400">{item.details}</span>}
+            <div className="mt-4 pl-3 pt-3 border-t border-dashed border-gray-100 dark:border-slate-700 flex justify-between items-center text-xs">
+                <span className="font-mono text-gray-400 dark:text-gray-500 select-all">Ref: {item.bookingRef}</span>
             </div>
         )}
     </div>
 );
 
 const ActivityCard = ({ item }) => (
-    <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-slate-700 hover:shadow-md transition-shadow flex gap-4 items-start">
+    <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-slate-700 hover:scale-[1.01] hover:shadow-lg transition-all flex gap-4 items-start">
         <div className="mt-1 p-2 bg-gray-50 dark:bg-slate-700 text-gray-500 dark:text-gray-300 rounded-lg">
             {item.icon}
         </div>
         <div className="flex-1">
-            <div className="flex justify-between">
-                <span className="font-display font-bold text-gray-900 dark:text-white">{item.title}</span>
-                <span className="text-sm font-display text-gray-400">{item.time}</span>
+            <div className="flex justify-between items-baseline">
+                <span className="font-display font-bold text-gray-900 dark:text-white text-lg">{item.title}</span>
+                <span className="text-sm font-display text-gray-400 font-medium">{item.time}</span>
             </div>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">{item.description}</p>
-            {item.status === 'suggested' && (
-                <div className="mt-2 inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 px-2 py-1 rounded">
-                    <AlertCircle size={12} />
-                    <span>Suggested Activity</span>
-                </div>
-            )}
         </div>
     </div>
 );
 
 const StayCard = ({ item }) => (
-    <div className="bg-gradient-to-br from-[#1e293b] to-[#0f172a] dark:from-[#020617] dark:to-[#1e293b] rounded-xl p-5 shadow-lg text-white relative overflow-hidden">
-        <div className="absolute top-0 right-0 p-3 opacity-10">
-            <Hotel size={80} />
+    <div className="bg-gradient-to-br from-[#1e293b] to-[#0f172a] dark:from-[#020617] dark:to-[#1e293b] rounded-xl p-6 shadow-xl text-white relative overflow-hidden group hover:scale-[1.01] transition-all">
+        <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform duration-500">
+            <Hotel size={100} />
         </div>
         <div className="relative z-10">
             <div className="text-xs font-bold text-indigo-300 uppercase tracking-widest mb-1">Accommodation</div>
-            <div className="text-xl font-display font-bold mb-4">{item.name}</div>
+            <div className="text-2xl font-display font-bold mb-4">{item.name}</div>
 
-            <div className="grid grid-cols-2 gap-4 text-sm opacity-90">
+            <div className="grid grid-cols-2 gap-6 text-sm opacity-90">
                 <div>
-                    <div className="text-[10px] text-gray-400 uppercase">Check-in</div>
-                    <div className="font-mono">{item.checkIn}</div>
+                    <div className="text-[10px] text-gray-400 uppercase tracking-wider">Check-in</div>
+                    <div className="font-mono text-lg">{item.checkIn}</div>
                 </div>
                 {item.bookingRef && (
                     <div>
-                        <div className="text-[10px] text-gray-400 uppercase">Res #</div>
-                        <div className="font-mono">{item.bookingRef}</div>
+                        <div className="text-[10px] text-gray-400 uppercase tracking-wider">Reference</div>
+                        <div className="font-mono text-lg select-all">{item.bookingRef}</div>
                     </div>
                 )}
             </div>
-            {item.details && <div className="mt-4 text-xs text-gray-400 pt-3 border-t border-gray-700/50">{item.details}</div>}
+            {item.details && <div className="mt-4 text-xs text-xs text-gray-400 pt-3 border-t border-gray-700/50">{item.details}</div>}
         </div>
     </div>
 );
 
-// --- Passcode Protection ---
+// --- Auth & Security ---
 const PASSCODE = "2025";
-
 const LoginScreen = ({ onLogin }) => {
     const [input, setInput] = useState('');
     const [error, setError] = useState(false);
@@ -468,32 +470,23 @@ const LoginScreen = ({ onLogin }) => {
                 <div className="w-16 h-16 bg-sky-500 rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-sky-500/30">
                     <Plane className="text-white transform -rotate-45" size={32} />
                 </div>
-
                 <div>
                     <h1 className="text-2xl font-display font-bold text-slate-900 dark:text-white">Winter Trip</h1>
                     <p className="text-slate-500 dark:text-slate-400 text-sm mt-2">Enter passcode to view itinerary</p>
                 </div>
-
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                        <input
-                            type="password"
-                            inputMode="numeric"
-                            pattern="[0-9]*"
-                            value={input}
-                            onChange={(e) => { setInput(e.target.value); setError(false); }}
-                            className="w-full text-center text-3xl font-display font-bold tracking-widest py-3 border-b-2 border-slate-200 dark:border-slate-700 bg-transparent focus:border-sky-500 focus:outline-none dark:text-white placeholder-slate-300"
-                            placeholder="••••"
-                            autoFocus
-                        />
-                    </div>
-
+                    <input
+                        type="password"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        value={input}
+                        onChange={(e) => { setInput(e.target.value); setError(false); }}
+                        className="w-full text-center text-3xl font-display font-bold tracking-widest py-3 border-b-2 border-slate-200 dark:border-slate-700 bg-transparent focus:border-sky-500 focus:outline-none dark:text-white placeholder-slate-300 transition-colors"
+                        placeholder="••••"
+                        autoFocus
+                    />
                     {error && <p className="text-red-500 text-sm font-bold animate-pulse">Incorrect passcode</p>}
-
-                    <button
-                        type="submit"
-                        className="w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold py-4 rounded-xl hover:bg-slate-800 dark:hover:bg-slate-200 transition-colors shadow-lg"
-                    >
+                    <button type="submit" className="w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold py-4 rounded-xl hover:bg-slate-800 dark:hover:bg-slate-200 transition-colors shadow-lg">
                         Unlock Journey
                     </button>
                 </form>
@@ -503,21 +496,17 @@ const LoginScreen = ({ onLogin }) => {
 };
 
 // --- Main App ---
-
 export default function TravelApp() {
     const [selectedDay, setSelectedDay] = useState(initialItinerary[0]);
     const [isSidebarOpen, setSidebarOpen] = useState(false);
     const [darkMode, setDarkMode] = useState(false);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-    // Initialize Dark Mode based on system preference
     useEffect(() => {
         if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
             setDarkMode(true);
             document.documentElement.classList.add('dark');
         }
-
-        // Check session storage for auth persistence
         if (sessionStorage.getItem('trip_auth') === 'true') {
             setIsAuthenticated(true);
         }
@@ -531,72 +520,52 @@ export default function TravelApp() {
     const toggleDarkMode = () => {
         const newMode = !darkMode;
         setDarkMode(newMode);
-        if (newMode) {
-            document.documentElement.classList.add('dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-        }
+        if (newMode) document.documentElement.classList.add('dark');
+        else document.documentElement.classList.remove('dark');
     };
 
-    if (!isAuthenticated) {
-        return <LoginScreen onLogin={handleLogin} />;
-    }
+    if (!isAuthenticated) return <LoginScreen onLogin={handleLogin} />;
 
     return (
-        <div className="flex flex-col md:flex-row h-screen md:h-screen h-[100dvh] bg-[#F8FAFC] dark:bg-slate-900 font-sans text-slate-800 dark:text-slate-100 transition-colors duration-300 overflow-hidden">
+        <div className="flex h-[100dvh] bg-[#F8FAFC] dark:bg-slate-950 font-sans text-slate-800 dark:text-slate-100 transition-colors duration-300 overflow-hidden text-sm md:text-base">
 
-            {/* Mobile Nav Top */}
-            <div className="md:hidden flex justify-between items-center p-4 bg-white dark:bg-slate-900 border-b dark:border-slate-800 sticky top-0 z-40">
-                <div className="font-display font-bold text-xl tracking-tight text-slate-900 dark:text-white">Winter Trip</div>
-                <div className="flex gap-4">
-                    <button onClick={toggleDarkMode} className="text-slate-600 dark:text-slate-300">
-                        {darkMode ? <Sun size={24} /> : <Moon size={24} />}
-                    </button>
-                    <button onClick={() => setSidebarOpen(true)} className="text-slate-600 dark:text-slate-300">
-                        <Menu size={24} />
-                    </button>
-                </div>
-            </div>
+            {/* Mobile Sidebar & Header Logic is tricky with full scren, so we keep a drawer for mobile */}
 
-            {/* Sidebar Navigation */}
+            {/* Sidebar (Desktop: Fixed Left, Mobile: Drawer) */}
             <aside className={`
-         fixed md:static inset-y-0 left-0 bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-800 w-72 z-50 transform transition-transform duration-300 ease-in-out flex flex-col
-         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+         fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transform transition-transform duration-300 ease-in-out flex flex-col pt-16 md:pt-0
+         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} // Hidden on mobile by default
       `}>
-                <div className="p-8 hidden md:flex justify-between items-start">
-                    <div>
-                        <div className="flex items-center gap-3 mb-1">
-                            <div className="w-8 h-8 bg-black dark:bg-white rounded-lg flex items-center justify-center text-white dark:text-black">
-                                <Plane size={18} className="-rotate-45" />
-                            </div>
-                            <span className="font-display font-bold text-xl tracking-tight dark:text-white">Tabi Log</span>
+                {/* Close button for mobile */}
+                <button onClick={() => setSidebarOpen(false)} className="md:hidden absolute top-4 right-4 text-slate-600 dark:text-slate-300"><X size={24} /></button>
+
+                <div className="p-8 hidden md:block">
+                    <div className="flex items-center gap-3 mb-1">
+                        <div className="w-8 h-8 bg-slate-900 dark:bg-white rounded-lg flex items-center justify-center text-white dark:text-slate-900">
+                            <Plane size={18} className="-rotate-45" />
                         </div>
-                        <div className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-11">2025-2026</div>
+                        <span className="font-display font-bold text-xl tracking-tight dark:text-white">Tabi Log</span>
                     </div>
+                    <div className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-11">2025-2026</div>
                 </div>
 
-                <div className="px-4 py-2 md:py-0 flex-1 overflow-y-auto">
-                    <div className="flex justify-between items-center px-4 mb-4 md:hidden">
-                        <span className="font-bold text-lg dark:text-white">Menu</span>
-                        <button onClick={() => setSidebarOpen(false)} className="dark:text-white"><X size={24} /></button>
-                    </div>
-
+                <div className="flex-1 overflow-y-auto px-4 pb-4">
                     <div className="space-y-1">
                         {initialItinerary.map((day) => (
                             <button
                                 key={day.date}
                                 onClick={() => { setSelectedDay(day); setSidebarOpen(false); }}
                                 className={`w-full text-left p-4 rounded-xl transition-all border flex flex-col gap-1 group ${selectedDay.date === day.date
-                                    ? 'bg-slate-900 dark:bg-slate-700 text-white border-slate-900 dark:border-slate-600 shadow-lg scale-[1.02]'
-                                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-transparent hover:bg-slate-50 dark:hover:bg-slate-700/50'
+                                        ? 'bg-slate-900 dark:bg-slate-700 text-white border-slate-900 dark:border-slate-600 shadow-lg scale-[1.02]'
+                                        : 'bg-transparent text-slate-600 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-800'
                                     }`}
                             >
                                 <div className="flex justify-between items-center">
                                     <span className="font-display font-bold text-lg">{day.date}</span>
-                                    <span className={`text-xs font-bold px-2 py-1 rounded ${selectedDay.date === day.date ? 'bg-white/20' : 'bg-gray-100 dark:bg-slate-700'
+                                    <span className={`text-xs font-bold px-2 py-1 rounded ${selectedDay.date === day.date ? 'bg-white/20' : 'bg-slate-100 dark:bg-slate-800'
                                         }`}>{day.dayOfWeek}</span>
                                 </div>
-                                <span className={`text-xs font-medium truncate ${selectedDay.date === day.date ? 'text-slate-300 dark:text-slate-400' : 'text-slate-400 dark:text-slate-500'
+                                <span className={`text-xs font-medium truncate ${selectedDay.date === day.date ? 'text-slate-300 dark:text-slate-400' : 'text-slate-500 dark:text-slate-500'
                                     }`}>
                                     {day.title}
                                 </span>
@@ -605,76 +574,124 @@ export default function TravelApp() {
                     </div>
                 </div>
 
-                {/* Desktop Dark Mode Toggle at bottom */}
-                <div className="absolute bottom-0 w-full p-4 hidden md:block border-t border-gray-100 dark:border-slate-800">
+                <div className="p-4 border-t border-slate-200 dark:border-slate-800">
                     <button
                         onClick={toggleDarkMode}
-                        className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors"
+                        className="flex items-center justify-center gap-3 w-full p-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white transition-colors font-bold"
                     >
                         {darkMode ? <Sun size={20} /> : <Moon size={20} />}
-                        <span className="text-sm font-bold">{darkMode ? 'Light Mode' : 'Dark Mode'}</span>
+                        <span className="text-sm">{darkMode ? 'Light Mode' : 'Dark Mode'}</span>
                     </button>
                 </div>
             </aside>
 
-            {/* Main Content */}
-            <main className="flex-1 overflow-y-auto relative scroll-smooth bg-[#F8FAFC] dark:bg-slate-950">
+            {/* Main Dashboard Area */}
+            <main className="flex-1 md:ml-72 flex flex-col md:flex-row overflow-hidden relative">
 
-                {/* Hero Header for Day */}
-                <div className="h-48 md:h-64 bg-white dark:bg-slate-900 relative flex items-end p-6 md:p-10 shrink-0 border-b border-slate-100 dark:border-none transition-colors">
-                    <div className="absolute inset-0 opacity-40 bg-[url('https://images.unsplash.com/photo-1542640244-7e67286feb8f?auto=format&fit=crop&q=80')] bg-cover bg-center dark:mix-blend-overlay mix-blend-normal"></div>
-                    <div className="absolute inset-0 bg-gradient-to-t from-white via-white/60 to-transparent dark:from-slate-900 dark:via-transparent dark:to-transparent"></div>
+                {/* Mobile Header (Only visible on small screens) */}
+                <div className="md:hidden flex justify-between items-center p-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shrink-0 z-40">
+                    <div className="font-display font-bold text-xl text-slate-900 dark:text-white">Winter Trip</div>
+                    <button onClick={() => setSidebarOpen(true)} className="text-slate-900 dark:text-white">
+                        <Menu size={24} />
+                    </button>
+                </div>
 
-                    <div className="relative z-10 w-full max-w-5xl mx-auto">
-                        <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400 font-bold uppercase tracking-widest text-xs mb-2">
-                            <MapPin size={14} />
-                            {selectedDay.location}
+                {/* Left Panel: Dashboard / Info (Scrollable on mobile, Fixed on Desktop) */}
+                <div className="w-full md:w-5/12 xl:w-1/3 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col shrink-0 overflow-y-auto md:overflow-hidden relative">
+
+                    {/* Hero Image Background for Left Panel */}
+                    <div className="absolute inset-x-0 top-0 h-64 opacity-100">
+                        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1542640244-7e67286feb8f?auto=format&fit=crop&q=80')] bg-cover bg-center"></div>
+                        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-slate-50/80 to-slate-50 dark:via-slate-900/80 dark:to-slate-900"></div>
+                    </div>
+
+                    <div className="relative z-10 p-6 md:p-8 flex-1 flex flex-col">
+                        {/* Date & Title */}
+                        <div className="mt-8 md:mt-12 mb-8">
+                            <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400 font-bold uppercase tracking-widest text-xs mb-3">
+                                <MapPin size={14} />
+                                {selectedDay.location}
+                            </div>
+                            <h1 className="text-3xl md:text-5xl font-display font-black text-slate-900 dark:text-white leading-tight tracking-tight mb-4">
+                                {selectedDay.title}
+                            </h1>
+                            <div className="flex items-center gap-4 text-slate-600 dark:text-slate-400 font-medium">
+                                <div className="flex items-center gap-2 px-3 py-1 bg-white dark:bg-slate-800 rounded-full shadow-sm border border-slate-200 dark:border-slate-700">
+                                    <CalendarDays size={16} />
+                                    {selectedDay.date} <span className="text-slate-400">/</span> {selectedDay.dayOfWeek}
+                                </div>
+                            </div>
                         </div>
-                        <h1 className="text-2xl md:text-5xl font-display font-bold text-slate-900 dark:text-white mb-2 leading-tight tracking-tight">{selectedDay.title}</h1>
-                        <div className="flex gap-4 text-slate-500 dark:text-slate-300 text-sm font-medium">
-                            <div className="flex items-center gap-1"><CalendarDays size={16} /> {selectedDay.date} ({selectedDay.dayOfWeek})</div>
+
+                        {/* Widgets Grid */}
+                        <div className="grid grid-cols-1 gap-4 mb-8">
+                            {/* Weather Widget */}
+                            <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 flex items-center justify-between">
+                                <div>
+                                    <div className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">Weather Forecast</div>
+                                    <div className="text-xl font-bold text-slate-700 dark:text-slate-200">{selectedDay.weather?.temp || '--'} / {selectedDay.weather?.condition || 'Unknown'}</div>
+                                </div>
+                                <div className="w-10 h-10 bg-sky-100 dark:bg-slate-700 rounded-full flex items-center justify-center text-sky-600 dark:text-sky-400">
+                                    <Thermometer size={20} />
+                                </div>
+                            </div>
+
+                            {/* Note Widget */}
+                            <div className="bg-orange-50 dark:bg-orange-950/20 p-5 rounded-2xl border border-orange-100 dark:border-orange-900/30">
+                                <div className="flex items-start gap-3">
+                                    <AlertCircle size={20} className="text-orange-600 dark:text-orange-400 shrink-0 mt-0.5" />
+                                    <div>
+                                        <h4 className="font-bold text-orange-900 dark:text-orange-200 mb-2">Traveler Notes</h4>
+                                        <p className="text-sm text-orange-800 dark:text-orange-300 leading-relaxed">
+                                            {selectedDay.summary}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Decorative / Spacer */}
+                        <div className="hidden md:flex flex-1 items-end opacity-20 dark:opacity-10 justify-center pb-8">
+                            <Mountain size={120} className="text-slate-400" />
                         </div>
                     </div>
                 </div>
 
-                {/* Timeline Container */}
-                <div className="max-w-5xl mx-auto px-4 md:px-10 py-10 relative">
+                {/* Right Panel: Scrollable Timeline */}
+                <div className="flex-1 bg-white dark:bg-slate-950 overflow-y-auto relative scroll-smooth px-4 py-8 md:p-12">
+                    <div className="max-w-3xl mx-auto pb-20">
+                        <h3 className="font-display font-bold text-xl text-slate-800 dark:text-white mb-8 flex items-center gap-2">
+                            <Clock size={20} className="text-sky-500" />
+                            Timeline
+                        </h3>
 
-                    <div className="absolute left-4 md:left-10 top-0 bottom-0 w-px bg-slate-200 dark:bg-slate-800 hidden md:block ml-[19px]"></div> {/* Vertical Line visual helper just in case */}
+                        <div className="relative border-l-2 border-slate-100 dark:border-slate-800 ml-4 md:ml-3 space-y-12">
+                            {getTimelineEvents(selectedDay).map((event, i, arr) => (
+                                <div key={i} className="relative pl-8 md:pl-12 group">
+                                    {/* Absolute Timeline Dot */}
+                                    <div className="absolute -left-[9px] top-0 bg-white dark:bg-slate-950 py-1">
+                                        <div className={`w-4 h-4 rounded-full border-4 ${event.type === 'transport' ? 'border-blue-500 bg-white' :
+                                                event.type === 'activity' ? 'border-emerald-500 bg-white' :
+                                                    'border-indigo-500 bg-white'
+                                            }`}></div>
+                                    </div>
 
-                    {/* Note Box */}
-                    <div className="mb-10 p-5 bg-orange-50 dark:bg-orange-950/30 rounded-xl border border-orange-100 dark:border-orange-900/50 flex gap-4">
-                        <div className="p-2 bg-orange-100 dark:bg-orange-900/50 text-orange-600 dark:text-orange-400 rounded-lg h-fit">
-                            <AlertCircle size={20} />
-                        </div>
-                        <div>
-                            <h4 className="font-bold text-orange-900 dark:text-orange-200 mb-1">Traveler Notes</h4>
-                            <ul className="text-sm text-orange-800 dark:text-orange-300 space-y-1 list-disc list-inside">
-                                <li>Check weather forecast for snow.</li>
-                                <li>Ensure all bookings are saved offline.</li>
-                                {selectedDay.date === '12/29' && <li>Shirakawa-go bus requires reservation verification!</li>}
-                                {selectedDay.date === '12/30' && <li>Ropeway ticket changed to 10:30.</li>}
-                            </ul>
-                        </div>
-                    </div>
-
-                    {/* Event Stream */}
-                    <div className="space-y-8 pl-4 md:pl-0">
-                        {getTimelineEvents(selectedDay).map((event, i, arr) => (
-                            <div key={i} className="relative pl-12 md:pl-16 group">
-                                {/* Timeline Node */}
-                                <TimelineNode type={event.type} isLast={i === arr.length - 1} />
-
-                                <div className="transform transition-all group-hover:translate-x-1">
-                                    {event.type === 'transport' && <TransportItem item={event.data} />}
-                                    {event.type === 'activity' && <ActivityCard item={event.data} />}
-                                    {event.type === 'stay' && <StayCard item={event.data} />}
+                                    {/* Content */}
+                                    <div className="transform transition-all duration-300 hover:translate-x-2">
+                                        {event.type === 'transport' && <TransportItem item={event.data} />}
+                                        {event.type === 'activity' && <ActivityCard item={event.data} />}
+                                        {event.type === 'stay' && <StayCard item={event.data} />}
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
 
-                    <div className="h-20"></div>
+                        <div className="mt-20 text-center">
+                            <div className="inline-block px-4 py-2 rounded-full bg-slate-100 dark:bg-slate-900 text-slate-400 text-xs font-bold uppercase tracking-widest">
+                                End of Day
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
             </main>

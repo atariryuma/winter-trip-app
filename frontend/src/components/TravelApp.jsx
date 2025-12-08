@@ -781,7 +781,7 @@ export default function TravelApp() {
                 </main>
 
                 {/* ========== BOTTOM NAV ========== */}
-                <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[600px] bg-white/95 backdrop-blur-md border-t border-gray-200 px-6 py-2 flex justify-around items-center z-30 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
+                <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[600px] bg-white/95 backdrop-blur-md border-t border-gray-200 px-6 py-1.5 flex justify-around items-center z-30 pb-[calc(0.25rem+env(safe-area-inset-bottom))]">
                     <button
                         onClick={() => setActiveTab('timeline')}
                         className={`flex flex-col items-center gap-0.5 p-2 transition-transform active:scale-95 ${activeTab === 'timeline' ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}

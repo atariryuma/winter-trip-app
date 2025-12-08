@@ -621,24 +621,24 @@ export default function TravelApp() {
             <main className="flex-1 overflow-y-auto relative scroll-smooth bg-[#F8FAFC] dark:bg-slate-950">
 
                 {/* Hero Header for Day */}
-                <div className="h-48 md:h-64 bg-slate-900 relative flex items-end p-6 md:p-10 shrink-0">
-                    <div className="absolute inset-0 opacity-40 bg-[url('https://images.unsplash.com/photo-1542640244-7e67286feb8f?auto=format&fit=crop&q=80')] bg-cover bg-center mix-blend-overlay"></div>
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent"></div>
+                <div className="h-48 md:h-64 bg-white dark:bg-slate-900 relative flex items-end p-6 md:p-10 shrink-0 border-b border-slate-100 dark:border-none transition-colors">
+                    <div className="absolute inset-0 opacity-40 bg-[url('https://images.unsplash.com/photo-1542640244-7e67286feb8f?auto=format&fit=crop&q=80')] bg-cover bg-center dark:mix-blend-overlay mix-blend-normal"></div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-white via-white/60 to-transparent dark:from-slate-900 dark:via-transparent dark:to-transparent"></div>
 
-                    <div className="relative z-10 w-full max-w-2xl">
-                        <div className="flex items-center gap-2 text-sky-400 font-bold uppercase tracking-widest text-xs mb-2">
+                    <div className="relative z-10 w-full max-w-5xl mx-auto">
+                        <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400 font-bold uppercase tracking-widest text-xs mb-2">
                             <MapPin size={14} />
                             {selectedDay.location}
                         </div>
-                        <h1 className="text-2xl md:text-4xl font-display font-bold text-white mb-2 leading-tight">{selectedDay.title}</h1>
-                        <div className="flex gap-4 text-slate-300 text-sm">
+                        <h1 className="text-2xl md:text-5xl font-display font-bold text-slate-900 dark:text-white mb-2 leading-tight tracking-tight">{selectedDay.title}</h1>
+                        <div className="flex gap-4 text-slate-500 dark:text-slate-300 text-sm font-medium">
                             <div className="flex items-center gap-1"><CalendarDays size={16} /> {selectedDay.date} ({selectedDay.dayOfWeek})</div>
                         </div>
                     </div>
                 </div>
 
                 {/* Timeline Container */}
-                <div className="max-w-3xl mx-auto px-4 md:px-10 py-10 relative">
+                <div className="max-w-5xl mx-auto px-4 md:px-10 py-10 relative">
 
                     <div className="absolute left-4 md:left-10 top-0 bottom-0 w-px bg-slate-200 dark:bg-slate-800 hidden md:block ml-[19px]"></div> {/* Vertical Line visual helper just in case */}
 

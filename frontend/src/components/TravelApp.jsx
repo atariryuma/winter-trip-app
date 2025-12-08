@@ -491,17 +491,21 @@ export default function TravelApp() {
     // Login
     if (!auth) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-blue-600 to-indigo-800 flex items-center justify-center p-6">
-                <div className="w-full max-w-sm bg-white rounded-3xl p-8 text-center shadow-2xl">
-                    <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+            <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 flex items-center justify-center p-4">
+                <div className="w-full max-w-sm bg-white/90 backdrop-blur-xl rounded-3xl p-8 text-center shadow-2xl border border-white/20">
+                    <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-blue-500/30">
                         <Plane className="text-white -rotate-45" size={32} />
                     </div>
-                    <h1 className="text-2xl font-bold text-gray-800 mb-1">Winter Journey</h1>
-                    <p className="text-gray-500 mb-6">Okinawa ✈ Takayama</p>
+                    <h1 className="text-2xl font-bold text-gray-800 mb-1 tracking-tight">Winter Journey</h1>
+                    <p className="text-gray-500 mb-8 font-medium">Okinawa <span className="text-blue-400 mx-2">✈</span> Takayama</p>
                     <input
-                        type="password" autoFocus placeholder="パスコード"
+                        type="password"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        autoFocus
+                        placeholder="PASSCODE"
                         onChange={e => e.target.value === '2025' && (setAuth(true), sessionStorage.setItem('trip_auth', 'true'))}
-                        className="w-full p-4 text-center text-2xl tracking-[0.5em] bg-gray-100 rounded-xl border border-gray-200 focus:border-blue-500 outline-none"
+                        className="w-full p-4 text-center text-3xl font-bold tracking-[0.5em] bg-gray-50 rounded-2xl border border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 outline-none transition-all placeholder:text-gray-300 placeholder:tracking-normal placeholder:text-sm"
                     />
                 </div>
             </div>
@@ -519,10 +523,10 @@ export default function TravelApp() {
     // Loading
     if (loading) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-blue-600 to-indigo-800 flex items-center justify-center p-6">
+            <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 flex items-center justify-center">
                 <div className="text-center text-white">
-                    <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
-                    <p className="font-bold">スプレッドシートからデータを読み込み中...</p>
+                    <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin mx-auto mb-6"></div>
+                    <p className="font-bold tracking-widest text-sm uppercase opacity-80">Loading...</p>
                 </div>
             </div>
         );
@@ -536,15 +540,15 @@ export default function TravelApp() {
     ) : null;
 
     return (
-        <div className="min-h-screen bg-[#F0F2F5] flex justify-center pb-[env(safe-area-inset-bottom)]">
+        <div className="min-h-screen bg-[#F2F4F7] flex justify-center pb-[env(safe-area-inset-bottom)]">
             {SavingOverlay}
             {ErrorBanner}
 
             <div className="w-full max-w-[800px] bg-white shadow-2xl min-h-screen relative flex flex-col">
 
                 {/* ========== HEADER ========== */}
-                <div className="bg-gradient-to-br from-blue-600 to-indigo-800 p-6 text-white pt-12 pb-16 relative overflow-hidden shrink-0">
-                    <div className="absolute top-0 right-0 p-4 opacity-20">
+                <div className="bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 p-6 text-white pt-12 pb-20 relative overflow-hidden shrink-0">
+                    <div className="absolute top-0 right-0 p-4 opacity-10">
                         <Plane size={140} className="transform rotate-[-10deg] translate-x-4 translate-y-4" />
                     </div>
                     <div className="relative z-10 mx-auto">

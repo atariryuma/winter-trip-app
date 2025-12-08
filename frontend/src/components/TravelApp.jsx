@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
     Plane, Train, Bus, MapPin, BedDouble, Calendar,
     Sun, Cloud, Snowflake, Camera, ArrowRight, Utensils,
@@ -727,6 +727,19 @@ export default function TravelApp() {
     const [error, setError] = useState(null);
     const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('darkMode') === 'true');
     const [lastUpdate, setLastUpdate] = useState(() => localStorage.getItem('lastUpdate') || null);
+    const longPressTimer = useRef(null);
+
+    // Long-press handlers
+    const handleTouchStart = (event) => {
+        longPressTimer.current = setTimeout(() => {
+            setEditItem(event);
+            setModalOpen(true);
+            navigator.vibrate?.(50); // Haptic feedback if supported
+        }, 500);
+    };
+    const handleTouchEnd = () => {
+        if (longPressTimer.current) clearTimeout(longPressTimer.current);
+    };
 
     const selectedDay = useMemo(() => itinerary.find(d => d.id === selectedDayId), [itinerary, selectedDayId]);
     const sortedEvents = useMemo(() => {
@@ -1012,6 +1025,9 @@ export default function TravelApp() {
 
                                         <div
                                             onClick={isEditMode ? () => { setEditItem(event); setModalOpen(true); } : undefined}
+                                            onTouchStart={() => handleTouchStart(event)}
+                                            onTouchEnd={handleTouchEnd}
+                                            onTouchMove={handleTouchEnd}
                                             className={`rounded-2xl p-5 shadow-sm border border-gray-100 transition bg-white relative overflow-hidden ${event.type === 'stay' ? 'bg-indigo-50/50 border-indigo-100' : ''} ${isEditMode ? 'cursor-pointer hover:shadow-md hover:border-blue-300' : ''}`}
                                         >
                                             {/* Icon Background Decoration */}

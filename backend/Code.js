@@ -18,6 +18,14 @@ function doGet(e) {
             .setMimeType(ContentService.MimeType.JSON);
     }
 
+    // Get Place Info (new feature)
+    if (e && e.parameter && e.parameter.action === 'getPlaceInfo') {
+        const query = e.parameter.query || '';
+        const placeInfo = getPlaceInfo(query);
+        return ContentService.createTextOutput(JSON.stringify(placeInfo))
+            .setMimeType(ContentService.MimeType.JSON);
+    }
+
     // Default: Redirect to GitHub Pages (Frontend is hosted there)
     const FRONTEND_URL = 'https://atariryuma.github.io/winter-trip-app/';
     return HtmlService.createHtmlOutput(`
@@ -34,6 +42,201 @@ function doGet(e) {
         </body>
         </html>
     `).setTitle('Redirecting to Winter Trip App');
+}
+
+/**
+ * Get place information using Google Places API (New)
+ * Falls back to basic Geocoding if no API key available
+ * @param {string} query - Place name or address to search
+ * @returns {object} Place information with dynamic data
+ */
+function getPlaceInfo(query) {
+    if (!query || query.trim() === '') {
+        return { error: 'No query provided', found: false };
+    }
+
+    const cache = CacheService.getScriptCache();
+    const cacheKey = 'place_v2_' + Utilities.base64Encode(query);
+
+    // Check cache first (6 hours - GAS max is 21600s)
+    try {
+        const cached = cache.get(cacheKey);
+        if (cached) {
+            return JSON.parse(cached);
+        }
+    } catch (e) { }
+
+    // Get API Key from Script Properties
+    const API_KEY = PropertiesService.getScriptProperties().getProperty('GOOGLE_MAPS_API_KEY');
+
+    try {
+        let placeInfo = {
+            found: true,
+            name: query,
+            formattedAddress: '',
+            phone: null,
+            website: null,
+            rating: null,
+            userRatingCount: null,
+            openingHours: null,
+            editorialSummary: null,
+            reviews: [],
+            mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`,
+            travelTips: [],
+            source: 'geocoding' // or 'places_api'
+        };
+
+        if (API_KEY) {
+            // Use Places API (New) - Text Search to find place
+            const textSearchUrl = `https://places.googleapis.com/v1/places:searchText`;
+            const searchPayload = {
+                textQuery: query,
+                languageCode: 'ja',
+                regionCode: 'JP',
+                maxResultCount: 1
+            };
+
+            const searchResponse = UrlFetchApp.fetch(textSearchUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Goog-Api-Key': API_KEY,
+                    'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.websiteUri,places.rating,places.userRatingCount,places.regularOpeningHours,places.editorialSummary,places.reviews,places.googleMapsUri'
+                },
+                payload: JSON.stringify(searchPayload),
+                muteHttpExceptions: true
+            });
+
+            const searchData = JSON.parse(searchResponse.getContentText());
+
+            if (searchData.places && searchData.places.length > 0) {
+                const place = searchData.places[0];
+
+                placeInfo.source = 'places_api';
+                placeInfo.formattedAddress = place.formattedAddress || '';
+                placeInfo.phone = place.nationalPhoneNumber || null;
+                placeInfo.website = place.websiteUri || null;
+                placeInfo.rating = place.rating || null;
+                placeInfo.userRatingCount = place.userRatingCount || null;
+                placeInfo.mapsUrl = place.googleMapsUri || placeInfo.mapsUrl;
+
+                // Editorial summary
+                if (place.editorialSummary && place.editorialSummary.text) {
+                    placeInfo.editorialSummary = place.editorialSummary.text;
+                }
+
+                // Opening hours
+                if (place.regularOpeningHours && place.regularOpeningHours.weekdayDescriptions) {
+                    placeInfo.openingHours = place.regularOpeningHours.weekdayDescriptions;
+                }
+
+                // Reviews (up to 3 for display)
+                if (place.reviews && place.reviews.length > 0) {
+                    placeInfo.reviews = place.reviews.slice(0, 3).map(r => ({
+                        author: r.authorAttribution?.displayName || '匿名',
+                        rating: r.rating || null,
+                        text: r.text?.text || '',
+                        relativeTime: r.relativePublishTimeDescription || ''
+                    }));
+                }
+            }
+        }
+
+        // Fallback to Geocoding if Places API didn't return data
+        if (!placeInfo.formattedAddress) {
+            const geocoder = Maps.newGeocoder();
+            geocoder.setLanguage('ja');
+            geocoder.setRegion('jp');
+            const geoResult = geocoder.geocode(query);
+
+            if (geoResult.status === 'OK' && geoResult.results && geoResult.results.length > 0) {
+                const place = geoResult.results[0];
+                placeInfo.formattedAddress = place.formatted_address || '';
+                placeInfo.types = place.types || [];
+            }
+        }
+
+        // Generate travel tips (smart tips based on name/type)
+        placeInfo.travelTips = generateTravelTips(query, placeInfo.types || []);
+
+        // Mark as not found if no address
+        if (!placeInfo.formattedAddress) {
+            placeInfo.found = false;
+        }
+
+        // Cache the result for 6 hours
+        try {
+            cache.put(cacheKey, JSON.stringify(placeInfo), 21600);
+        } catch (e) { }
+
+        return placeInfo;
+
+    } catch (error) {
+        return { error: error.toString(), found: false, query: query };
+    }
+}
+
+/**
+ * Generate travel tips based on place type and name
+ */
+function generateTravelTips(name, types) {
+    const tips = [];
+    const nameLower = name.toLowerCase();
+
+    // Hotel/Lodging tips
+    if (types.includes('lodging') || nameLower.includes('ホテル') || nameLower.includes('inn') || nameLower.includes('旅館') || nameLower.includes('温泉')) {
+        tips.push('💡 チェックイン前でも荷物を預けられることが多いです');
+        tips.push('🏪 近くのコンビニの場所を事前に確認しておくと便利です');
+        tips.push('📱 WiFiパスワードはフロントで確認できます');
+    }
+
+    // Airport tips
+    if (types.includes('airport') || nameLower.includes('空港') || nameLower.includes('airport')) {
+        tips.push('✈️ 国内線は出発の1.5〜2時間前に到着がおすすめ');
+        tips.push('💧 液体は100ml以下の容器で透明な袋に入れましょう');
+        tips.push('🎒 モバイルバッテリーは預け荷物に入れられません');
+    }
+
+    // Train station tips
+    if (types.includes('train_station') || nameLower.includes('駅') || nameLower.includes('station')) {
+        tips.push('🚃 特急券は乗車前にホームを確認しましょう');
+        tips.push('🎫 JRと私鉄は改札が別の場合があります');
+        tips.push('📍 大きな駅では待ち合わせ場所を事前に決めておきましょう');
+    }
+
+    // Temple/Shrine tips
+    if (types.includes('temple') || types.includes('shrine') || nameLower.includes('神社') || nameLower.includes('寺')) {
+        tips.push('🙏 参拝前に手水舎で手を清めましょう');
+        tips.push('💰 お賽銭用の小銭を用意しておくと便利です');
+        tips.push('📸 撮影禁止の場所もあるので確認しましょう');
+    }
+
+    // Tourist attraction tips
+    if (types.includes('tourist_attraction') || types.includes('museum') || nameLower.includes('観光')) {
+        tips.push('🕐 午前中は比較的空いていることが多いです');
+        tips.push('🎟️ 事前にオンライン予約できる場合があります');
+    }
+
+    // Onsen/Spa tips
+    if (nameLower.includes('温泉') || nameLower.includes('onsen') || nameLower.includes('spa')) {
+        tips.push('♨️ 入浴前に体を洗ってから湯船に入りましょう');
+        tips.push('🧴 タオルは湯船に入れないのがマナーです');
+        tips.push('🚫 タトゥーがある場合は事前に確認しましょう');
+    }
+
+    // Restaurant tips
+    if (types.includes('restaurant') || types.includes('food') || nameLower.includes('レストラン') || nameLower.includes('ランチ')) {
+        tips.push('📞 人気店は予約がおすすめです');
+        tips.push('💴 現金のみの場合もあるので準備しておきましょう');
+    }
+
+    // Default tips if none matched
+    if (tips.length === 0) {
+        tips.push('📍 現地の営業時間を事前に確認しましょう');
+        tips.push('🗺️ オフラインマップをダウンロードしておくと安心です');
+    }
+
+    return tips;
 }
 
 function doPost(e) {

@@ -10,6 +10,7 @@ import LoadingSpinner from './common/LoadingSpinner';
 import PortraitLock from './common/PortraitLock';
 import ReloadPrompt from './common/ReloadPrompt';
 import EditModal from './EditModal';
+import PlaceInfoModal from './PlaceInfoModal';
 
 // Lazy load view components
 const TicketList = lazy(() => import('./views/TicketList'));
@@ -82,6 +83,34 @@ const server = {
             .then(res => res.json())
             .then(data => resolve(data.valid === true))
             .catch(() => resolve(code === '2025')); // Fallback to default if API fails
+    }),
+    getPlaceInfo: (query) => new Promise((resolve, reject) => {
+        if (!query || query.trim() === '') {
+            resolve({ found: false, error: 'No query' });
+            return;
+        }
+
+        // Check sessionStorage cache first
+        const cacheKey = `place_${btoa(unescape(encodeURIComponent(query)))}`;
+        const cached = sessionStorage.getItem(cacheKey);
+        if (cached) {
+            try {
+                resolve(JSON.parse(cached));
+                return;
+            } catch (e) { }
+        }
+
+        const API_URL = 'https://script.google.com/macros/s/AKfycbx6IhqmS6BYkSEKlg5YyionDqEAkdwUShi8_huVrte_yqxkb1Fh_7aJpC6TLF7dM7VfKw/exec';
+        fetch(`${API_URL}?action=getPlaceInfo&query=${encodeURIComponent(query)}`, { method: 'GET' })
+            .then(res => res.json())
+            .then(data => {
+                // Cache in sessionStorage
+                try {
+                    sessionStorage.setItem(cacheKey, JSON.stringify(data));
+                } catch (e) { }
+                resolve(data);
+            })
+            .catch(e => reject(new Error('Place Info Error: ' + e.message)));
     })
 };
 
@@ -100,6 +129,8 @@ export default function TravelApp() {
     const [error, setError] = useState(null);
     const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('darkMode') === 'true');
     const [lastUpdate, setLastUpdate] = useState(() => localStorage.getItem('lastUpdate') || null);
+    const [placeInfoOpen, setPlaceInfoOpen] = useState(false);
+    const [selectedPlaceName, setSelectedPlaceName] = useState(null);
     const longPressTimer = useRef(null);
 
     // Long-press handlers
@@ -204,6 +235,12 @@ export default function TravelApp() {
     }, [itinerary]);
 
     const handleCopy = (text) => { navigator.clipboard.writeText(text); alert(`コピーしました: ${text}`); };
+
+    // Open place info modal
+    const openPlaceInfo = (placeName) => {
+        setSelectedPlaceName(placeName);
+        setPlaceInfoOpen(true);
+    };
 
     // Save entire itinerary to Spreadsheet
     const saveToSpreadsheet = async (newItinerary) => {
@@ -347,25 +384,36 @@ export default function TravelApp() {
             {/* ========== MAIN CONTENT AREA ========== */}
             <div className="w-full lg:ml-64 min-h-[100dvh] flex flex-col">
 
-                {/* ========== HEADER (Mobile/Tablet) ========== */}
-                <div className="lg:hidden bg-gradient-to-br from-blue-600 to-indigo-800 p-6 text-white pt-10 pb-16 relative overflow-hidden shrink-0">
-                    <div className="absolute top-0 right-0 p-4 opacity-20">
-                        <Plane size={140} className="transform rotate-[-10deg] translate-x-4 translate-y-4" />
-                    </div>
-                    <div className="relative z-10 max-w-4xl mx-auto">
-                        <div className="flex items-center justify-between mb-2">
-                            <span className="bg-white/20 px-3 py-1 rounded-full text-xs font-bold backdrop-blur-sm">{yearRange}</span>
-                            <button
-                                onClick={() => setIsEditMode(!isEditMode)}
-                                className={`p-2 rounded-full transition-colors ${isEditMode ? 'bg-yellow-400 text-yellow-900 shadow-md' : 'bg-white/10 text-white hover:bg-white/20'}`}
-                            >
-                                <Edit2 size={18} />
-                            </button>
+                {/* ========== HEADER (Mobile/Tablet) - Compact Design ========== */}
+                <header className="lg:hidden bg-gradient-to-r from-blue-600 to-indigo-700 text-white sticky top-0 z-40 shrink-0">
+                    {/* Safe area for notch */}
+                    <div className="h-[env(safe-area-inset-top)]" />
+
+                    <div className="px-4 py-3 flex items-center justify-between gap-3">
+                        {/* Left: App title and subtitle */}
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <div className="w-9 h-9 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center shrink-0">
+                                <Plane size={18} />
+                            </div>
+                            <div className="min-w-0">
+                                <h1 className="font-bold text-base leading-tight truncate">Winter Journey</h1>
+                                <p className="text-[11px] text-white/70 truncate">{yearRange}</p>
+                            </div>
                         </div>
-                        <h1 className="text-2xl font-bold mb-1 tracking-tight">Winter Journey</h1>
-                        <p className="opacity-90 text-sm font-medium">Okinawa <span className="opacity-60 mx-1">✈</span> Takayama</p>
+
+                        {/* Right: Edit button (always visible) */}
+                        <button
+                            onClick={() => setIsEditMode(!isEditMode)}
+                            aria-label={isEditMode ? '編集モード終了' : '編集モード'}
+                            className={`p-2.5 rounded-xl transition-all touch-manipulation active:scale-95 ${isEditMode
+                                ? 'bg-yellow-400 text-yellow-900 shadow-lg shadow-yellow-500/30'
+                                : 'bg-white/15 text-white hover:bg-white/25'
+                                }`}
+                        >
+                            <Edit2 size={18} strokeWidth={isEditMode ? 2.5 : 2} />
+                        </button>
                     </div>
-                </div>
+                </header>
 
                 {/* ========== DESKTOP HEADER ========== */}
                 <div className="hidden lg:block bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-8 py-6">
@@ -392,7 +440,7 @@ export default function TravelApp() {
 
                 {/* ========== DATE TABS (Only for Timeline) ========== */}
                 {activeTab === 'timeline' && (
-                    <div className="px-4 lg:px-8 -mt-6 lg:mt-0 relative z-20 mb-3 lg:mb-4">
+                    <div className="px-4 lg:px-8 lg:mt-0 relative z-20 mb-3 lg:mb-4 bg-[#F0F2F5] dark:bg-slate-900 pt-3">
                         <div className="max-w-6xl mx-auto">
                             <div className="flex gap-2 lg:gap-3 pb-2 pt-1 lg:pt-4 overflow-x-auto scrollbar-hide snap-x snap-mandatory scroll-smooth -mx-1 px-1">
                                 {itinerary.map((day, idx) => (
@@ -418,12 +466,12 @@ export default function TravelApp() {
                 )}
 
                 {/* ========== MAIN CONTENT ========== */}
-                <main className="flex-1 px-4 lg:px-8 pb-24 lg:pb-8 bg-[#F0F2F5] dark:bg-slate-900">
-                    <div className="max-w-6xl mx-auto">
+                <main className="flex-1 px-4 lg:px-8 pb-24 lg:pb-8 bg-[#F0F2F5] dark:bg-slate-900 overflow-x-hidden">
+                    <div className="max-w-6xl mx-auto w-full">
                         <Suspense fallback={<LoadingSpinner />}>
                             {/* Content Area */}
                             {activeTab === 'timeline' && selectedDay && (
-                                <div className="pt-4 overflow-hidden">
+                                <div className="pt-4">
 
                                     {/* Summary Card */}
                                     <div className="bg-white dark:bg-slate-700 rounded-2xl shadow-sm mb-4 border border-gray-100 dark:border-slate-600 overflow-hidden">
@@ -506,11 +554,18 @@ export default function TravelApp() {
 
                                                             {/* Event Card */}
                                                             <div
-                                                                onClick={isEditMode ? () => { setEditItem(event); setModalOpen(true); } : undefined}
+                                                                onClick={() => {
+                                                                    if (isEditMode) {
+                                                                        setEditItem(event);
+                                                                        setModalOpen(true);
+                                                                    } else {
+                                                                        openPlaceInfo(event.name);
+                                                                    }
+                                                                }}
                                                                 onTouchStart={() => handleTouchStart(event)}
                                                                 onTouchEnd={handleTouchEnd}
                                                                 onTouchMove={handleTouchEnd}
-                                                                className={`flex-1 rounded-2xl p-4 shadow-sm border transition-all duration-200 relative overflow-hidden touch-manipulation ${event.type === 'stay' ? 'bg-gradient-to-br from-indigo-50 to-purple-50/50 dark:from-indigo-900/30 dark:to-purple-900/20 border-indigo-100 dark:border-indigo-800' : 'bg-white dark:bg-slate-700 border-gray-100 dark:border-slate-600'} ${isEditMode ? 'cursor-pointer hover:shadow-lg hover:border-blue-300 active:scale-[0.98]' : ''}`}
+                                                                className={`flex-1 min-w-0 rounded-2xl p-4 shadow-sm border transition-all duration-200 relative overflow-hidden touch-manipulation cursor-pointer ${event.type === 'stay' ? 'bg-gradient-to-br from-indigo-50 to-purple-50/50 dark:from-indigo-900/30 dark:to-purple-900/20 border-indigo-100 dark:border-indigo-800' : 'bg-white dark:bg-slate-700 border-gray-100 dark:border-slate-600'} ${isEditMode ? 'hover:shadow-lg hover:border-blue-300 active:scale-[0.98]' : 'hover:shadow-md active:scale-[0.99]'}`}
                                                             >
                                                                 {/* Icon Background Decoration */}
                                                                 <div className="absolute top-0 right-0 p-4 opacity-[0.07]">
@@ -547,7 +602,7 @@ export default function TravelApp() {
                                                                 </div>
 
                                                                 {/* Title */}
-                                                                <h3 className="font-bold text-gray-800 dark:text-slate-100 text-base lg:text-lg leading-snug">{event.name}</h3>
+                                                                <h3 className="font-bold text-gray-800 dark:text-slate-100 text-base lg:text-lg leading-snug break-words">{event.name}</h3>
 
                                                                 {/* Transport Route */}
                                                                 {event.type === 'transport' && event.place && event.to && (
@@ -570,16 +625,16 @@ export default function TravelApp() {
                                                                 {event.bookingRef && (
                                                                     <div
                                                                         onClick={(e) => { e.stopPropagation(); handleCopy(event.bookingRef); }}
-                                                                        className="mt-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800/50 rounded-xl p-3 flex items-center justify-between cursor-pointer active:bg-blue-100 dark:active:bg-blue-800/40 transition-colors group"
+                                                                        className="mt-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800/50 rounded-xl p-3 flex items-center justify-between gap-2 cursor-pointer active:bg-blue-100 dark:active:bg-blue-800/40 transition-colors group overflow-hidden"
                                                                     >
-                                                                        <div className="flex items-center gap-2">
-                                                                            <Ticket size={16} className="text-blue-500" />
-                                                                            <div>
+                                                                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                                                                            <Ticket size={16} className="text-blue-500 shrink-0" />
+                                                                            <div className="min-w-0 flex-1">
                                                                                 <span className="text-[10px] text-blue-400 dark:text-blue-300 uppercase font-bold block">予約番号</span>
-                                                                                <span className="font-mono font-bold text-blue-700 dark:text-blue-200 tracking-wider">{event.bookingRef}</span>
+                                                                                <span className="font-mono font-bold text-blue-700 dark:text-blue-200 tracking-wider text-sm break-all">{event.bookingRef}</span>
                                                                             </div>
                                                                         </div>
-                                                                        <Copy size={16} className="text-blue-300 group-hover:text-blue-500 transition-colors" />
+                                                                        <Copy size={16} className="text-blue-300 group-hover:text-blue-500 transition-colors shrink-0" />
                                                                     </div>
                                                                 )}
                                                             </div>
@@ -656,8 +711,8 @@ export default function TravelApp() {
                             aria-label={`${item.label}タブ`}
                             aria-current={activeTab === item.id ? 'page' : undefined}
                             className={`relative flex flex-col items-center gap-1 px-4 py-2 min-w-[56px] min-h-[56px] transition-all duration-200 active:scale-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 rounded-xl touch-manipulation ${activeTab === item.id
-                                    ? 'text-blue-600 dark:text-blue-400'
-                                    : 'text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-400'
+                                ? 'text-blue-600 dark:text-blue-400'
+                                : 'text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-400'
                                 }`}
                         >
                             <item.icon size={22} strokeWidth={activeTab === item.id ? 2.5 : 1.8} />
@@ -679,6 +734,14 @@ export default function TravelApp() {
                 item={editItem}
                 onSave={handleSaveEvent}
                 onDelete={handleDeleteEvent}
+            />
+
+            {/* Place Info Modal */}
+            <PlaceInfoModal
+                isOpen={placeInfoOpen}
+                onClose={() => { setPlaceInfoOpen(false); setSelectedPlaceName(null); }}
+                placeName={selectedPlaceName}
+                getPlaceInfo={server.getPlaceInfo}
             />
         </div>
     );

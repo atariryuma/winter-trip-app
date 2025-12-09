@@ -15,7 +15,7 @@ const TicketList = ({ itinerary }) => {
     if (tickets.length === 0) return <div className="p-10 text-center text-gray-400 dark:text-slate-500 font-bold">表示できるチケット情報がありません</div>;
 
     return (
-        <div className="space-y-4 pt-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 pt-4">
             {tickets.map(t => (
                 <div key={t.id} className="bg-white dark:bg-slate-700 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-slate-600 flex flex-col gap-3 relative overflow-hidden group">
                     <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 dark:bg-blue-400/10 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-150"></div>

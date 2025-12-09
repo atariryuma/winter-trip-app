@@ -315,20 +315,62 @@ export default function TravelApp() {
     ) : null;
 
     return (
-        <div className="min-h-[100dvh] bg-[#F0F2F5] dark:bg-slate-900 flex justify-center">
+        <div className="min-h-[100dvh] bg-[#F0F2F5] dark:bg-slate-900 flex">
             <PortraitLock />
             <ReloadPrompt />
             {SavingOverlay}
             {ErrorBanner}
 
-            <div className="w-full max-w-[600px] bg-white dark:bg-slate-800 shadow-2xl min-h-[100dvh] relative flex flex-col overflow-x-hidden">
+            {/* ========== DESKTOP SIDEBAR (lg+) ========== */}
+            <aside className="hidden lg:flex flex-col w-64 bg-white dark:bg-slate-800 border-r border-gray-200 dark:border-slate-700 min-h-[100dvh] fixed left-0 top-0 z-40">
+                <div className="p-6 bg-gradient-to-br from-blue-600 to-indigo-800 text-white">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                            <Plane size={24} />
+                        </div>
+                        <div>
+                            <h1 className="font-bold text-lg">Winter Journey</h1>
+                            <p className="text-xs opacity-80">{yearRange}</p>
+                        </div>
+                    </div>
+                </div>
+                <nav className="flex-1 p-4 space-y-2">
+                    {[
+                        { id: 'timeline', icon: Calendar, label: '旅程' },
+                        { id: 'tickets', icon: Ticket, label: 'チケット' },
+                        { id: 'map', icon: MapPin, label: 'マップ' },
+                        { id: 'settings', icon: Settings, label: '設定' },
+                    ].map(item => (
+                        <button
+                            key={item.id}
+                            onClick={() => setActiveTab(item.id)}
+                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === item.id ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-bold' : 'text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700'}`}
+                        >
+                            <item.icon size={20} />
+                            <span>{item.label}</span>
+                        </button>
+                    ))}
+                </nav>
+                <div className="p-4 border-t border-gray-100 dark:border-slate-700">
+                    <button
+                        onClick={() => setIsEditMode(!isEditMode)}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${isEditMode ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 font-bold' : 'text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700'}`}
+                    >
+                        <Edit2 size={20} />
+                        <span>{isEditMode ? '編集モード ON' : '編集モード'}</span>
+                    </button>
+                </div>
+            </aside>
 
-                {/* ========== HEADER ========== */}
-                <div className="bg-gradient-to-br from-blue-600 to-indigo-800 p-6 text-white pt-10 pb-16 relative overflow-hidden shrink-0">
+            {/* ========== MAIN CONTENT AREA ========== */}
+            <div className="w-full lg:ml-64 min-h-[100dvh] flex flex-col">
+
+                {/* ========== HEADER (Mobile/Tablet) ========== */}
+                <div className="lg:hidden bg-gradient-to-br from-blue-600 to-indigo-800 p-6 text-white pt-10 pb-16 relative overflow-hidden shrink-0">
                     <div className="absolute top-0 right-0 p-4 opacity-20">
                         <Plane size={140} className="transform rotate-[-10deg] translate-x-4 translate-y-4" />
                     </div>
-                    <div className="relative z-10 mx-auto">
+                    <div className="relative z-10 max-w-4xl mx-auto">
                         <div className="flex items-center justify-between mb-2">
                             <span className="bg-white/20 px-3 py-1 rounded-full text-xs font-bold backdrop-blur-sm">{yearRange}</span>
                             <button
@@ -343,182 +385,209 @@ export default function TravelApp() {
                     </div>
                 </div>
 
+                {/* ========== DESKTOP HEADER ========== */}
+                <div className="hidden lg:block bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-8 py-6">
+                    <div className="max-w-6xl mx-auto flex items-center justify-between">
+                        <div>
+                            <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100">
+                                {activeTab === 'timeline' && '旅程'}
+                                {activeTab === 'tickets' && 'チケット一覧'}
+                                {activeTab === 'map' && 'マップ'}
+                                {activeTab === 'settings' && '設定'}
+                                {activeTab === 'packing' && 'パッキングリスト'}
+                                {activeTab === 'emergency' && '緊急連絡先'}
+                            </h2>
+                            <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">沖縄 → 飛騨高山・下呂温泉・名古屋</p>
+                        </div>
+                        {activeTab === 'timeline' && selectedDay && (
+                            <div className="flex items-center gap-4 bg-gray-50 dark:bg-slate-700 px-4 py-2 rounded-xl">
+                                {getWeatherIcon(selectedDay.weather?.condition, { size: 24 })}
+                                <span className="text-lg font-bold text-gray-700 dark:text-slate-200">{selectedDay.weather?.temp}</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
                 {/* ========== DATE TABS (Only for Timeline) ========== */}
                 {activeTab === 'timeline' && (
-                    <div className="px-4 -mt-6 relative z-20 mb-2">
-                        <div className="flex flex-wrap gap-2 pb-2 pt-1">
-                            {itinerary.map(day => (
-                                <button
-                                    key={day.id}
-                                    onClick={() => setSelectedDayId(day.id)}
-                                    className={`flex-shrink-0 snap-center flex flex-col items-center justify-center w-16 h-16 rounded-2xl shadow-sm transition-all duration-300 border border-gray-100/50 ${selectedDayId === day.id
-                                        ? "bg-white text-blue-600 ring-2 ring-blue-500/30 shadow-md"
-                                        : "bg-white/90 text-gray-500 hover:bg-white hover:shadow-md"
-                                        }`}
-                                >
-                                    <span className="text-[10px] font-bold uppercase tracking-wider">{day.dayOfWeek}</span>
-                                    <span className="text-lg font-black leading-none mt-0.5">{day.date.split('/')[1]}</span>
-                                </button>
-                            ))}
+                    <div className="px-4 lg:px-8 -mt-6 lg:mt-0 relative z-20 mb-2 lg:mb-4">
+                        <div className="max-w-6xl mx-auto">
+                            <div className="flex flex-wrap gap-2 lg:gap-3 pb-2 pt-1 lg:pt-4">
+                                {itinerary.map(day => (
+                                    <button
+                                        key={day.id}
+                                        onClick={() => setSelectedDayId(day.id)}
+                                        className={`flex-shrink-0 snap-center flex flex-col items-center justify-center w-16 h-16 lg:w-20 lg:h-20 rounded-2xl shadow-sm transition-all duration-300 border border-gray-100/50 dark:border-slate-600 ${selectedDayId === day.id
+                                            ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 ring-2 ring-blue-500/30 shadow-md"
+                                            : "bg-white/90 dark:bg-slate-700/50 text-gray-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 hover:shadow-md"
+                                            }`}
+                                    >
+                                        <span className="text-[10px] lg:text-xs font-bold uppercase tracking-wider">{day.dayOfWeek}</span>
+                                        <span className="text-lg lg:text-xl font-black leading-none mt-0.5">{day.date.split('/')[1]}</span>
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 )}
 
                 {/* ========== MAIN CONTENT ========== */}
-                <main className="flex-1 px-4 pb-24">
-                    <Suspense fallback={<LoadingSpinner />}>
-                        {/* Content Area */}
-                        {activeTab === 'timeline' && selectedDay && (
-                            <div className="pt-4 overflow-hidden">
+                <main className="flex-1 px-4 lg:px-8 pb-24 lg:pb-8 bg-[#F0F2F5] dark:bg-slate-900">
+                    <div className="max-w-6xl mx-auto">
+                        <Suspense fallback={<LoadingSpinner />}>
+                            {/* Content Area */}
+                            {activeTab === 'timeline' && selectedDay && (
+                                <div className="pt-4 overflow-hidden">
 
-                                {/* Summary Card */}
-                                <div className="bg-white dark:bg-slate-700 rounded-2xl p-4 shadow-sm mb-4 border border-gray-100 dark:border-slate-600">
-                                    <div className="flex justify-between items-start mb-3 gap-4">
-                                        <div className="flex-1">
-                                            <div className="lg:hidden text-xs text-blue-600 dark:text-blue-400 font-bold mb-1">Day {dayIndex + 1}</div>
-                                            <h2 className="text-lg font-bold text-gray-800 dark:text-slate-100">{selectedDay.title}</h2>
-                                            <p className="text-xs text-gray-500 dark:text-slate-400 mt-1 flex items-center gap-1">
-                                                <MapPin size={14} /> {selectedDay.location}
-                                            </p>
-                                        </div>
-                                        <div className="flex flex-col items-center pl-4 border-l border-gray-100 dark:border-slate-600">
-                                            {getWeatherIcon(selectedDay.weather?.condition)}
-                                            <span className="text-sm font-bold text-gray-700 dark:text-slate-200 mt-1">{selectedDay.weather?.temp}</span>
-                                        </div>
-                                    </div>
-                                    <p className="text-sm text-gray-600 dark:text-slate-300 leading-relaxed bg-gray-50 dark:bg-slate-600 p-3 rounded-xl border border-gray-100 dark:border-slate-500">
-                                        {selectedDay.summary}
-                                    </p>
-                                </div>
-
-                                {/* Timeline - Simplified List for Mobile */}
-                                <div className="space-y-4">
-                                    {sortedEvents.map((event, index) => (
-                                        <div key={event.id} className="relative">
-
-                                            {/* Insert Between Divider (Only in Edit Mode) */}
-                                            {isEditMode && (
-                                                <div
-                                                    className="h-6 -my-3 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer group z-10 relative"
-                                                    onClick={() => {
-                                                        const prevTime = index > 0 ? sortedEvents[index - 1].time : null;
-                                                        const nextTime = event.time;
-                                                        const midTime = getMidTime(prevTime, nextTime);
-                                                        setEditItem({ type: 'activity', category: 'sightseeing', status: 'planned', time: midTime, name: '' });
-                                                        setModalOpen(true);
-                                                    }}
-                                                >
-                                                    <div className="w-full h-0.5 bg-blue-300 transform scale-x-90 group-hover:scale-x-100 transition-transform"></div>
-                                                    <div className="absolute bg-blue-500 text-white rounded-full p-1 shadow-sm transform scale-0 group-hover:scale-100 transition-transform">
-                                                        <Plus size={14} />
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            <div
-                                                onClick={isEditMode ? () => { setEditItem(event); setModalOpen(true); } : undefined}
-                                                onTouchStart={() => handleTouchStart(event)}
-                                                onTouchEnd={handleTouchEnd}
-                                                onTouchMove={handleTouchEnd}
-                                                className={`rounded-2xl p-5 shadow-sm border transition relative overflow-hidden ${event.type === 'stay' ? 'bg-indigo-50/50 dark:bg-indigo-900/30 border-indigo-100 dark:border-indigo-800' : 'bg-white dark:bg-slate-700 border-gray-100 dark:border-slate-600'} ${isEditMode ? 'cursor-pointer hover:shadow-md hover:border-blue-300' : ''}`}
-                                            >
-                                                {/* Icon Background Decoration */}
-                                                <div className="absolute top-0 right-0 p-3 opacity-10">
-                                                    {getIcon(event.category, event.type)}
-                                                </div>
-
-                                                <div className="flex justify-between items-start mb-2 flex-wrap gap-2 relative z-10">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${event.type === 'stay' ? 'bg-indigo-100 dark:bg-indigo-800 text-indigo-600 dark:text-indigo-300' : (event.category === 'flight' ? 'bg-blue-100 dark:bg-blue-800 text-blue-600 dark:text-blue-300' : 'bg-gray-100 dark:bg-slate-600 text-gray-600 dark:text-slate-300')}`}>
-                                                            {getIcon(event.category, event.type)}
-                                                        </div>
-                                                        <div className="flex items-baseline gap-2">
-                                                            <span className="text-lg font-bold text-gray-800 dark:text-slate-100 font-mono">{event.time}</span>
-                                                            {event.endTime && (
-                                                                <>
-                                                                    <ArrowRight size={12} className="text-gray-400 dark:text-slate-500" />
-                                                                    <span className="text-sm text-gray-500 dark:text-slate-400 font-mono">{event.endTime}</span>
-                                                                </>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                    <StatusBadge status={event.status} />
-                                                </div>
-
-                                                <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg mb-1 mt-1">{event.name}</h3>
-
-                                                {event.type === 'transport' && event.place && event.to && (
-                                                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-300 mb-2 flex-wrap">
-                                                        <span>{event.place}</span>
-                                                        <ArrowRight size={14} />
-                                                        <span>{event.to}</span>
-                                                    </div>
-                                                )}
-
-                                                {(event.description || event.details) && (
-                                                    <div className="mt-2 text-sm text-gray-600 dark:text-slate-300 space-y-1">
-                                                        {event.description && <p>{event.description}</p>}
-                                                        {event.details && <p>{event.details}</p>}
-                                                    </div>
-                                                )}
-
-                                                {event.bookingRef && (
-                                                    <div
-                                                        onClick={(e) => { e.stopPropagation(); handleCopy(event.bookingRef); }}
-                                                        className="mt-3 bg-white/80 dark:bg-slate-600 backdrop-blur-sm border border-gray-200 dark:border-slate-500 rounded-lg p-2 flex items-center justify-between cursor-pointer active:bg-gray-100 dark:active:bg-slate-500 group"
-                                                    >
-                                                        <div className="flex items-center gap-2">
-                                                            <Ticket size={14} className="text-blue-500" />
-                                                            <span className="text-xs text-gray-500 dark:text-slate-400">予約番号:</span>
-                                                            <span className="font-mono font-bold text-gray-700 dark:text-slate-200">{event.bookingRef}</span>
-                                                        </div>
-                                                        <Copy size={14} className="text-gray-400 dark:text-slate-500 group-hover:text-blue-500" />
-                                                    </div>
-                                                )}
+                                    {/* Summary Card */}
+                                    <div className="bg-white dark:bg-slate-700 rounded-2xl p-4 shadow-sm mb-4 border border-gray-100 dark:border-slate-600">
+                                        <div className="flex justify-between items-start mb-3 gap-4">
+                                            <div className="flex-1">
+                                                <div className="lg:hidden text-xs text-blue-600 dark:text-blue-400 font-bold mb-1">Day {dayIndex + 1}</div>
+                                                <h2 className="text-lg font-bold text-gray-800 dark:text-slate-100">{selectedDay.title}</h2>
+                                                <p className="text-xs text-gray-500 dark:text-slate-400 mt-1 flex items-center gap-1">
+                                                    <MapPin size={14} /> {selectedDay.location}
+                                                </p>
+                                            </div>
+                                            <div className="flex flex-col items-center pl-4 border-l border-gray-100 dark:border-slate-600">
+                                                {getWeatherIcon(selectedDay.weather?.condition)}
+                                                <span className="text-sm font-bold text-gray-700 dark:text-slate-200 mt-1">{selectedDay.weather?.temp}</span>
                                             </div>
                                         </div>
-                                    ))}
+                                        <p className="text-sm text-gray-600 dark:text-slate-300 leading-relaxed bg-gray-50 dark:bg-slate-600 p-3 rounded-xl border border-gray-100 dark:border-slate-500">
+                                            {selectedDay.summary}
+                                        </p>
+                                    </div>
 
-                                    {isEditMode && (
-                                        <div className="pt-4">
-                                            {/* Final Append Button with Smart Time */}
-                                            <button
-                                                onClick={() => {
-                                                    const lastTime = sortedEvents.length > 0 ? sortedEvents[sortedEvents.length - 1].time : '09:00';
-                                                    const nextTime = toTimeStr(toMinutes(lastTime) + 60);
-                                                    setEditItem({ type: 'activity', category: 'sightseeing', status: 'planned', time: nextTime, name: '' });
-                                                    setModalOpen(true);
-                                                }}
-                                                className="w-full py-4 border-2 border-dashed border-gray-300 rounded-2xl text-gray-400 hover:text-blue-500 hover:border-blue-300 transition flex items-center justify-center gap-2"
-                                            >
-                                                <Plus size={20} /> 予定を追加
-                                            </button>
-                                        </div>
-                                    )}
+                                    {/* Timeline - Grid for larger screens */}
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                        {sortedEvents.map((event, index) => (
+                                            <div key={event.id} className="relative">
+
+                                                {/* Insert Between Divider (Only in Edit Mode) */}
+                                                {isEditMode && (
+                                                    <div
+                                                        className="h-6 -my-3 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer group z-10 relative"
+                                                        onClick={() => {
+                                                            const prevTime = index > 0 ? sortedEvents[index - 1].time : null;
+                                                            const nextTime = event.time;
+                                                            const midTime = getMidTime(prevTime, nextTime);
+                                                            setEditItem({ type: 'activity', category: 'sightseeing', status: 'planned', time: midTime, name: '' });
+                                                            setModalOpen(true);
+                                                        }}
+                                                    >
+                                                        <div className="w-full h-0.5 bg-blue-300 transform scale-x-90 group-hover:scale-x-100 transition-transform"></div>
+                                                        <div className="absolute bg-blue-500 text-white rounded-full p-1 shadow-sm transform scale-0 group-hover:scale-100 transition-transform">
+                                                            <Plus size={14} />
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                <div
+                                                    onClick={isEditMode ? () => { setEditItem(event); setModalOpen(true); } : undefined}
+                                                    onTouchStart={() => handleTouchStart(event)}
+                                                    onTouchEnd={handleTouchEnd}
+                                                    onTouchMove={handleTouchEnd}
+                                                    className={`rounded-2xl p-5 shadow-sm border transition relative overflow-hidden ${event.type === 'stay' ? 'bg-indigo-50/50 dark:bg-indigo-900/30 border-indigo-100 dark:border-indigo-800' : 'bg-white dark:bg-slate-700 border-gray-100 dark:border-slate-600'} ${isEditMode ? 'cursor-pointer hover:shadow-md hover:border-blue-300' : ''}`}
+                                                >
+                                                    {/* Icon Background Decoration */}
+                                                    <div className="absolute top-0 right-0 p-3 opacity-10">
+                                                        {getIcon(event.category, event.type)}
+                                                    </div>
+
+                                                    <div className="flex justify-between items-start mb-2 flex-wrap gap-2 relative z-10">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${event.type === 'stay' ? 'bg-indigo-100 dark:bg-indigo-800 text-indigo-600 dark:text-indigo-300' : (event.category === 'flight' ? 'bg-blue-100 dark:bg-blue-800 text-blue-600 dark:text-blue-300' : 'bg-gray-100 dark:bg-slate-600 text-gray-600 dark:text-slate-300')}`}>
+                                                                {getIcon(event.category, event.type)}
+                                                            </div>
+                                                            <div className="flex items-baseline gap-2">
+                                                                <span className="text-lg font-bold text-gray-800 dark:text-slate-100 font-mono">{event.time}</span>
+                                                                {event.endTime && (
+                                                                    <>
+                                                                        <ArrowRight size={12} className="text-gray-400 dark:text-slate-500" />
+                                                                        <span className="text-sm text-gray-500 dark:text-slate-400 font-mono">{event.endTime}</span>
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <StatusBadge status={event.status} />
+                                                    </div>
+
+                                                    <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg mb-1 mt-1">{event.name}</h3>
+
+                                                    {event.type === 'transport' && event.place && event.to && (
+                                                        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-300 mb-2 flex-wrap">
+                                                            <span>{event.place}</span>
+                                                            <ArrowRight size={14} />
+                                                            <span>{event.to}</span>
+                                                        </div>
+                                                    )}
+
+                                                    {(event.description || event.details) && (
+                                                        <div className="mt-2 text-sm text-gray-600 dark:text-slate-300 space-y-1">
+                                                            {event.description && <p>{event.description}</p>}
+                                                            {event.details && <p>{event.details}</p>}
+                                                        </div>
+                                                    )}
+
+                                                    {event.bookingRef && (
+                                                        <div
+                                                            onClick={(e) => { e.stopPropagation(); handleCopy(event.bookingRef); }}
+                                                            className="mt-3 bg-white/80 dark:bg-slate-600 backdrop-blur-sm border border-gray-200 dark:border-slate-500 rounded-lg p-2 flex items-center justify-between cursor-pointer active:bg-gray-100 dark:active:bg-slate-500 group"
+                                                        >
+                                                            <div className="flex items-center gap-2">
+                                                                <Ticket size={14} className="text-blue-500" />
+                                                                <span className="text-xs text-gray-500 dark:text-slate-400">予約番号:</span>
+                                                                <span className="font-mono font-bold text-gray-700 dark:text-slate-200">{event.bookingRef}</span>
+                                                            </div>
+                                                            <Copy size={14} className="text-gray-400 dark:text-slate-500 group-hover:text-blue-500" />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+
+                                        {isEditMode && (
+                                            <div className="pt-4">
+                                                {/* Final Append Button with Smart Time */}
+                                                <button
+                                                    onClick={() => {
+                                                        const lastTime = sortedEvents.length > 0 ? sortedEvents[sortedEvents.length - 1].time : '09:00';
+                                                        const nextTime = toTimeStr(toMinutes(lastTime) + 60);
+                                                        setEditItem({ type: 'activity', category: 'sightseeing', status: 'planned', time: nextTime, name: '' });
+                                                        setModalOpen(true);
+                                                    }}
+                                                    className="w-full py-4 border-2 border-dashed border-gray-300 rounded-2xl text-gray-400 hover:text-blue-500 hover:border-blue-300 transition flex items-center justify-center gap-2"
+                                                >
+                                                    <Plus size={20} /> 予定を追加
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+
                                 </div>
+                            )}
 
-                            </div>
-                        )}
+                            {/* NEW: Ticket View */}
+                            {activeTab === 'tickets' && <TicketList itinerary={itinerary} />}
 
-                        {/* NEW: Ticket View */}
-                        {activeTab === 'tickets' && <TicketList itinerary={itinerary} />}
+                            {/* NEW: Map View */}
+                            {activeTab === 'map' && <MapView mapUrl={mapUrl} itinerary={itinerary} />}
 
-                        {/* NEW: Map View */}
-                        {activeTab === 'map' && <MapView mapUrl={mapUrl} itinerary={itinerary} />}
+                            {/* NEW: Settings View */}
+                            {activeTab === 'settings' && <SettingsView itinerary={itinerary} setItinerary={setItinerary} setSelectedDayId={setSelectedDayId} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} lastUpdate={lastUpdate} setActiveTab={setActiveTab} />}
 
-                        {/* NEW: Settings View */}
-                        {activeTab === 'settings' && <SettingsView itinerary={itinerary} setItinerary={setItinerary} setSelectedDayId={setSelectedDayId} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} lastUpdate={lastUpdate} setActiveTab={setActiveTab} />}
+                            {/* NEW: Packing List View */}
+                            {activeTab === 'packing' && <PackingList />}
 
-                        {/* NEW: Packing List View */}
-                        {activeTab === 'packing' && <PackingList />}
-
-                        {/* NEW: Emergency Contacts View */}
-                        {activeTab === 'emergency' && <EmergencyContacts />}
-                    </Suspense>
+                            {/* NEW: Emergency Contacts View */}
+                            {activeTab === 'emergency' && <EmergencyContacts />}
+                        </Suspense>
+                    </div>
                 </main>
 
-                {/* ========== BOTTOM NAV ========== */}
-                <nav role="navigation" aria-label="メインナビゲーション" className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[600px] bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-gray-200 dark:border-slate-800 px-6 py-1 flex justify-around items-center z-30 pb-[calc(0.25rem+env(safe-area-inset-bottom))] print:hidden">
+                {/* ========== BOTTOM NAV (Mobile only) ========== */}
+                <nav role="navigation" aria-label="メインナビゲーション" className="lg:hidden fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[600px] bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-gray-200 dark:border-slate-800 px-6 py-1 flex justify-around items-center z-30 pb-[calc(0.25rem+env(safe-area-inset-bottom))] print:hidden">
                     <button
                         onClick={() => setActiveTab('timeline')}
                         aria-label="旅程タブ"

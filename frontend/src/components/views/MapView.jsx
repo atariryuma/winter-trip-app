@@ -1,6 +1,34 @@
-import React, { useMemo } from 'react';
-import { MapPin, ArrowRight } from 'lucide-react';
+import { MapPin, ArrowRight, Navigation, Map as MapIcon } from 'lucide-react';
 import { getIcon } from '../common/IconHelper';
+
+/**
+ * Generates a Google Maps Directions URL for a given day's itinerary
+ */
+const getDayRouteUrl = (day) => {
+    // Extract meaningful locations in chronological order
+    const locations = [];
+    day.events.forEach(e => {
+        // Collect places based on event type
+        if (e.place) locations.push(e.place); // Departure
+        if (e.to) locations.push(e.to);       // Arrival
+        if (e.category === 'hotel' && e.name) locations.push(e.name);
+        if (e.category === 'sightseeing' && e.name) locations.push(e.name);
+        if (e.category === 'meal' && e.name) locations.push(e.name);
+    });
+
+    // Deduplicate consecutive locations (avoid A -> A)
+    const uniqueLocs = locations.filter((loc, i, arr) => i === 0 || loc !== arr[i - 1]);
+
+    if (uniqueLocs.length < 2) return null;
+
+    const origin = encodeURIComponent(uniqueLocs[0]);
+    const destination = encodeURIComponent(uniqueLocs[uniqueLocs.length - 1]);
+
+    // Google Maps allows limited waypoints. We take up to 8 intermediates.
+    const waypoints = uniqueLocs.slice(1, -1).slice(0, 9).map(l => encodeURIComponent(l)).join('|');
+
+    return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}&travelmode=transit`;
+};
 
 const MapView = ({ mapUrl, itinerary }) => {
     const markers = useMemo(() => {
@@ -35,8 +63,38 @@ const MapView = ({ mapUrl, itinerary }) => {
             <div className="space-y-4">
                 <div className="flex items-center gap-2">
                     <MapPin size={16} className="text-blue-500" />
-                    <h3 className="font-bold text-gray-800 dark:text-slate-100">スポット一覧</h3>
                 </div>
+
+                {/* Day Routes */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
+                    {itinerary.map((day, i) => {
+                        const routeUrl = getDayRouteUrl(day);
+                        if (!routeUrl) return null;
+                        return (
+                            <a
+                                key={day.id}
+                                href={routeUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-3 p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors group"
+                            >
+                                <div className="bg-blue-100 dark:bg-blue-800 p-2 rounded-lg text-blue-600 dark:text-blue-300">
+                                    <MapIcon size={18} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="font-bold text-gray-800 dark:text-slate-200 text-sm truncate">
+                                        Day {i + 1} のルートを見る
+                                    </div>
+                                    <div className="text-[10px] text-gray-500 dark:text-slate-400 truncate">
+                                        {day.location || '移動行程を確認'}
+                                    </div>
+                                </div>
+                                <ArrowRight size={14} className="text-blue-400 group-hover:translate-x-1 transition-transform" />
+                            </a>
+                        );
+                    })}
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {markers.map((m, i) => (
                         <a
@@ -54,7 +112,20 @@ const MapView = ({ mapUrl, itinerary }) => {
                                     <div className="text-xs text-gray-400 dark:text-slate-500 uppercase font-bold">{m.type}</div>
                                 </div>
                             </div>
-                            <ArrowRight size={16} className="text-gray-300 dark:text-slate-500" />
+                            <div className="flex flex-col gap-1">
+                                <span className="text-[10px] font-bold text-blue-500 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                                    <MapIcon size={12} /> マップ
+                                </span>
+                                <a
+                                    href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(m.name)}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="text-[10px] font-bold text-indigo-500 flex items-center gap-1 mt-2 hover:underline"
+                                >
+                                    <Navigation size={12} /> ルート
+                                </a>
+                            </div>
                         </a>
                     ))}
                 </div>

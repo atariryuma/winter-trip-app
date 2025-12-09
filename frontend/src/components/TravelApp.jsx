@@ -23,7 +23,7 @@ import LoginView from './views/LoginView';
 // ============================================================================
 // CONSTANTS
 // ============================================================================
-const API_URL = 'https://script.google.com/macros/s/AKfycbyTcPA0MNhP6Y4yKhGiOMWLh-uusIKZs9j08YSTCQi7WqWJfYbszkW_xYM76HRC7uZnGA/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbzTq8JCFoUzdCxPKZ0QZZd3m0Jf7CBxTus1xilgz60HyHhqmuij5tT_P40t6YOUtk7bsg/exec';
 
 // Helper: Determine event type from category
 const getCategoryType = (category) => {
@@ -57,7 +57,10 @@ const server = {
                     if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
                     return res.json();
                 })
-                .then(resolve)
+                .then(json => {
+                    if (json.status === 'error') throw new Error(json.error?.message || 'Server Error');
+                    resolve(json.data);
+                })
                 .catch(e => reject(new Error('Fetch Error: ' + e.message)));
         }
     }),
@@ -77,6 +80,7 @@ const server = {
                 mode: 'no-cors',
                 body: params
             })
+                .then(res => res.text()) // no-cors returns opaque response usually, but we try
                 .then(() => resolve({ status: 'success' }))
                 .catch(reject);
         }
@@ -84,8 +88,11 @@ const server = {
     validatePasscode: (code) => new Promise((resolve) => {
         fetch(`${API_URL}?action=validatePasscode&code=${encodeURIComponent(code)}`, { method: 'GET' })
             .then(res => res.json())
-            .then(data => resolve(data.valid === true))
-            .catch(() => resolve(code === '2025')); // Fallback to default if API fails
+            .then(json => {
+                if (json.status === 'success') resolve(json.data.valid === true);
+                else resolve(false);
+            })
+            .catch(() => resolve(false)); // Secure fallback
     }),
     getPlaceInfo: (query) => new Promise((resolve, reject) => {
         if (!query || query.trim() === '') {
@@ -105,7 +112,9 @@ const server = {
 
         fetch(`${API_URL}?action=getPlaceInfo&query=${encodeURIComponent(query)}`, { method: 'GET' })
             .then(res => res.json())
-            .then(data => {
+            .then(json => {
+                if (json.status === 'error') throw new Error(json.error?.message);
+                const data = json.data;
                 // Cache in sessionStorage
                 try {
                     sessionStorage.setItem(cacheKey, JSON.stringify(data));

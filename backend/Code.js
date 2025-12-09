@@ -1,59 +1,86 @@
 const SPREADSHEET_ID = '1eoZtWfOECvkp_L3919yWYnZtlMPlTaq0cohV56SrE7I';
 const SHEET_NAME = 'tripdata';
 
+// ============================================================================
+// API ROUTER & HANDLERS
+// ============================================================================
+
+/**
+ * Standard API Response Envelope
+ * @param {string} status - 'success' or 'error'
+ * @param {object} data - Data payload (for success)
+ * @param {object} error - Error details (for error)
+ */
+function createApiResponse(status, data = null, error = null) {
+    const response = { status };
+    if (status === 'success') response.data = data;
+    if (status === 'error') response.error = error;
+    return ContentService.createTextOutput(JSON.stringify(response))
+        .setMimeType(ContentService.MimeType.JSON);
+}
+
 function doGet(e) {
-    // API Mode: return JSON data
-    if (e && e.parameter && e.parameter.action === 'getData') {
+    try {
+        const action = e?.parameter?.action;
+
+        // API Router
+        switch (action) {
+            case 'getData':
+                return handleGetData();
+            case 'validatePasscode':
+                return handleValidatePasscode(e);
+            case 'getPlaceInfo':
+                return handleGetPlaceInfo(e);
+            default:
+                // Default: Redirect to GitHub Pages (Frontend)
+                const FRONTEND_URL = 'https://atariryuma.github.io/winter-trip-app/';
+                return HtmlService.createHtmlOutput(`
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <meta charset="UTF-8">
+                        <meta http-equiv="refresh" content="0; url=${FRONTEND_URL}">
+                        <title>Redirecting...</title>
+                    </head>
+                    <body style="font-family: sans-serif; text-align: center; padding: 50px;">
+                        <p>アプリに移動しています...</p>
+                        <p><a href="${FRONTEND_URL}">こちらをクリック</a>してください。</p>
+                    </body>
+                    </html>
+                `).setTitle('Redirecting to Winter Trip App');
+        }
+    } catch (err) {
+        return createApiResponse('error', null, { message: err.toString() });
+    }
+}
+
+function handleGetData() {
+    try {
         const data = getItineraryData();
-        return ContentService.createTextOutput(JSON.stringify(data))
-            .setMimeType(ContentService.MimeType.JSON);
+        return createApiResponse('success', data);
+    } catch (err) {
+        return createApiResponse('error', null, { message: 'Failed to fetch data: ' + err.toString() });
     }
+}
 
-    // Validate Passcode
-    if (e && e.parameter && e.parameter.action === 'validatePasscode') {
-        const inputCode = e.parameter.code || '';
-        const storedCode = PropertiesService.getScriptProperties().getProperty('APP_PASSCODE') || '2025';
-        const valid = inputCode === storedCode;
-        return ContentService.createTextOutput(JSON.stringify({ valid }))
-            .setMimeType(ContentService.MimeType.JSON);
-    }
+function handleValidatePasscode(e) {
+    const inputCode = e.parameter.code || '';
+    const storedCode = PropertiesService.getScriptProperties().getProperty('APP_PASSCODE') || '2025';
+    const valid = inputCode === storedCode;
+    return createApiResponse('success', { valid });
+}
 
-    // Get Place Info (new feature)
-    if (e && e.parameter && e.parameter.action === 'getPlaceInfo') {
-        const query = e.parameter.query || '';
-        const placeInfo = getPlaceInfo(query);
-        return ContentService.createTextOutput(JSON.stringify(placeInfo))
-            .setMimeType(ContentService.MimeType.JSON);
-    }
+function handleGetPlaceInfo(e) {
+    const query = e.parameter.query || '';
+    if (!query) return createApiResponse('error', null, { message: 'No query provided' });
 
-    // Default: Redirect to GitHub Pages (Frontend is hosted there)
-    const FRONTEND_URL = 'https://atariryuma.github.io/winter-trip-app/';
-    return HtmlService.createHtmlOutput(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <meta http-equiv="refresh" content="0; url=${FRONTEND_URL}">
-            <title>Redirecting...</title>
-        </head>
-        <body style="font-family: sans-serif; text-align: center; padding: 50px;">
-            <p>アプリに移動しています...</p>
-            <p><a href="${FRONTEND_URL}">こちらをクリック</a>してください。</p>
-        </body>
-        </html>
-    `).setTitle('Redirecting to Winter Trip App');
+    const placeInfo = getPlaceInfo(query);
+    return createApiResponse('success', placeInfo);
 }
 
 /**
  * Get place information using Google Places API (New)
- * Optimized based on Google's best practices:
- * - Minimal FieldMask to reduce costs
- * - Extended caching (24 hours for stable place data)
- * - Photo URL generation for visual appeal
- * - regionCode=JP and languageCode=ja for Japan-focused results
- * 
- * @param {string} query - Place name or address to search
- * @returns {object} Place information with dynamic data
+ * Optimized based on Google's best practices
  */
 function getPlaceInfo(query) {
     if (!query || query.trim() === '') {
@@ -64,8 +91,7 @@ function getPlaceInfo(query) {
     // Use v3 cache key for new optimized format
     const cacheKey = 'place_v3_' + Utilities.base64Encode(Utilities.newBlob(query).getBytes());
 
-    // Check cache first - extended to max 6 hours (GAS limit is 21600s)
-    // Place data is relatively stable, so longer cache is beneficial
+    // Check cache first (6 hours - GAS max is 21600s)
     try {
         const cached = cache.get(cacheKey);
         if (cached) {
@@ -118,29 +144,19 @@ function getPlaceInfo(query) {
                 };
 
                 // Optimized FieldMask - request ONLY fields we actually use
-                // This reduces API costs (Basic fields are cheaper than Contact/Atmosphere)
-                // Fields grouped by SKU pricing tier:
-                // - Basic (ID): places.id, places.displayName, places.formattedAddress, places.googleMapsUri
-                // - Basic (Location): (none used)
-                // - Contact: places.nationalPhoneNumber, places.websiteUri, places.regularOpeningHours
-                // - Atmosphere: places.rating, places.userRatingCount, places.editorialSummary, places.reviews, places.photos
                 const fieldMask = [
-                    // Basic fields (lower cost)
                     'places.id',
                     'places.displayName',
                     'places.formattedAddress',
                     'places.googleMapsUri',
                     'places.types',
-                    // Contact fields
                     'places.nationalPhoneNumber',
                     'places.websiteUri',
                     'places.regularOpeningHours.weekdayDescriptions',
-                    // Atmosphere fields (for ratings and reviews)
                     'places.rating',
                     'places.userRatingCount',
                     'places.editorialSummary',
                     'places.reviews',
-                    // Photos (first photo only via maxHeightPx in separate call)
                     'places.photos'
                 ].join(',');
 
@@ -203,7 +219,6 @@ function getPlaceInfo(query) {
                     if (place.photos && place.photos.length > 0) {
                         const photoName = place.photos[0].name;
                         if (photoName) {
-                            // Photo URL format: https://places.googleapis.com/v1/{name}/media?maxHeightPx=400&key=API_KEY
                             placeInfo.photoUrl = `https://places.googleapis.com/v1/${photoName}/media?maxHeightPx=300&maxWidthPx=400&key=${API_KEY}`;
                         }
                     }
@@ -212,7 +227,6 @@ function getPlaceInfo(query) {
                 }
             } catch (placesError) {
                 Logger.log('Places API error for "' + query + '": ' + placesError.toString());
-                // Continue to Geocoding fallback
             }
         }
 
@@ -367,17 +381,13 @@ function doPost(e) {
             cache.remove('itinerary_json');
         } catch (e) { }
 
-        return ContentService.createTextOutput(JSON.stringify({
-            status: 'success',
+        return createApiResponse('success', {
             message: 'Data saved successfully',
             lastUpdate: timestamp
-        })).setMimeType(ContentService.MimeType.JSON);
+        });
 
     } catch (error) {
-        return ContentService.createTextOutput(JSON.stringify({
-            status: 'error',
-            message: error.toString()
-        })).setMimeType(ContentService.MimeType.JSON);
+        return createApiResponse('error', null, { message: error.toString() });
     }
 }
 

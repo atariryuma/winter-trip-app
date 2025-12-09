@@ -1,6 +1,130 @@
 const SPREADSHEET_ID = '1eoZtWfOECvkp_L3919yWYnZtlMPlTaq0cohV56SrE7I';
 const SHEET_NAME = 'tripdata';
 
+/**
+ * Triggered when the spreadsheet is opened.
+ * Adds a custom menu to the spreadsheet.
+ */
+function onOpen() {
+    const ui = SpreadsheetApp.getUi();
+    ui.createMenu('Trips')
+        .addItem('Location Auto-fill', 'fillLocationDetails')
+        .addToUi();
+}
+
+/**
+ * Auto-fill Details column with location info based on Name/Place
+ */
+function fillLocationDetails() {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+    if (!sheet) {
+        SpreadsheetApp.getUi().alert('Correct sheet not found!');
+        return;
+    }
+
+    const ui = SpreadsheetApp.getUi();
+    const selection = sheet.getSelection();
+    const range = selection.getActiveRange();
+
+    // If only one cell selected, assume it might be a mistake or specific target. 
+    // Let's operate on the rows of the selected range.
+    const startRow = range.getRow();
+    const numRows = range.getNumRows();
+
+    // Safety check for header
+    if (startRow < 2) {
+        ui.alert('Please select data rows (excluding header).');
+        return;
+    }
+
+    // Get all data for the selected rows
+    // We need the full row content to determine category and columns
+    // Data range is effectively from startRow to startRow + numRows - 1
+    // We read all 20 columns to be safe
+    const dataRange = sheet.getRange(startRow, 1, numRows, 20);
+    const values = dataRange.getValues();
+    const updates = []; // Store updates to batch write later if needed, 
+    // but since "Details" is just one cell, we might update cell by cell or rebuild array.
+    // Actually, updating `values` locally and then writing back is most efficient.
+
+    let processedCount = 0;
+
+    values.forEach((row, rIdx) => {
+        // Indicies (0-based) from Code.js save logic:
+        // Col 7 (Index 7): Category
+        // Col 9 (Index 9): Name (Transport/Activity)
+        // Col 16 (Index 16): Hotel Name (Stay) -> Actually it's Index 16? Let's check saveItineraryData.
+        // saveItineraryData: 
+        //  Stay: row[16] = event.name (Hotel Name). row[19] = event.details. 
+        //  Trans: row[9] = event.name. row[15] = event.details. row[11]=place, row[13]=to
+        //  Activ: row[9] = event.name. row[15] = event.description.
+
+        const category = row[7];
+        let targetName = '';
+        let targetDetailIdx = -1;
+        let currentDetail = '';
+
+        if (category === '宿泊') {
+            targetName = row[16]; // Receiver: Hotel Name
+            targetDetailIdx = 19; // Receiver: Hotel Details
+        } else {
+            targetName = row[9]; // Transport/Activity Name
+            if (!targetName && category === '交通') {
+                // If Name is empty, try Departure Place or Arrival Place
+                targetName = row[11] || row[13];
+            }
+            targetDetailIdx = 15; // Details
+        }
+
+        // If we have a valid target name and a valid detail column
+        if (targetName && targetDetailIdx > 0) {
+            currentDetail = row[targetDetailIdx];
+
+            // Only fill if detail is empty or user wants strict overwrite? 
+            // For now, let's append if not empty, or just fill if empty.
+            // Let's assume we append if it exists, but carefully.
+            // Or maybe just fill if it doesn't contain "📍"? to avoid duplicate fills.
+
+            if (!currentDetail || !currentDetail.includes('📍')) {
+                try {
+                    // Use reusable getPlaceInfo logic
+                    // We need a wrapper because getPlaceInfo returns object, we want string block
+                    const info = getPlaceInfo(targetName);
+
+                    if (info && info.found) {
+                        const chunks = [];
+                        if (info.formattedAddress) chunks.push(`📍 ${info.formattedAddress}`);
+                        if (info.rating) chunks.push(`⭐️ ${info.rating} (${info.userRatingCount || 0})`);
+                        if (info.phone) chunks.push(`📞 ${info.phone}`);
+                        if (info.website) chunks.push(`🌐 ${info.website}`);
+
+                        const infoBlock = chunks.join('\n');
+
+                        if (infoBlock) {
+                            if (currentDetail) {
+                                values[rIdx][targetDetailIdx] = currentDetail + '\n\n' + infoBlock;
+                            } else {
+                                values[rIdx][targetDetailIdx] = infoBlock;
+                            }
+                            processedCount++;
+                        }
+                    }
+                } catch (e) {
+                    Logger.log(`Error processing ${targetName}: ${e}`);
+                }
+            }
+        }
+    });
+
+    if (processedCount > 0) {
+        // Write back
+        dataRange.setValues(values);
+        ui.alert(`Updated ${processedCount} rows with location details.`);
+    } else {
+        ui.alert('No rows updated. Either selection was empty, fields were already filled, or no places found.');
+    }
+}
+
 // ============================================================================
 // API ROUTER & HANDLERS
 // ============================================================================
@@ -486,37 +610,42 @@ function getItineraryData() {
         }
     });
 
-    // Generate Static Map URL (if markers exist)
+    // Generate Static Map URL (with fallback strategy)
     let mapUrl = null;
     let mapError = null;
 
     if (mapMarkers.length > 0) {
+        const uniqueLocations = [...new Set(mapMarkers)].filter(l => l && !l.match(/^\d{3}-\d{4}$/));
+
+        // Strategy 1: Try all markers (limit 15)
         try {
-            // Using unique locations only to save URL length
-            const uniqueLocations = [...new Set(mapMarkers)].slice(0, 15); // Limit to 15 to avoid URL limit
-            if (uniqueLocations.length > 0) {
-                const map = Maps.newStaticMap()
-                    .setSize(600, 400)
-                    .setLanguage('ja');
-                uniqueLocations.forEach((loc, i) => {
-                    try {
-                        // Skip seemingly invalid addresses (like postal code only) to save quota/time
-                        if (loc.match(/^\d{3}-\d{4}$/)) return;
-                        map.addMarker(loc);
-                    } catch (markerError) {
-                        Logger.log(`Failed to add marker for ${loc}: ${markerError}`);
+            mapUrl = generateStaticMapUrl(uniqueLocations.slice(0, 15));
+        } catch (e1) {
+            Logger.log(`Map Gen Strategy 1 Failed: ${e1}`);
+
+            // Strategy 2: Try fewer markers (Start, End, and up to 3 intermediates)
+            try {
+                const importantLocs = [];
+                if (uniqueLocations.length > 0) importantLocs.push(uniqueLocations[0]);
+                if (uniqueLocations.length > 1) importantLocs.push(uniqueLocations[uniqueLocations.length - 1]);
+                // Add a few random middles if available
+                if (uniqueLocations.length > 5) {
+                    importantLocs.push(uniqueLocations[Math.floor(uniqueLocations.length / 2)]);
+                }
+                mapUrl = generateStaticMapUrl(importantLocs);
+            } catch (e2) {
+                Logger.log(`Map Gen Strategy 2 Failed: ${e2}`);
+
+                // Strategy 3: Try just the FIRST location (Center map)
+                try {
+                    if (uniqueLocations.length > 0) {
+                        mapUrl = generateStaticMapUrl([uniqueLocations[0]]);
                     }
-                });
-                // Return Base64 data URI
-                const blob = map.getBlob();
-                const base64 = Utilities.base64Encode(blob.getBytes());
-                mapUrl = 'data:image/png;base64,' + base64;
+                } catch (e3) {
+                    mapError = 'Map Gen Failed: ' + e3.toString();
+                    Logger.log(mapError);
+                }
             }
-        } catch (e) {
-            // Map generation failed (quota, bad address, or unknown error)
-            mapUrl = null;
-            mapError = 'Map Gen Error: ' + e.toString();
-            Logger.log(mapError);
         }
     }
 
@@ -621,9 +750,27 @@ function saveItineraryData(days) {
         sheet.getRange(2, 1, rows.length, 20).setValues(rows);
     }
 
-    // Invalidate Cache
     try {
         const cache = CacheService.getScriptCache();
         cache.remove('itinerary_json');
     } catch (e) { }
+}
+
+/**
+ * Helper to generate static map base64 from list of locations
+ */
+function generateStaticMapUrl(locations) {
+    if (!locations || locations.length === 0) return null;
+
+    const map = Maps.newStaticMap()
+        .setSize(600, 400)
+        .setLanguage('ja'); // Note: 'ja' sometimes causes issues if locale not supported 
+
+    locations.forEach(loc => {
+        map.addMarker(loc);
+    });
+
+    const blob = map.getBlob();
+    const base64 = Utilities.base64Encode(blob.getBytes());
+    return 'data:image/png;base64,' + base64;
 }

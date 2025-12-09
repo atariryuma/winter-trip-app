@@ -67,7 +67,7 @@ const SettingsView = ({ itinerary, setItinerary, setSelectedDayId, isDarkMode, s
                 });
                 const newItinerary = Object.values(daysMap);
                 if (newItinerary.length === 0) throw new Error('有効なデータがありません');
-                if (confirm(`${newItinerary.length}日分のデータをインポートしますか？`)) {
+                if (window.confirm(`${newItinerary.length}日分のデータをインポートしますか？`)) {
                     setItinerary(newItinerary);
                     if (setSelectedDayId) setSelectedDayId(newItinerary[0]?.id);
                     alert('CSVインポート完了！保存ボタンでスプレッドシートに反映されます。');

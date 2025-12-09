@@ -126,7 +126,10 @@ const server = {
     autoFill: () => new Promise((resolve, reject) => {
         if (typeof google === 'object' && google.script && google.script.run) {
             google.script.run
-                .withSuccessHandler(resolve)
+                .withSuccessHandler((result) => {
+                    // GAS returns number directly, wrap it
+                    resolve(typeof result === 'number' ? { count: result } : result);
+                })
                 .withFailureHandler(reject)
                 .autoFillAllMissingDetails();
         } else {

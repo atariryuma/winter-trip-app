@@ -92,10 +92,6 @@ const MapView = ({ mapUrl, itinerary, mapError }) => {
             </div>
 
             <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                    <MapPin size={16} className="text-blue-500" />
-                </div>
-
                 {/* Day Routes */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
                     {itinerary.map((day, i) => {

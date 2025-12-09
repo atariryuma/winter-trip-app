@@ -176,3 +176,174 @@ body {
 :focus:not(:focus-visible) {
   outline: none;
 }
+
+/* ==========================================================================
+   MOBILE UX IMPROVEMENTS
+   ========================================================================== */
+
+/* Sticky Header Fix for iOS Safari */
+.sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  /* GPU acceleration to prevent iOS Safari "jumping" effect */
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* ==========================================================================
+   LANDSCAPE MODE STYLES (Mobile Only)
+   Targets mobile landscape: orientation landscape + small height
+   ========================================================================== */
+@media (orientation: landscape) and (max-height: 500px) {
+  /* Hide header in landscape */
+  .landscape-hide-header {
+    display: none !important;
+  }
+
+  /* Hide footer/bottom nav in landscape */
+  .landscape-hide-footer {
+    display: none !important;
+  }
+
+  /* Main content takes full height in landscape */
+  .landscape-fullscreen {
+    min-height: 100dvh !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  /* Horizontal scroll container for cards */
+  .landscape-horizontal-scroll {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    gap: 1rem;
+    padding: 1rem;
+    height: 100dvh;
+    align-items: center;
+  }
+
+  /* Individual cards in landscape scroll */
+  .landscape-card {
+    flex: 0 0 85vw;
+    min-width: 85vw;
+    max-width: 85vw;
+    height: calc(100dvh - 2rem);
+    max-height: calc(100dvh - 2rem);
+    scroll-snap-align: center;
+    overflow-y: auto;
+  }
+
+  /* First card padding to show "peeking" hint */
+  .landscape-horizontal-scroll::before {
+    content: '';
+    flex: 0 0 7.5vw;
+  }
+
+  /* Last card padding for symmetry */
+  .landscape-horizontal-scroll::after {
+    content: '';
+    flex: 0 0 7.5vw;
+  }
+
+  /* Hide summary card in landscape to maximize event card space */
+  .landscape-hide-summary {
+    display: none !important;
+  }
+
+  /* Day tabs in landscape - compact horizontal strip at top */
+  .landscape-day-tabs {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 48px;
+    z-index: 50;
+    background: linear-gradient(to right, rgba(37, 99, 235, 0.95), rgba(99, 102, 241, 0.95));
+    backdrop-filter: blur(8px);
+    display: flex !important;
+    align-items: center;
+    padding: 0 1rem;
+  }
+
+  .landscape-day-tabs button {
+    min-width: 52px !important;
+    height: 36px !important;
+    padding: 0 0.75rem !important;
+    font-size: 12px !important;
+  }
+
+  /* Adjust main container when day tabs are shown */
+  .landscape-with-tabs {
+    padding-top: 56px !important;
+    height: calc(100dvh - 56px) !important;
+  }
+}
+
+/* ==========================================================================
+   HORIZONTAL SCROLL CARDS (Reusable)
+   ========================================================================== */
+.scroll-snap-container {
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+.scroll-snap-item {
+  scroll-snap-align: center;
+}
+
+/* Smooth scroll for snapped items */
+.scroll-snap-container::-webkit-scrollbar {
+  display: none;
+}
+
+.scroll-snap-container {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Card peeking effect indicator */
+.peek-indicator {
+  position: relative;
+}
+
+.peek-indicator::after {
+  content: '';
+  position: absolute;
+  right: -10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 60%;
+  background: linear-gradient(to right, transparent, rgba(255,255,255,0.1));
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   ORIENTATION CHANGE ANIMATION
+   ========================================================================== */
+@keyframes landscape-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .landscape-card {
+    animation: landscape-fade-in 0.3s ease-out;
+  }
+}

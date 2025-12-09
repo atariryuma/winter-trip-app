@@ -95,6 +95,13 @@ function getPlaceInfo(query) {
                     textQuery: query,
                     languageCode: 'ja',
                     regionCode: 'JP',
+                    // Location bias centered on Japan (lat 35.0, lng 136.0) with 500km radius
+                    locationBias: {
+                        circle: {
+                            center: { latitude: 35.0, longitude: 136.0 },
+                            radius: 500000.0
+                        }
+                    },
                     maxResultCount: 1
                 };
 

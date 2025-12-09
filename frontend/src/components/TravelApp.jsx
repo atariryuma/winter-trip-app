@@ -236,9 +236,13 @@ export default function TravelApp() {
 
     const handleCopy = (text) => { navigator.clipboard.writeText(text); alert(`コピーしました: ${text}`); };
 
-    // Open place info modal
-    const openPlaceInfo = (placeName) => {
-        setSelectedPlaceName(placeName);
+    // Open place info modal with location context for better API search
+    const openPlaceInfo = (placeName, location) => {
+        // Combine name with location for more accurate Places API search
+        const searchQuery = location && !placeName.includes(location)
+            ? `${placeName} ${location}`
+            : placeName;
+        setSelectedPlaceName(searchQuery);
         setPlaceInfoOpen(true);
     };
 
@@ -385,7 +389,7 @@ export default function TravelApp() {
             <div className="w-full lg:ml-64 min-h-[100dvh] flex flex-col">
 
                 {/* ========== HEADER (Mobile/Tablet) - Compact Design ========== */}
-                <header className="lg:hidden bg-gradient-to-r from-blue-600 to-indigo-700 text-white sticky top-0 z-40 shrink-0">
+                <header className="lg:hidden bg-gradient-to-r from-blue-600 to-indigo-700 text-white sticky top-0 z-40 shrink-0 sticky-header landscape-hide-header">
                     {/* Safe area for notch */}
                     <div className="h-[env(safe-area-inset-top)]" />
 
@@ -474,7 +478,7 @@ export default function TravelApp() {
                                 <div className="pt-4">
 
                                     {/* Summary Card */}
-                                    <div className="bg-white dark:bg-slate-700 rounded-2xl shadow-sm mb-4 border border-gray-100 dark:border-slate-600 overflow-hidden">
+                                    <div className="bg-white dark:bg-slate-700 rounded-2xl shadow-sm mb-4 border border-gray-100 dark:border-slate-600 overflow-hidden landscape-hide-summary">
                                         {/* Header with Weather */}
                                         <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-700 dark:to-slate-700 border-b border-gray-100 dark:border-slate-600">
                                             <div className="flex items-center gap-2">
@@ -503,7 +507,7 @@ export default function TravelApp() {
                                         {/* Time axis line (desktop only) */}
                                         <div className="hidden lg:block absolute left-[52px] top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-200 via-blue-300 to-blue-200 dark:from-blue-800 dark:via-blue-700 dark:to-blue-800"></div>
 
-                                        <div className="space-y-4 lg:space-y-0">
+                                        <div className="space-y-4 lg:space-y-0 landscape-horizontal-scroll">
                                             {sortedEvents.map((event, index) => {
                                                 // Calculate duration to next event
                                                 const nextEvent = sortedEvents[index + 1];
@@ -517,7 +521,7 @@ export default function TravelApp() {
                                                 const durationMins = durationMinutes % 60;
 
                                                 return (
-                                                    <div key={event.id} className="relative">
+                                                    <div key={event.id} className="relative landscape-card">
                                                         {/* Insert Between Divider (Only in Edit Mode) */}
                                                         {isEditMode && (
                                                             <div
@@ -559,7 +563,7 @@ export default function TravelApp() {
                                                                         setEditItem(event);
                                                                         setModalOpen(true);
                                                                     } else {
-                                                                        openPlaceInfo(event.name);
+                                                                        openPlaceInfo(event.name, selectedDay.location);
                                                                     }
                                                                 }}
                                                                 onTouchStart={() => handleTouchStart(event)}
@@ -698,7 +702,7 @@ export default function TravelApp() {
                 </main>
 
                 {/* ========== BOTTOM NAV (Mobile only) ========== */}
-                <nav role="navigation" aria-label="メインナビゲーション" className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-gray-200/80 dark:border-slate-800 px-2 sm:px-6 flex justify-around items-center z-30 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2 print:hidden">
+                <nav role="navigation" aria-label="メインナビゲーション" className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-gray-200/80 dark:border-slate-800 px-2 sm:px-6 flex justify-around items-center z-30 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2 print:hidden landscape-hide-footer">
                     {[
                         { id: 'timeline', icon: Calendar, label: '旅程' },
                         { id: 'tickets', icon: Ticket, label: 'チケット' },

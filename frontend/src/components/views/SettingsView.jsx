@@ -1,7 +1,7 @@
 import React from 'react';
-import { Luggage, ChevronRight, Phone, Download, Upload, Clock, Moon } from 'lucide-react';
+import { Luggage, ChevronRight, Phone, Download, Upload, Clock, Moon, Sparkles } from 'lucide-react';
 
-const SettingsView = ({ itinerary, setItinerary, setSelectedDayId, isDarkMode, setIsDarkMode, lastUpdate, setActiveTab }) => {
+const SettingsView = ({ itinerary, setItinerary, setSelectedDayId, isDarkMode, setIsDarkMode, lastUpdate, setActiveTab, onAutoFill }) => {
     const handleExportCSV = () => {
         const headers = ['日付', '曜日', 'タイトル', '場所', '天気', '気温', 'イベントID', 'タイプ', 'カテゴリ', '名前', '開始時刻', '終了時刻', 'ステータス', '詳細'];
         const rows = [];
@@ -140,6 +140,25 @@ const SettingsView = ({ itinerary, setItinerary, setSelectedDayId, isDarkMode, s
                         </div>
                     </div>
                 )}
+            </div>
+
+            {/* Auto Fill */}
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden">
+                <button
+                    onClick={onAutoFill}
+                    className="w-full px-4 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-slate-700 active:bg-gray-100 dark:active:bg-slate-600 transition-colors touch-manipulation min-h-[56px]"
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center">
+                            <Sparkles size={18} className="text-purple-500" />
+                        </div>
+                        <div className="text-left">
+                            <span className="text-gray-700 dark:text-slate-200 font-medium block">情報の自動補完</span>
+                            <span className="text-xs text-gray-400 dark:text-slate-500">Google Mapsから詳細を取得して埋める</span>
+                        </div>
+                    </div>
+                    <ChevronRight size={18} className="text-gray-300 dark:text-slate-500" />
+                </button>
             </div>
 
             {/* Appearance */}

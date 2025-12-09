@@ -13,40 +13,50 @@ function onOpen() {
 }
 
 /**
- * Auto-fill Details column with location info based on Name/Place
+ * Menu Handler: Auto-fill active selection
  */
 function fillLocationDetails() {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
-    if (!sheet) {
-        SpreadsheetApp.getUi().alert('Correct sheet not found!');
-        return;
-    }
+    if (!sheet) return;
 
     const ui = SpreadsheetApp.getUi();
     const selection = sheet.getSelection();
     const range = selection.getActiveRange();
 
-    // If only one cell selected, assume it might be a mistake or specific target. 
-    // Let's operate on the rows of the selected range.
-    const startRow = range.getRow();
-    const numRows = range.getNumRows();
-
-    // Safety check for header
-    if (startRow < 2) {
+    if (range.getRow() < 2) {
         ui.alert('Please select data rows (excluding header).');
         return;
     }
 
-    // Get all data for the selected rows
-    // We need the full row content to determine category and columns
-    // Data range is effectively from startRow to startRow + numRows - 1
-    // We read all 20 columns to be safe
+    // Process the selected range
+    const processedCount = processAutoFill(sheet, range.getRow(), range.getNumRows());
+
+    if (processedCount > 0) {
+        ui.alert(`Updated ${processedCount} rows with location details.`);
+    } else {
+        ui.alert('No rows updated.');
+    }
+}
+
+/**
+ * Scan entire sheet for missing details and fill them
+ */
+function autoFillAllMissingDetails() {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+    if (!sheet) throw new Error('Sheet not found');
+
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return 0;
+
+    return processAutoFill(sheet, 2, lastRow - 1);
+}
+
+/**
+ * Core Logic: Auto-fill range
+ */
+function processAutoFill(sheet, startRow, numRows) {
     const dataRange = sheet.getRange(startRow, 1, numRows, 20);
     const values = dataRange.getValues();
-    const updates = []; // Store updates to batch write later if needed, 
-    // but since "Details" is just one cell, we might update cell by cell or rebuild array.
-    // Actually, updating `values` locally and then writing back is most efficient.
-
     let processedCount = 0;
 
     values.forEach((row, rIdx) => {
@@ -80,11 +90,7 @@ function fillLocationDetails() {
         if (targetName && targetDetailIdx > 0) {
             currentDetail = row[targetDetailIdx];
 
-            // Only fill if detail is empty or user wants strict overwrite? 
-            // For now, let's append if not empty, or just fill if empty.
-            // Let's assume we append if it exists, but carefully.
-            // Or maybe just fill if it doesn't contain "📍"? to avoid duplicate fills.
-
+            // Only fill if detail doesn't already have the pin icon (avoid dups)
             if (!currentDetail || !currentDetail.includes('📍')) {
                 try {
                     // Use reusable getPlaceInfo logic
@@ -119,10 +125,9 @@ function fillLocationDetails() {
     if (processedCount > 0) {
         // Write back
         dataRange.setValues(values);
-        ui.alert(`Updated ${processedCount} rows with location details.`);
-    } else {
-        ui.alert('No rows updated. Either selection was empty, fields were already filled, or no places found.');
     }
+
+    return processedCount;
 }
 
 // ============================================================================
@@ -155,6 +160,12 @@ function doGet(e) {
                 return handleValidatePasscode(e);
             case 'getPlaceInfo':
                 return handleGetPlaceInfo(e);
+            case 'autoFill':
+                const count = autoFillAllMissingDetails();
+                return createApiResponse('success', {
+                    message: `Updated ${count} items`,
+                    count: count
+                });
             default:
                 // Default: Redirect to GitHub Pages (Frontend)
                 const FRONTEND_URL = 'https://atariryuma.github.io/winter-trip-app/';
@@ -190,6 +201,7 @@ function handleGetData() {
 function handleValidatePasscode(e) {
     const inputCode = e.parameter.code || '';
     const storedCode = PropertiesService.getScriptProperties().getProperty('APP_PASSCODE') || '2025';
+    console.log(`[Login] Checking code. Input: '${inputCode}', Stored: '${storedCode}'`);
     const valid = inputCode === storedCode;
     return createApiResponse('success', { valid });
 }
@@ -467,6 +479,7 @@ function generateTravelTips(name, types) {
 
     return tips;
 }
+
 
 function doPost(e) {
     try {

@@ -23,7 +23,7 @@ import LoginView from './views/LoginView';
 // ============================================================================
 // CONSTANTS
 // ============================================================================
-const API_URL = 'https://script.google.com/macros/s/AKfycbzTq8JCFoUzdCxPKZ0QZZd3m0Jf7CBxTus1xilgz60HyHhqmuij5tT_P40t6YOUtk7bsg/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbyH4dRveVTS9I5TbpLNzsIwvqLvBtkWOZjsTccKDuajGMSFe2fvotG7RsT3VmlmBA7HVA/exec';
 
 // Helper: Determine event type from category
 const getCategoryType = (category) => {
@@ -122,6 +122,22 @@ const server = {
                 resolve(data);
             })
             .catch(e => reject(new Error('Place Info Error: ' + e.message)));
+    }),
+    autoFill: () => new Promise((resolve, reject) => {
+        if (typeof google === 'object' && google.script && google.script.run) {
+            google.script.run
+                .withSuccessHandler(resolve)
+                .withFailureHandler(reject)
+                .autoFillAllMissingDetails();
+        } else {
+            fetch(`${API_URL}?action=autoFill`, { method: 'GET' })
+                .then(res => res.json())
+                .then(json => {
+                    if (json.status === 'success') resolve(json.data);
+                    else throw new Error(json.error?.message || 'Failed');
+                })
+                .catch(e => reject(new Error('Auto-fill Error: ' + e.message)));
+        }
     })
 };
 
@@ -702,7 +718,27 @@ export default function TravelApp() {
                             {activeTab === 'map' && <MapView mapUrl={mapUrl} itinerary={itinerary} mapError={mapError} />}
 
                             {/* NEW: Settings View */}
-                            {activeTab === 'settings' && <SettingsView itinerary={itinerary} setItinerary={setItinerary} setSelectedDayId={setSelectedDayId} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} lastUpdate={lastUpdate} setActiveTab={setActiveTab} />}
+                            {activeTab === 'settings' && <SettingsView itinerary={itinerary} setItinerary={setItinerary} setSelectedDayId={setSelectedDayId} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} lastUpdate={lastUpdate} setActiveTab={setActiveTab} onAutoFill={async () => {
+                                if (!window.confirm('旅程内の空欄（詳細など）に、Google Mapsから取得した情報を自動入力しますか？\n※すでに入力済みの箇所は上書きされません。')) return;
+                                try {
+                                    setLoading(true);
+                                    const result = await server.autoFill();
+                                    if (result && result.count !== undefined) {
+                                        alert(`${result.count}件の情報を更新しました！\nデータを再読み込みします。`);
+                                        const newData = await server.getData();
+                                        if (newData && newData.days) {
+                                            setItinerary(newData.days);
+                                            setMapUrl(newData.mapUrl);
+                                            setMapError(newData.mapError);
+                                            setLastUpdate(newData.lastUpdate);
+                                        }
+                                    }
+                                } catch (e) {
+                                    alert('自動補完に失敗しました: ' + e.message);
+                                } finally {
+                                    setLoading(false);
+                                }
+                            }} />}
 
                             {/* NEW: Packing List View */}
                             {activeTab === 'packing' && <PackingList />}

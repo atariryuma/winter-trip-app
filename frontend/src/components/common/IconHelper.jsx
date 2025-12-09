@@ -1,9 +1,7 @@
 import React from 'react';
 import {
-    Plane, Train, Bus, MapPin, BedDouble, Calendar,
-    Sun, Cloud, Snowflake, Camera, ArrowRight, Utensils,
-    CheckCircle2, Circle, AlertCircle, Ticket, Mountain,
-    Waves, Coffee, ShoppingBag, Car, Music, Anchor
+    Plane, Train, Bus, MapPin, BedDouble, Sun, Cloud, Snowflake,
+    Camera, Utensils, Mountain, ShoppingBag, Car
 } from 'lucide-react';
 
 export const getIcon = (category, type, props = {}) => {

@@ -338,7 +338,7 @@ export default function TravelApp() {
     ) : null;
 
     return (
-        <div className="min-h-[100dvh] bg-[#F0F2F5] dark:bg-slate-900 flex overflow-x-hidden">
+        <div className="min-h-[100dvh] bg-[#F0F2F5] dark:bg-slate-900 flex overflow-x-clip">
             <PortraitLock />
             <ReloadPrompt />
             {SavingOverlay}

@@ -87,6 +87,10 @@ function getPlaceInfo(query) {
         };
 
         if (API_KEY) {
+            // NOTE: Places API (New) is temporarily disabled due to UrlFetchApp permission issues
+            // with anonymous GAS Web App deployments. Using Geocoding fallback only.
+            // TODO: Re-enable when GCP project linking is properly configured.
+            /*
             // Use Places API (New) - Text Search to find place
             const textSearchUrl = `https://places.googleapis.com/v1/places:searchText`;
             const searchPayload = {
@@ -140,6 +144,7 @@ function getPlaceInfo(query) {
                     }));
                 }
             }
+            */
         }
 
         // Fallback to Geocoding if Places API didn't return data

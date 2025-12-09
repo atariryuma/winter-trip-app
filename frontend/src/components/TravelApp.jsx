@@ -100,7 +100,7 @@ const server = {
             } catch (e) { }
         }
 
-        const API_URL = 'https://script.google.com/macros/s/AKfycbx6NYM8Z8yPJglcySGSLpowqYD95D7ooEXBUECLqoZEUbnwKu0gYOKHa9qkGHofBm1-Ag/exec';
+        const API_URL = 'https://script.google.com/macros/s/AKfycbyTcPA0MNhP6Y4yKhGiOMWLh-uusIKZs9j08YSTCQi7WqWJfYbszkW_xYM76HRC7uZnGA/exec';
         fetch(`${API_URL}?action=getPlaceInfo&query=${encodeURIComponent(query)}`, { method: 'GET' })
             .then(res => res.json())
             .then(data => {

@@ -87,64 +87,65 @@ function getPlaceInfo(query) {
         };
 
         if (API_KEY) {
-            // NOTE: Places API (New) is temporarily disabled due to UrlFetchApp permission issues
-            // with anonymous GAS Web App deployments. Using Geocoding fallback only.
-            // TODO: Re-enable when GCP project linking is properly configured.
-            /*
             // Use Places API (New) - Text Search to find place
-            const textSearchUrl = `https://places.googleapis.com/v1/places:searchText`;
-            const searchPayload = {
-                textQuery: query,
-                languageCode: 'ja',
-                regionCode: 'JP',
-                maxResultCount: 1
-            };
+            // GCP project winter-trip-app (921537031468) is now linked with OAuth consent configured
+            try {
+                const textSearchUrl = `https://places.googleapis.com/v1/places:searchText`;
+                const searchPayload = {
+                    textQuery: query,
+                    languageCode: 'ja',
+                    regionCode: 'JP',
+                    maxResultCount: 1
+                };
 
-            const searchResponse = UrlFetchApp.fetch(textSearchUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Goog-Api-Key': API_KEY,
-                    'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.websiteUri,places.rating,places.userRatingCount,places.regularOpeningHours,places.editorialSummary,places.reviews,places.googleMapsUri'
-                },
-                payload: JSON.stringify(searchPayload),
-                muteHttpExceptions: true
-            });
+                const searchResponse = UrlFetchApp.fetch(textSearchUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Goog-Api-Key': API_KEY,
+                        'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.websiteUri,places.rating,places.userRatingCount,places.regularOpeningHours,places.editorialSummary,places.reviews,places.googleMapsUri'
+                    },
+                    payload: JSON.stringify(searchPayload),
+                    muteHttpExceptions: true
+                });
 
-            const searchData = JSON.parse(searchResponse.getContentText());
+                const searchData = JSON.parse(searchResponse.getContentText());
 
-            if (searchData.places && searchData.places.length > 0) {
-                const place = searchData.places[0];
+                if (searchData.places && searchData.places.length > 0) {
+                    const place = searchData.places[0];
 
-                placeInfo.source = 'places_api';
-                placeInfo.formattedAddress = place.formattedAddress || '';
-                placeInfo.phone = place.nationalPhoneNumber || null;
-                placeInfo.website = place.websiteUri || null;
-                placeInfo.rating = place.rating || null;
-                placeInfo.userRatingCount = place.userRatingCount || null;
-                placeInfo.mapsUrl = place.googleMapsUri || placeInfo.mapsUrl;
+                    placeInfo.source = 'places_api';
+                    placeInfo.formattedAddress = place.formattedAddress || '';
+                    placeInfo.phone = place.nationalPhoneNumber || null;
+                    placeInfo.website = place.websiteUri || null;
+                    placeInfo.rating = place.rating || null;
+                    placeInfo.userRatingCount = place.userRatingCount || null;
+                    placeInfo.mapsUrl = place.googleMapsUri || placeInfo.mapsUrl;
 
-                // Editorial summary
-                if (place.editorialSummary && place.editorialSummary.text) {
-                    placeInfo.editorialSummary = place.editorialSummary.text;
+                    // Editorial summary
+                    if (place.editorialSummary && place.editorialSummary.text) {
+                        placeInfo.editorialSummary = place.editorialSummary.text;
+                    }
+
+                    // Opening hours
+                    if (place.regularOpeningHours && place.regularOpeningHours.weekdayDescriptions) {
+                        placeInfo.openingHours = place.regularOpeningHours.weekdayDescriptions;
+                    }
+
+                    // Reviews (up to 3 for display)
+                    if (place.reviews && place.reviews.length > 0) {
+                        placeInfo.reviews = place.reviews.slice(0, 3).map(r => ({
+                            author: r.authorAttribution?.displayName || '匿名',
+                            rating: r.rating || null,
+                            text: r.text?.text || '',
+                            relativeTime: r.relativePublishTimeDescription || ''
+                        }));
+                    }
                 }
-
-                // Opening hours
-                if (place.regularOpeningHours && place.regularOpeningHours.weekdayDescriptions) {
-                    placeInfo.openingHours = place.regularOpeningHours.weekdayDescriptions;
-                }
-
-                // Reviews (up to 3 for display)
-                if (place.reviews && place.reviews.length > 0) {
-                    placeInfo.reviews = place.reviews.slice(0, 3).map(r => ({
-                        author: r.authorAttribution?.displayName || '匿名',
-                        rating: r.rating || null,
-                        text: r.text?.text || '',
-                        relativeTime: r.relativePublishTimeDescription || ''
-                    }));
-                }
+            } catch (placesError) {
+                // Places API failed, will fall back to Geocoding below
+                Logger.log('Places API error: ' + placesError.toString());
             }
-            */
         }
 
         // Fallback to Geocoding if Places API didn't return data

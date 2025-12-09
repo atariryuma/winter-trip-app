@@ -37,7 +37,7 @@ const server = {
         } else {
             console.log('Using local fetch fallback');
             // Production URL (Stable v33)
-            const API_URL = 'https://script.google.com/macros/s/AKfycbyg-jI_lRSXsDeejEVdhPlT5W1gj3mYUkJwqDSXoFXyQThjnLVsBj4odCGYb7wqbX7vSA/exec';
+            const API_URL = 'https://script.google.com/macros/s/AKfycbyTcPA0MNhP6Y4yKhGiOMWLh-uusIKZs9j08YSTCQi7WqWJfYbszkW_xYM76HRC7uZnGA/exec';
 
             // Use simple GET request which mimics browser navigation to follow 302 redirects
             // Note: If GAS script permissions are set to ANYONE, this works.
@@ -61,7 +61,7 @@ const server = {
                 .saveItineraryData(data); // Call backend directly
         } else {
             // Production URL (Stable v33)
-            const API_URL = 'https://script.google.com/macros/s/AKfycbyg-jI_lRSXsDeejEVdhPlT5W1gj3mYUkJwqDSXoFXyQThjnLVsBj4odCGYb7wqbX7vSA/exec';
+            const API_URL = 'https://script.google.com/macros/s/AKfycbyTcPA0MNhP6Y4yKhGiOMWLh-uusIKZs9j08YSTCQi7WqWJfYbszkW_xYM76HRC7uZnGA/exec';
 
             // Use URLSearchParams to send data as 'application/x-www-form-urlencoded'
             // This ensures GAS receives it in e.parameter.data, which is more reliable than raw body in no-cors.
@@ -78,7 +78,7 @@ const server = {
         }
     }),
     validatePasscode: (code) => new Promise((resolve) => {
-        const API_URL = 'https://script.google.com/macros/s/AKfycbyg-jI_lRSXsDeejEVdhPlT5W1gj3mYUkJwqDSXoFXyQThjnLVsBj4odCGYb7wqbX7vSA/exec';
+        const API_URL = 'https://script.google.com/macros/s/AKfycbyTcPA0MNhP6Y4yKhGiOMWLh-uusIKZs9j08YSTCQi7WqWJfYbszkW_xYM76HRC7uZnGA/exec';
         fetch(`${API_URL}?action=validatePasscode&code=${encodeURIComponent(code)}`, { method: 'GET' })
             .then(res => res.json())
             .then(data => resolve(data.valid === true))

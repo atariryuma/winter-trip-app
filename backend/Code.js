@@ -499,7 +499,13 @@ function getItineraryData() {
                     .setSize(600, 400)
                     .setLanguage('ja');
                 uniqueLocations.forEach((loc, i) => {
-                    map.addMarker(loc);
+                    try {
+                        // Skip seemingly invalid addresses (like postal code only) to save quota/time
+                        if (loc.match(/^\d{3}-\d{4}$/)) return;
+                        map.addMarker(loc);
+                    } catch (markerError) {
+                        Logger.log(`Failed to add marker for ${loc}: ${markerError}`);
+                    }
                 });
                 // Return Base64 data URI
                 const blob = map.getBlob();

@@ -17,6 +17,7 @@ const MapView = lazy(() => import('./views/MapView'));
 const SettingsView = lazy(() => import('./views/SettingsView'));
 const PackingList = lazy(() => import('./views/PackingList'));
 const EmergencyContacts = lazy(() => import('./views/EmergencyContacts'));
+import LoginView from './views/LoginView';
 
 // ============================================================================
 // SERVER ADAPTER
@@ -254,36 +255,17 @@ export default function TravelApp() {
     };
 
     // Login
+    // Login
     if (!auth) {
-        const handlePasscodeChange = async (e) => {
-            const code = e.target.value;
-            if (code.length >= 4) {
-                const valid = await server.validatePasscode(code);
-                if (valid) {
+        return (
+            <LoginView
+                onLogin={() => {
                     setAuth(true);
                     sessionStorage.setItem('trip_auth', 'true');
-                }
-            }
-        };
-        return (
-            <div className="min-h-screen bg-gradient-to-br from-blue-600 to-indigo-800 flex items-center justify-center p-4">
-                <div className="w-full max-w-sm bg-white/90 backdrop-blur-xl rounded-3xl p-8 text-center shadow-2xl border border-white/20">
-                    <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-blue-500/30">
-                        <Plane className="text-white -rotate-45" size={32} />
-                    </div>
-                    <h1 className="text-2xl font-bold text-gray-800 mb-1 tracking-tight">Winter Journey</h1>
-                    <p className="text-gray-500 mb-8 font-medium">Okinawa <span className="text-blue-400 mx-2">✈</span> Takayama</p>
-                    <input
-                        type="password"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        autoFocus
-                        placeholder="PASSCODE"
-                        onChange={handlePasscodeChange}
-                        className="w-full p-4 text-center text-3xl font-bold tracking-[0.5em] text-gray-900 bg-gray-50 rounded-2xl border border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 outline-none transition-all placeholder:text-gray-300 placeholder:tracking-normal placeholder:text-sm"
-                    />
-                </div>
-            </div>
+                }}
+                validatePasscode={server.validatePasscode}
+                yearRange={yearRange}
+            />
         );
     }
 
@@ -459,110 +441,165 @@ export default function TravelApp() {
                                         </p>
                                     </div>
 
-                                    {/* Timeline - Grid for larger screens */}
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                        {sortedEvents.map((event, index) => (
-                                            <div key={event.id} className="relative">
+                                    {/* Timeline - Vertical layout with time axis for desktop */}
+                                    <div className="relative">
+                                        {/* Time axis line (desktop only) */}
+                                        <div className="hidden lg:block absolute left-[52px] top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-200 via-blue-300 to-blue-200 dark:from-blue-800 dark:via-blue-700 dark:to-blue-800"></div>
 
-                                                {/* Insert Between Divider (Only in Edit Mode) */}
-                                                {isEditMode && (
-                                                    <div
-                                                        className="h-6 -my-3 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer group z-10 relative"
-                                                        onClick={() => {
-                                                            const prevTime = index > 0 ? sortedEvents[index - 1].time : null;
-                                                            const nextTime = event.time;
-                                                            const midTime = getMidTime(prevTime, nextTime);
-                                                            setEditItem({ type: 'activity', category: 'sightseeing', status: 'planned', time: midTime, name: '' });
-                                                            setModalOpen(true);
-                                                        }}
-                                                    >
-                                                        <div className="w-full h-0.5 bg-blue-300 transform scale-x-90 group-hover:scale-x-100 transition-transform"></div>
-                                                        <div className="absolute bg-blue-500 text-white rounded-full p-1 shadow-sm transform scale-0 group-hover:scale-100 transition-transform">
-                                                            <Plus size={14} />
-                                                        </div>
-                                                    </div>
-                                                )}
+                                        <div className="space-y-4 lg:space-y-0">
+                                            {sortedEvents.map((event, index) => {
+                                                // Calculate duration to next event
+                                                const nextEvent = sortedEvents[index + 1];
+                                                let durationMinutes = 0;
+                                                if (nextEvent) {
+                                                    const currentEnd = event.endTime || event.time;
+                                                    durationMinutes = toMinutes(nextEvent.time) - toMinutes(currentEnd);
+                                                    if (durationMinutes < 0) durationMinutes += 24 * 60; // Handle overnight
+                                                }
+                                                const durationHours = Math.floor(durationMinutes / 60);
+                                                const durationMins = durationMinutes % 60;
 
-                                                <div
-                                                    onClick={isEditMode ? () => { setEditItem(event); setModalOpen(true); } : undefined}
-                                                    onTouchStart={() => handleTouchStart(event)}
-                                                    onTouchEnd={handleTouchEnd}
-                                                    onTouchMove={handleTouchEnd}
-                                                    className={`rounded-2xl p-5 shadow-sm border transition relative overflow-hidden ${event.type === 'stay' ? 'bg-indigo-50/50 dark:bg-indigo-900/30 border-indigo-100 dark:border-indigo-800' : 'bg-white dark:bg-slate-700 border-gray-100 dark:border-slate-600'} ${isEditMode ? 'cursor-pointer hover:shadow-md hover:border-blue-300' : ''}`}
-                                                >
-                                                    {/* Icon Background Decoration */}
-                                                    <div className="absolute top-0 right-0 p-3 opacity-10">
-                                                        {getIcon(event.category, event.type)}
-                                                    </div>
-
-                                                    <div className="flex justify-between items-start mb-2 flex-wrap gap-2 relative z-10">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${event.type === 'stay' ? 'bg-indigo-100 dark:bg-indigo-800 text-indigo-600 dark:text-indigo-300' : (event.category === 'flight' ? 'bg-blue-100 dark:bg-blue-800 text-blue-600 dark:text-blue-300' : 'bg-gray-100 dark:bg-slate-600 text-gray-600 dark:text-slate-300')}`}>
-                                                                {getIcon(event.category, event.type)}
+                                                return (
+                                                    <div key={event.id} className="relative">
+                                                        {/* Insert Between Divider (Only in Edit Mode) */}
+                                                        {isEditMode && (
+                                                            <div
+                                                                className="h-6 -my-3 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer group z-10 relative lg:ml-[72px]"
+                                                                onClick={() => {
+                                                                    const prevTime = index > 0 ? sortedEvents[index - 1].time : null;
+                                                                    const nextTime = event.time;
+                                                                    const midTime = getMidTime(prevTime, nextTime);
+                                                                    setEditItem({ type: 'activity', category: 'sightseeing', status: 'planned', time: midTime, name: '' });
+                                                                    setModalOpen(true);
+                                                                }}
+                                                            >
+                                                                <div className="w-full h-0.5 bg-blue-300 transform scale-x-90 group-hover:scale-x-100 transition-transform"></div>
+                                                                <div className="absolute bg-blue-500 text-white rounded-full p-1 shadow-sm transform scale-0 group-hover:scale-100 transition-transform">
+                                                                    <Plus size={14} />
+                                                                </div>
                                                             </div>
-                                                            <div className="flex items-baseline gap-2">
-                                                                <span className="text-lg font-bold text-gray-800 dark:text-slate-100 font-mono">{event.time}</span>
-                                                                {event.endTime && (
-                                                                    <>
-                                                                        <ArrowRight size={12} className="text-gray-400 dark:text-slate-500" />
-                                                                        <span className="text-sm text-gray-500 dark:text-slate-400 font-mono">{event.endTime}</span>
-                                                                    </>
+                                                        )}
+
+                                                        {/* Event Row */}
+                                                        <div className="flex lg:items-start gap-4">
+                                                            {/* Time Column (desktop) */}
+                                                            <div className="hidden lg:flex flex-col items-center w-[72px] shrink-0 pt-5">
+                                                                <span className="text-sm font-bold text-gray-700 dark:text-slate-200 font-mono bg-white dark:bg-slate-800 px-2 py-1 rounded-lg shadow-sm border border-gray-100 dark:border-slate-700">
+                                                                    {event.time}
+                                                                </span>
+                                                                {/* Timeline dot */}
+                                                                <div className={`w-4 h-4 rounded-full border-4 mt-2 ${event.type === 'stay' ? 'bg-indigo-500 border-indigo-200 dark:border-indigo-800' :
+                                                                    event.category === 'flight' ? 'bg-blue-500 border-blue-200 dark:border-blue-800' :
+                                                                        event.type === 'transport' ? 'bg-green-500 border-green-200 dark:border-green-800' :
+                                                                            'bg-gray-400 border-gray-200 dark:border-gray-700'
+                                                                    }`}></div>
+                                                            </div>
+
+                                                            {/* Event Card */}
+                                                            <div
+                                                                onClick={isEditMode ? () => { setEditItem(event); setModalOpen(true); } : undefined}
+                                                                onTouchStart={() => handleTouchStart(event)}
+                                                                onTouchEnd={handleTouchEnd}
+                                                                onTouchMove={handleTouchEnd}
+                                                                className={`flex-1 rounded-2xl p-5 shadow-sm border transition relative overflow-hidden ${event.type === 'stay' ? 'bg-indigo-50/50 dark:bg-indigo-900/30 border-indigo-100 dark:border-indigo-800' : 'bg-white dark:bg-slate-700 border-gray-100 dark:border-slate-600'} ${isEditMode ? 'cursor-pointer hover:shadow-md hover:border-blue-300' : ''}`}
+                                                            >
+                                                                {/* Icon Background Decoration */}
+                                                                <div className="absolute top-0 right-0 p-3 opacity-10">
+                                                                    {getIcon(event.category, event.type)}
+                                                                </div>
+
+                                                                <div className="flex justify-between items-start mb-2 flex-wrap gap-2 relative z-10">
+                                                                    <div className="flex items-center gap-3">
+                                                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${event.type === 'stay' ? 'bg-indigo-100 dark:bg-indigo-800 text-indigo-600 dark:text-indigo-300' : (event.category === 'flight' ? 'bg-blue-100 dark:bg-blue-800 text-blue-600 dark:text-blue-300' : 'bg-gray-100 dark:bg-slate-600 text-gray-600 dark:text-slate-300')}`}>
+                                                                            {getIcon(event.category, event.type)}
+                                                                        </div>
+                                                                        <div className="flex items-baseline gap-2">
+                                                                            {/* Mobile: show time here */}
+                                                                            <span className="lg:hidden text-lg font-bold text-gray-800 dark:text-slate-100 font-mono">{event.time}</span>
+                                                                            {event.endTime && (
+                                                                                <>
+                                                                                    <ArrowRight size={12} className="text-gray-400 dark:text-slate-500" />
+                                                                                    <span className="text-sm text-gray-500 dark:text-slate-400 font-mono">{event.endTime}</span>
+                                                                                </>
+                                                                            )}
+                                                                            {/* Desktop: show end time if exists */}
+                                                                            {event.endTime && (
+                                                                                <span className="hidden lg:inline-flex items-center gap-2 text-sm text-gray-500 dark:text-slate-400">
+                                                                                    <span className="font-mono">→ {event.endTime}</span>
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                    <StatusBadge status={event.status} />
+                                                                </div>
+
+                                                                <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg mb-1 mt-1">{event.name}</h3>
+
+                                                                {event.type === 'transport' && event.place && event.to && (
+                                                                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-300 mb-2 flex-wrap">
+                                                                        <span>{event.place}</span>
+                                                                        <ArrowRight size={14} />
+                                                                        <span>{event.to}</span>
+                                                                    </div>
+                                                                )}
+
+                                                                {(event.description || event.details) && (
+                                                                    <div className="mt-2 text-sm text-gray-600 dark:text-slate-300 space-y-1">
+                                                                        {event.description && <p>{event.description}</p>}
+                                                                        {event.details && <p>{event.details}</p>}
+                                                                    </div>
+                                                                )}
+
+                                                                {event.bookingRef && (
+                                                                    <div
+                                                                        onClick={(e) => { e.stopPropagation(); handleCopy(event.bookingRef); }}
+                                                                        className="mt-3 bg-white/80 dark:bg-slate-600 backdrop-blur-sm border border-gray-200 dark:border-slate-500 rounded-lg p-2 flex items-center justify-between cursor-pointer active:bg-gray-100 dark:active:bg-slate-500 group"
+                                                                    >
+                                                                        <div className="flex items-center gap-2">
+                                                                            <Ticket size={14} className="text-blue-500" />
+                                                                            <span className="text-xs text-gray-500 dark:text-slate-400">予約番号:</span>
+                                                                            <span className="font-mono font-bold text-gray-700 dark:text-slate-200">{event.bookingRef}</span>
+                                                                        </div>
+                                                                        <Copy size={14} className="text-gray-400 dark:text-slate-500 group-hover:text-blue-500" />
+                                                                    </div>
                                                                 )}
                                                             </div>
                                                         </div>
-                                                        <StatusBadge status={event.status} />
-                                                    </div>
 
-                                                    <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg mb-1 mt-1">{event.name}</h3>
-
-                                                    {event.type === 'transport' && event.place && event.to && (
-                                                        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-300 mb-2 flex-wrap">
-                                                            <span>{event.place}</span>
-                                                            <ArrowRight size={14} />
-                                                            <span>{event.to}</span>
-                                                        </div>
-                                                    )}
-
-                                                    {(event.description || event.details) && (
-                                                        <div className="mt-2 text-sm text-gray-600 dark:text-slate-300 space-y-1">
-                                                            {event.description && <p>{event.description}</p>}
-                                                            {event.details && <p>{event.details}</p>}
-                                                        </div>
-                                                    )}
-
-                                                    {event.bookingRef && (
-                                                        <div
-                                                            onClick={(e) => { e.stopPropagation(); handleCopy(event.bookingRef); }}
-                                                            className="mt-3 bg-white/80 dark:bg-slate-600 backdrop-blur-sm border border-gray-200 dark:border-slate-500 rounded-lg p-2 flex items-center justify-between cursor-pointer active:bg-gray-100 dark:active:bg-slate-500 group"
-                                                        >
-                                                            <div className="flex items-center gap-2">
-                                                                <Ticket size={14} className="text-blue-500" />
-                                                                <span className="text-xs text-gray-500 dark:text-slate-400">予約番号:</span>
-                                                                <span className="font-mono font-bold text-gray-700 dark:text-slate-200">{event.bookingRef}</span>
+                                                        {/* Duration Indicator (between events, desktop only) */}
+                                                        {nextEvent && durationMinutes > 0 && (
+                                                            <div className="hidden lg:flex items-center ml-[72px] py-3">
+                                                                <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-slate-500 bg-gray-50 dark:bg-slate-800 px-3 py-1.5 rounded-full">
+                                                                    <span className="opacity-70">⏱</span>
+                                                                    <span>
+                                                                        {durationHours > 0 && `${durationHours}時間`}
+                                                                        {durationMins > 0 && `${durationMins}分`}
+                                                                        後
+                                                                    </span>
+                                                                </div>
                                                             </div>
-                                                            <Copy size={14} className="text-gray-400 dark:text-slate-500 group-hover:text-blue-500" />
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        ))}
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
 
-                                        {isEditMode && (
-                                            <div className="pt-4">
-                                                {/* Final Append Button with Smart Time */}
-                                                <button
-                                                    onClick={() => {
-                                                        const lastTime = sortedEvents.length > 0 ? sortedEvents[sortedEvents.length - 1].time : '09:00';
-                                                        const nextTime = toTimeStr(toMinutes(lastTime) + 60);
-                                                        setEditItem({ type: 'activity', category: 'sightseeing', status: 'planned', time: nextTime, name: '' });
-                                                        setModalOpen(true);
-                                                    }}
-                                                    className="w-full py-4 border-2 border-dashed border-gray-300 rounded-2xl text-gray-400 hover:text-blue-500 hover:border-blue-300 transition flex items-center justify-center gap-2"
-                                                >
-                                                    <Plus size={20} /> 予定を追加
-                                                </button>
-                                            </div>
-                                        )}
+                                            {isEditMode && (
+                                                <div className="pt-4 lg:ml-[72px]">
+                                                    {/* Final Append Button with Smart Time */}
+                                                    <button
+                                                        onClick={() => {
+                                                            const lastTime = sortedEvents.length > 0 ? sortedEvents[sortedEvents.length - 1].time : '09:00';
+                                                            const nextTime = toTimeStr(toMinutes(lastTime) + 60);
+                                                            setEditItem({ type: 'activity', category: 'sightseeing', status: 'planned', time: nextTime, name: '' });
+                                                            setModalOpen(true);
+                                                        }}
+                                                        className="w-full py-4 border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-2xl text-gray-400 dark:text-slate-500 hover:text-blue-500 hover:border-blue-300 transition flex items-center justify-center gap-2"
+                                                    >
+                                                        <Plus size={20} /> 予定を追加
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
 
                                 </div>

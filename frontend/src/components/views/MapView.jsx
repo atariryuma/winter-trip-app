@@ -4,17 +4,24 @@ import { getIcon } from '../common/IconHelper';
 
 /**
  * Generates a Google Maps Directions URL for a given day's itinerary
+ * Uses addresses when available for more accurate routing
  */
 const getDayRouteUrl = (day) => {
     // Extract meaningful locations in chronological order
+    // Prefer address over name for accuracy
     const locations = [];
     day.events.forEach(e => {
-        // Collect places based on event type
-        if (e.place) locations.push(e.place); // Departure
-        if (e.to) locations.push(e.to);       // Arrival
-        if (e.category === 'hotel' && e.name) locations.push(e.name);
-        if (e.category === 'sightseeing' && e.name) locations.push(e.name);
-        if (e.category === 'meal' && e.name) locations.push(e.name);
+        // For transport: use place/to names (stations, airports)
+        if (e.place) locations.push(e.place);
+        if (e.to) locations.push(e.to);
+        // For hotels: use address if available, fallback to name
+        if (e.category === 'hotel' && e.name) {
+            locations.push(e.address || e.name);
+        }
+        // For sightseeing/activities: use address if available
+        if ((e.category === 'sightseeing' || e.category === 'meal') && e.name) {
+            locations.push(e.address || e.name);
+        }
     });
 
     // Deduplicate consecutive locations (avoid A -> A)
@@ -31,6 +38,7 @@ const getDayRouteUrl = (day) => {
     return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}&travelmode=transit`;
 };
 
+
 const MapView = ({ mapUrl, itinerary, mapError }) => {
     const [imageError, setImageError] = React.useState(false);
 
@@ -43,14 +51,15 @@ const MapView = ({ mapUrl, itinerary, mapError }) => {
         return itinerary.flatMap(day => {
             const locs = [];
             day.events.forEach(e => {
-                if (e.place) locs.push({ name: e.place, type: 'transport' });
-                if (e.to) locs.push({ name: e.to, type: 'transport' });
-                if (e.category === 'hotel') locs.push({ name: e.name, type: 'hotel' });
-                if (e.category === 'sightseeing') locs.push({ name: e.name, type: 'sightseeing' });
+                if (e.place) locs.push({ name: e.place, type: 'transport', address: null });
+                if (e.to) locs.push({ name: e.to, type: 'transport', address: null });
+                if (e.category === 'hotel') locs.push({ name: e.name, type: 'hotel', address: e.address });
+                if (e.category === 'sightseeing') locs.push({ name: e.name, type: 'sightseeing', address: e.address });
             });
             return locs;
         }).filter((v, i, a) => a.findIndex(t => (t.name === v.name)) === i);
     }, [itinerary]);
+
 
     return (
         <div className="pt-4 space-y-6">
@@ -121,7 +130,7 @@ const MapView = ({ mapUrl, itinerary, mapError }) => {
                     {markers.map((m, i) => (
                         <a
                             key={i}
-                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(m.name)}`}
+                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(m.address || m.name)}`}
                             target="_blank" rel="noopener noreferrer"
                             className="flex items-center justify-between bg-white dark:bg-slate-700 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-600 transition active:scale-[0.98]"
                         >
@@ -132,6 +141,7 @@ const MapView = ({ mapUrl, itinerary, mapError }) => {
                                 <div>
                                     <div className="font-bold text-gray-700 dark:text-slate-200">{m.name}</div>
                                     <div className="text-xs text-gray-400 dark:text-slate-500 uppercase font-bold">{m.type}</div>
+                                    {m.address && <div className="text-[10px] text-gray-400 dark:text-slate-500 truncate max-w-[150px]">{m.address}</div>}
                                 </div>
                             </div>
                             <div className="flex flex-col gap-1">
@@ -139,7 +149,7 @@ const MapView = ({ mapUrl, itinerary, mapError }) => {
                                     <MapIcon size={12} /> マップ
                                 </span>
                                 <a
-                                    href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(m.name)}`}
+                                    href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(m.address || m.name)}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     onClick={(e) => e.stopPropagation()}

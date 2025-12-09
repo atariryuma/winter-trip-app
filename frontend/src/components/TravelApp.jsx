@@ -23,7 +23,7 @@ import LoginView from './views/LoginView';
 // ============================================================================
 // CONSTANTS
 // ============================================================================
-const API_URL = 'https://script.google.com/macros/s/AKfycbyH4dRveVTS9I5TbpLNzsIwvqLvBtkWOZjsTccKDuajGMSFe2fvotG7RsT3VmlmBA7HVA/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbz6gHcAUHhLFBFPUN3m-6E2WB_8rqSZpqq94M7LPgVAYLh861AxAaAFByA01JzrZci_TQ/exec';
 
 // Helper: Determine event type from category
 const getCategoryType = (category) => {

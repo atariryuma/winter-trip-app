@@ -480,6 +480,14 @@ function generateTravelTips(name, types) {
     return tips;
 }
 
+/**
+ * Extract address from details field (looks for 📍 prefix)
+ */
+function extractAddressFromDetails(details) {
+    if (!details) return null;
+    const match = details.match(/📍\s*(.+?)(?:\n|$)/);
+    return match ? match[1].trim() : null;
+}
 
 function doPost(e) {
     try {
@@ -591,6 +599,7 @@ function getItineraryData() {
                 type: 'stay',
                 category: 'hotel',
                 name: hotelName,
+                address: extractAddressFromDetails(hotelDetails),
                 time: (checkInTime || '').split('-')[0] || '15:00',
                 checkIn: checkInTime,
                 status: status || 'confirmed',
@@ -603,6 +612,7 @@ function getItineraryData() {
                 type: 'transport',
                 category: type || 'other',
                 name: name,
+                address: extractAddressFromDetails(details),
                 time: departureTime,
                 endTime: arrivalTime,
                 place: departurePlace,
@@ -616,6 +626,7 @@ function getItineraryData() {
                 type: 'activity',
                 category: type || 'sightseeing',
                 name: name,
+                address: extractAddressFromDetails(details),
                 time: departureTime,
                 description: details,
                 status: status || 'planned'

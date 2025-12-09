@@ -95,12 +95,12 @@ const PackingList = () => {
                             <button
                                 key={item.id}
                                 onClick={() => toggleItem(item.id)}
-                                className="w-full px-4 py-3.5 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-slate-600 active:bg-gray-100 dark:active:bg-slate-500 transition"
+                                className="w-full px-4 py-4 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-slate-600 active:bg-gray-100 dark:active:bg-slate-500 transition-colors touch-manipulation min-h-[52px]"
                             >
-                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition ${item.packed ? 'bg-green-500 border-green-500' : 'border-gray-300 dark:border-slate-500'}`}>
-                                    {item.packed && <CheckCircle2 size={14} className="text-white" />}
+                                <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all shrink-0 ${item.packed ? 'bg-green-500 border-green-500' : 'border-gray-300 dark:border-slate-500'}`}>
+                                    {item.packed && <CheckCircle2 size={16} className="text-white" />}
                                 </div>
-                                <span className={`text-gray-700 dark:text-slate-200 ${item.packed ? 'line-through text-gray-400 dark:text-slate-500' : ''}`}>{item.name}</span>
+                                <span className={`text-gray-700 dark:text-slate-200 text-left ${item.packed ? 'line-through text-gray-400 dark:text-slate-500' : ''}`}>{item.name}</span>
                             </button>
                         ))}
                     </div>

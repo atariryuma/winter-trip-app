@@ -87,17 +87,21 @@ const SettingsView = ({ itinerary, setItinerary, setSelectedDayId, isDarkMode, s
                 <div className="px-4 py-3 border-b border-gray-100 dark:border-slate-700">
                     <h3 className="font-bold text-gray-800 dark:text-slate-100 text-sm">便利ツール</h3>
                 </div>
-                <button onClick={() => setActiveTab('packing')} className="w-full px-4 py-3.5 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-slate-700 active:bg-gray-100 dark:active:bg-slate-600 transition">
+                <button onClick={() => setActiveTab('packing')} className="w-full px-4 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-slate-700 active:bg-gray-100 dark:active:bg-slate-600 transition-colors touch-manipulation min-h-[56px]">
                     <div className="flex items-center gap-3">
-                        <Luggage size={20} className="text-orange-500" />
-                        <span className="text-gray-700 dark:text-slate-200">パッキングリスト</span>
+                        <div className="w-9 h-9 rounded-xl bg-orange-50 dark:bg-orange-900/30 flex items-center justify-center">
+                            <Luggage size={18} className="text-orange-500" />
+                        </div>
+                        <span className="text-gray-700 dark:text-slate-200 font-medium">パッキングリスト</span>
                     </div>
                     <ChevronRight size={18} className="text-gray-300 dark:text-slate-500" />
                 </button>
-                <button onClick={() => setActiveTab('emergency')} className="w-full px-4 py-3.5 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-slate-700 active:bg-gray-100 dark:active:bg-slate-600 transition border-t border-gray-50 dark:border-slate-700">
+                <button onClick={() => setActiveTab('emergency')} className="w-full px-4 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-slate-700 active:bg-gray-100 dark:active:bg-slate-600 transition-colors touch-manipulation min-h-[56px] border-t border-gray-50 dark:border-slate-700">
                     <div className="flex items-center gap-3">
-                        <Phone size={20} className="text-red-500" />
-                        <span className="text-gray-700 dark:text-slate-200">緊急連絡先</span>
+                        <div className="w-9 h-9 rounded-xl bg-red-50 dark:bg-red-900/30 flex items-center justify-center">
+                            <Phone size={18} className="text-red-500" />
+                        </div>
+                        <span className="text-gray-700 dark:text-slate-200 font-medium">緊急連絡先</span>
                     </div>
                     <ChevronRight size={18} className="text-gray-300 dark:text-slate-500" />
                 </button>
@@ -108,17 +112,21 @@ const SettingsView = ({ itinerary, setItinerary, setSelectedDayId, isDarkMode, s
                 <div className="px-4 py-3 border-b border-gray-100 dark:border-slate-700">
                     <h3 className="font-bold text-gray-800 dark:text-slate-100 text-sm">データ管理</h3>
                 </div>
-                <button onClick={handleExportCSV} className="w-full px-4 py-3.5 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-slate-700 active:bg-gray-100 dark:active:bg-slate-600 transition">
+                <button onClick={handleExportCSV} className="w-full px-4 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-slate-700 active:bg-gray-100 dark:active:bg-slate-600 transition-colors touch-manipulation min-h-[56px]">
                     <div className="flex items-center gap-3">
-                        <Download size={20} className="text-blue-500" />
-                        <span className="text-gray-700 dark:text-slate-200">CSV ダウンロード</span>
+                        <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
+                            <Download size={18} className="text-blue-500" />
+                        </div>
+                        <span className="text-gray-700 dark:text-slate-200 font-medium">CSV ダウンロード</span>
                     </div>
                     <ChevronRight size={18} className="text-gray-300 dark:text-slate-500" />
                 </button>
-                <label className="w-full px-4 py-3.5 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-slate-700 active:bg-gray-100 dark:active:bg-slate-600 transition cursor-pointer border-t border-gray-50 dark:border-slate-700">
+                <label className="w-full px-4 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-slate-700 active:bg-gray-100 dark:active:bg-slate-600 transition-colors cursor-pointer border-t border-gray-50 dark:border-slate-700 touch-manipulation min-h-[56px]">
                     <div className="flex items-center gap-3">
-                        <Upload size={20} className="text-green-500" />
-                        <span className="text-gray-700 dark:text-slate-200">CSV アップロード</span>
+                        <div className="w-9 h-9 rounded-xl bg-green-50 dark:bg-green-900/30 flex items-center justify-center">
+                            <Upload size={18} className="text-green-500" />
+                        </div>
+                        <span className="text-gray-700 dark:text-slate-200 font-medium">CSV アップロード</span>
                     </div>
                     <ChevronRight size={18} className="text-gray-300 dark:text-slate-500" />
                     <input type="file" accept=".csv" onChange={handleImportCSV} className="hidden" />

@@ -392,20 +392,24 @@ export default function TravelApp() {
 
                 {/* ========== DATE TABS (Only for Timeline) ========== */}
                 {activeTab === 'timeline' && (
-                    <div className="px-4 lg:px-8 -mt-6 lg:mt-0 relative z-20 mb-2 lg:mb-4">
+                    <div className="px-4 lg:px-8 -mt-6 lg:mt-0 relative z-20 mb-3 lg:mb-4">
                         <div className="max-w-6xl mx-auto">
-                            <div className="flex flex-wrap gap-2 lg:gap-3 pb-2 pt-1 lg:pt-4">
-                                {itinerary.map(day => (
+                            <div className="flex gap-2 lg:gap-3 pb-2 pt-1 lg:pt-4 overflow-x-auto scrollbar-hide snap-x snap-mandatory scroll-smooth -mx-1 px-1">
+                                {itinerary.map((day, idx) => (
                                     <button
                                         key={day.id}
                                         onClick={() => setSelectedDayId(day.id)}
-                                        className={`flex-shrink-0 snap-center flex flex-col items-center justify-center w-16 h-16 lg:w-20 lg:h-20 rounded-2xl shadow-sm transition-all duration-300 border border-gray-100/50 dark:border-slate-600 ${selectedDayId === day.id
-                                            ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 ring-2 ring-blue-500/30 shadow-md"
-                                            : "bg-white/90 dark:bg-slate-700/50 text-gray-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 hover:shadow-md"
+                                        className={`flex-shrink-0 snap-center flex flex-col items-center justify-center min-w-[68px] h-[76px] lg:min-w-[80px] lg:h-[88px] rounded-2xl transition-all duration-200 border touch-manipulation active:scale-95 ${selectedDayId === day.id
+                                            ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-700 shadow-lg shadow-blue-500/10 scale-105"
+                                            : "bg-white/95 dark:bg-slate-700/60 text-gray-500 dark:text-slate-400 border-gray-100 dark:border-slate-600 hover:bg-white dark:hover:bg-slate-700 hover:shadow-md"
                                             }`}
                                     >
-                                        <span className="text-[10px] lg:text-xs font-bold uppercase tracking-wider">{day.dayOfWeek}</span>
-                                        <span className="text-lg lg:text-xl font-black leading-none mt-0.5">{day.date.split('/')[1]}</span>
+                                        <span className="text-[10px] lg:text-xs font-bold uppercase tracking-wider opacity-70">{day.dayOfWeek}</span>
+                                        <span className="text-xl lg:text-2xl font-black leading-none mt-0.5">{day.date.split('/')[1]}</span>
+                                        <span className="text-[9px] lg:text-[10px] text-gray-400 dark:text-slate-500 mt-0.5">{day.date.split('/')[0]}月</span>
+                                        {selectedDayId === day.id && (
+                                            <div className="absolute -bottom-1 w-2 h-2 bg-blue-500 rounded-full" />
+                                        )}
                                     </button>
                                 ))}
                             </div>
@@ -422,23 +426,28 @@ export default function TravelApp() {
                                 <div className="pt-4 overflow-hidden">
 
                                     {/* Summary Card */}
-                                    <div className="bg-white dark:bg-slate-700 rounded-2xl p-4 shadow-sm mb-4 border border-gray-100 dark:border-slate-600">
-                                        <div className="flex justify-between items-start mb-3 gap-4">
-                                            <div className="flex-1">
-                                                <div className="lg:hidden text-xs text-blue-600 dark:text-blue-400 font-bold mb-1">Day {dayIndex + 1}</div>
-                                                <h2 className="text-lg font-bold text-gray-800 dark:text-slate-100">{selectedDay.title}</h2>
-                                                <p className="text-xs text-gray-500 dark:text-slate-400 mt-1 flex items-center gap-1">
-                                                    <MapPin size={14} /> {selectedDay.location}
-                                                </p>
+                                    <div className="bg-white dark:bg-slate-700 rounded-2xl shadow-sm mb-4 border border-gray-100 dark:border-slate-600 overflow-hidden">
+                                        {/* Header with Weather */}
+                                        <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-700 dark:to-slate-700 border-b border-gray-100 dark:border-slate-600">
+                                            <div className="flex items-center gap-2">
+                                                <span className="lg:hidden inline-flex items-center justify-center w-7 h-7 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-xs font-black">D{dayIndex + 1}</span>
+                                                <span className="hidden lg:inline text-sm text-gray-500 dark:text-slate-400 font-medium">Day {dayIndex + 1}</span>
                                             </div>
-                                            <div className="flex flex-col items-center pl-4 border-l border-gray-100 dark:border-slate-600">
-                                                {getWeatherIcon(selectedDay.weather?.condition)}
-                                                <span className="text-sm font-bold text-gray-700 dark:text-slate-200 mt-1">{selectedDay.weather?.temp}</span>
+                                            <div className="flex items-center gap-2 bg-white/60 dark:bg-slate-600/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
+                                                {getWeatherIcon(selectedDay.weather?.condition, { size: 18 })}
+                                                <span className="text-sm font-bold text-gray-700 dark:text-slate-200">{selectedDay.weather?.temp}</span>
                                             </div>
                                         </div>
-                                        <p className="text-sm text-gray-600 dark:text-slate-300 leading-relaxed bg-gray-50 dark:bg-slate-600 p-3 rounded-xl border border-gray-100 dark:border-slate-500">
-                                            {selectedDay.summary}
-                                        </p>
+                                        {/* Content */}
+                                        <div className="p-4">
+                                            <h2 className="text-lg font-bold text-gray-800 dark:text-slate-100 mb-1">{selectedDay.title}</h2>
+                                            <p className="text-sm text-gray-500 dark:text-slate-400 flex items-center gap-1.5 mb-3">
+                                                <MapPin size={14} className="text-gray-400" /> {selectedDay.location}
+                                            </p>
+                                            <p className="text-sm text-gray-600 dark:text-slate-300 leading-relaxed bg-gray-50 dark:bg-slate-600/50 p-3 rounded-xl">
+                                                {selectedDay.summary}
+                                            </p>
+                                        </div>
                                     </div>
 
                                     {/* Timeline - Vertical layout with time axis for desktop */}
@@ -501,66 +510,76 @@ export default function TravelApp() {
                                                                 onTouchStart={() => handleTouchStart(event)}
                                                                 onTouchEnd={handleTouchEnd}
                                                                 onTouchMove={handleTouchEnd}
-                                                                className={`flex-1 rounded-2xl p-5 shadow-sm border transition relative overflow-hidden ${event.type === 'stay' ? 'bg-indigo-50/50 dark:bg-indigo-900/30 border-indigo-100 dark:border-indigo-800' : 'bg-white dark:bg-slate-700 border-gray-100 dark:border-slate-600'} ${isEditMode ? 'cursor-pointer hover:shadow-md hover:border-blue-300' : ''}`}
+                                                                className={`flex-1 rounded-2xl p-4 shadow-sm border transition-all duration-200 relative overflow-hidden touch-manipulation ${event.type === 'stay' ? 'bg-gradient-to-br from-indigo-50 to-purple-50/50 dark:from-indigo-900/30 dark:to-purple-900/20 border-indigo-100 dark:border-indigo-800' : 'bg-white dark:bg-slate-700 border-gray-100 dark:border-slate-600'} ${isEditMode ? 'cursor-pointer hover:shadow-lg hover:border-blue-300 active:scale-[0.98]' : ''}`}
                                                             >
                                                                 {/* Icon Background Decoration */}
-                                                                <div className="absolute top-0 right-0 p-3 opacity-10">
-                                                                    {getIcon(event.category, event.type)}
+                                                                <div className="absolute top-0 right-0 p-4 opacity-[0.07]">
+                                                                    {getIcon(event.category, event.type, { size: 64 })}
                                                                 </div>
 
-                                                                <div className="flex justify-between items-start mb-2 flex-wrap gap-2 relative z-10">
+                                                                {/* Header Row */}
+                                                                <div className="flex items-start justify-between gap-3 relative z-10 mb-3">
                                                                     <div className="flex items-center gap-3">
-                                                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${event.type === 'stay' ? 'bg-indigo-100 dark:bg-indigo-800 text-indigo-600 dark:text-indigo-300' : (event.category === 'flight' ? 'bg-blue-100 dark:bg-blue-800 text-blue-600 dark:text-blue-300' : 'bg-gray-100 dark:bg-slate-600 text-gray-600 dark:text-slate-300')}`}>
-                                                                            {getIcon(event.category, event.type)}
+                                                                        {/* Icon */}
+                                                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${event.type === 'stay' ? 'bg-indigo-100 dark:bg-indigo-800/60 text-indigo-600 dark:text-indigo-300' : event.category === 'flight' ? 'bg-blue-100 dark:bg-blue-800/60 text-blue-600 dark:text-blue-300' : event.category === 'meal' ? 'bg-orange-100 dark:bg-orange-800/60 text-orange-600 dark:text-orange-300' : 'bg-gray-100 dark:bg-slate-600 text-gray-600 dark:text-slate-300'}`}>
+                                                                            {getIcon(event.category, event.type, { size: 20 })}
                                                                         </div>
-                                                                        <div className="flex items-baseline gap-2">
-                                                                            {/* Mobile: show time here */}
-                                                                            <span className="lg:hidden text-lg font-bold text-gray-800 dark:text-slate-100 font-mono">{event.time}</span>
-                                                                            {event.endTime && (
-                                                                                <>
-                                                                                    <ArrowRight size={12} className="text-gray-400 dark:text-slate-500" />
-                                                                                    <span className="text-sm text-gray-500 dark:text-slate-400 font-mono">{event.endTime}</span>
-                                                                                </>
-                                                                            )}
-                                                                            {/* Desktop: show end time if exists */}
-                                                                            {event.endTime && (
-                                                                                <span className="hidden lg:inline-flex items-center gap-2 text-sm text-gray-500 dark:text-slate-400">
-                                                                                    <span className="font-mono">→ {event.endTime}</span>
-                                                                                </span>
-                                                                            )}
+                                                                        {/* Time (Mobile) */}
+                                                                        <div className="lg:hidden">
+                                                                            <div className="flex items-center gap-1.5">
+                                                                                <span className="text-lg font-bold text-gray-800 dark:text-slate-100 tabular-nums">{event.time}</span>
+                                                                                {event.endTime && (
+                                                                                    <>
+                                                                                        <span className="text-gray-300 dark:text-slate-500">-</span>
+                                                                                        <span className="text-sm text-gray-500 dark:text-slate-400 tabular-nums">{event.endTime}</span>
+                                                                                    </>
+                                                                                )}
+                                                                            </div>
                                                                         </div>
+                                                                        {/* Desktop: show end time indicator */}
+                                                                        {event.endTime && (
+                                                                            <span className="hidden lg:inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-slate-400 bg-gray-50 dark:bg-slate-600/50 px-2 py-0.5 rounded-full">
+                                                                                <span className="tabular-nums">→ {event.endTime}</span>
+                                                                            </span>
+                                                                        )}
                                                                     </div>
                                                                     <StatusBadge status={event.status} />
                                                                 </div>
 
-                                                                <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg mb-1 mt-1">{event.name}</h3>
+                                                                {/* Title */}
+                                                                <h3 className="font-bold text-gray-800 dark:text-slate-100 text-base lg:text-lg leading-snug">{event.name}</h3>
 
+                                                                {/* Transport Route */}
                                                                 {event.type === 'transport' && event.place && event.to && (
-                                                                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-300 mb-2 flex-wrap">
-                                                                        <span>{event.place}</span>
-                                                                        <ArrowRight size={14} />
-                                                                        <span>{event.to}</span>
+                                                                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-300 mt-2 bg-gray-50 dark:bg-slate-600/40 rounded-lg px-3 py-2">
+                                                                        <span className="font-medium">{event.place}</span>
+                                                                        <ArrowRight size={14} className="text-gray-400 shrink-0" />
+                                                                        <span className="font-medium">{event.to}</span>
                                                                     </div>
                                                                 )}
 
+                                                                {/* Description */}
                                                                 {(event.description || event.details) && (
-                                                                    <div className="mt-2 text-sm text-gray-600 dark:text-slate-300 space-y-1">
+                                                                    <div className="mt-2 text-sm text-gray-600 dark:text-slate-300 leading-relaxed">
                                                                         {event.description && <p>{event.description}</p>}
-                                                                        {event.details && <p>{event.details}</p>}
+                                                                        {event.details && <p className="mt-1 text-gray-500 dark:text-slate-400">{event.details}</p>}
                                                                     </div>
                                                                 )}
 
+                                                                {/* Booking Reference */}
                                                                 {event.bookingRef && (
                                                                     <div
                                                                         onClick={(e) => { e.stopPropagation(); handleCopy(event.bookingRef); }}
-                                                                        className="mt-3 bg-white/80 dark:bg-slate-600 backdrop-blur-sm border border-gray-200 dark:border-slate-500 rounded-lg p-2 flex items-center justify-between cursor-pointer active:bg-gray-100 dark:active:bg-slate-500 group"
+                                                                        className="mt-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800/50 rounded-xl p-3 flex items-center justify-between cursor-pointer active:bg-blue-100 dark:active:bg-blue-800/40 transition-colors group"
                                                                     >
                                                                         <div className="flex items-center gap-2">
-                                                                            <Ticket size={14} className="text-blue-500" />
-                                                                            <span className="text-xs text-gray-500 dark:text-slate-400">予約番号:</span>
-                                                                            <span className="font-mono font-bold text-gray-700 dark:text-slate-200">{event.bookingRef}</span>
+                                                                            <Ticket size={16} className="text-blue-500" />
+                                                                            <div>
+                                                                                <span className="text-[10px] text-blue-400 dark:text-blue-300 uppercase font-bold block">予約番号</span>
+                                                                                <span className="font-mono font-bold text-blue-700 dark:text-blue-200 tracking-wider">{event.bookingRef}</span>
+                                                                            </div>
                                                                         </div>
-                                                                        <Copy size={14} className="text-gray-400 dark:text-slate-500 group-hover:text-blue-500" />
+                                                                        <Copy size={16} className="text-blue-300 group-hover:text-blue-500 transition-colors" />
                                                                     </div>
                                                                 )}
                                                             </div>
@@ -624,43 +643,31 @@ export default function TravelApp() {
                 </main>
 
                 {/* ========== BOTTOM NAV (Mobile only) ========== */}
-                <nav role="navigation" aria-label="メインナビゲーション" className="lg:hidden fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[600px] bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-gray-200 dark:border-slate-800 px-6 py-1 flex justify-around items-center z-30 pb-[calc(0.25rem+env(safe-area-inset-bottom))] print:hidden">
-                    <button
-                        onClick={() => setActiveTab('timeline')}
-                        aria-label="旅程タブ"
-                        aria-current={activeTab === 'timeline' ? 'page' : undefined}
-                        className={`flex flex-col items-center gap-0.5 p-2 min-w-12 min-h-12 transition-transform active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-lg ${activeTab === 'timeline' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-400'}`}
-                    >
-                        <Calendar size={24} strokeWidth={activeTab === 'timeline' ? 2.5 : 2} />
-                        <span className="text-[11px] font-bold">旅程</span>
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('tickets')}
-                        aria-label="チケットタブ"
-                        aria-current={activeTab === 'tickets' ? 'page' : undefined}
-                        className={`flex flex-col items-center gap-0.5 p-2 min-w-12 min-h-12 transition-transform active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-lg ${activeTab === 'tickets' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-400'}`}
-                    >
-                        <Ticket size={24} strokeWidth={activeTab === 'tickets' ? 2.5 : 2} />
-                        <span className="text-[11px] font-bold">チケット</span>
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('map')}
-                        aria-label="マップタブ"
-                        aria-current={activeTab === 'map' ? 'page' : undefined}
-                        className={`flex flex-col items-center gap-0.5 p-2 min-w-12 min-h-12 transition-transform active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-lg ${activeTab === 'map' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-400'}`}
-                    >
-                        <MapPin size={24} strokeWidth={activeTab === 'map' ? 2.5 : 2} />
-                        <span className="text-[11px] font-bold">マップ</span>
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('settings')}
-                        aria-label="設定タブ"
-                        aria-current={activeTab === 'settings' ? 'page' : undefined}
-                        className={`flex flex-col items-center gap-0.5 p-2 min-w-12 min-h-12 transition-transform active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-lg ${activeTab === 'settings' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-400'}`}
-                    >
-                        <Settings size={24} strokeWidth={activeTab === 'settings' ? 2.5 : 2} />
-                        <span className="text-[11px] font-bold">設定</span>
-                    </button>
+                <nav role="navigation" aria-label="メインナビゲーション" className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-gray-200/80 dark:border-slate-800 px-2 sm:px-6 flex justify-around items-center z-30 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2 print:hidden">
+                    {[
+                        { id: 'timeline', icon: Calendar, label: '旅程' },
+                        { id: 'tickets', icon: Ticket, label: 'チケット' },
+                        { id: 'map', icon: MapPin, label: 'マップ' },
+                        { id: 'settings', icon: Settings, label: '設定' },
+                    ].map(item => (
+                        <button
+                            key={item.id}
+                            onClick={() => setActiveTab(item.id)}
+                            aria-label={`${item.label}タブ`}
+                            aria-current={activeTab === item.id ? 'page' : undefined}
+                            className={`relative flex flex-col items-center gap-1 px-4 py-2 min-w-[56px] min-h-[56px] transition-all duration-200 active:scale-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 rounded-xl touch-manipulation ${activeTab === item.id
+                                    ? 'text-blue-600 dark:text-blue-400'
+                                    : 'text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-400'
+                                }`}
+                        >
+                            <item.icon size={22} strokeWidth={activeTab === item.id ? 2.5 : 1.8} />
+                            <span className={`text-[10px] sm:text-[11px] font-bold ${activeTab === item.id ? 'text-blue-600 dark:text-blue-400' : ''}`}>{item.label}</span>
+                            {/* Active Indicator */}
+                            {activeTab === item.id && (
+                                <span className="absolute -top-0.5 w-1 h-1 bg-blue-500 rounded-full" />
+                            )}
+                        </button>
+                    ))}
                 </nav>
 
             </div>

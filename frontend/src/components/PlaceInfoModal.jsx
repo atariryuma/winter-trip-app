@@ -93,6 +93,25 @@ const PlaceInfoModal = ({ isOpen, onClose, placeName, getPlaceInfo }) => {
                     {/* Place Data */}
                     {placeData && !loading && (
                         <>
+                            {/* Place Photo (Hero Image) */}
+                            {placeData.photoUrl && (
+                                <div className="relative -mx-4 -mt-4 mb-4 overflow-hidden bg-gray-100 dark:bg-slate-700">
+                                    <img
+                                        src={placeData.photoUrl}
+                                        alt={placeData.name || placeName}
+                                        className="w-full h-48 object-cover"
+                                        loading="lazy"
+                                        onError={(e) => {
+                                            // Hide image on error
+                                            e.target.style.display = 'none';
+                                            e.target.parentElement.style.display = 'none';
+                                        }}
+                                    />
+                                    {/* Gradient overlay for better text readability if needed */}
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
+                                </div>
+                            )}
+
                             {/* Rating & Reviews Count */}
                             {placeData.rating && (
                                 <div className="flex items-center gap-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl p-3 border border-yellow-100 dark:border-yellow-800/30">

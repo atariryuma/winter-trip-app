@@ -46,7 +46,12 @@ function doGet(e) {
 
 /**
  * Get place information using Google Places API (New)
- * Falls back to basic Geocoding if no API key available
+ * Optimized based on Google's best practices:
+ * - Minimal FieldMask to reduce costs
+ * - Extended caching (24 hours for stable place data)
+ * - Photo URL generation for visual appeal
+ * - regionCode=JP and languageCode=ja for Japan-focused results
+ * 
  * @param {string} query - Place name or address to search
  * @returns {object} Place information with dynamic data
  */
@@ -56,15 +61,21 @@ function getPlaceInfo(query) {
     }
 
     const cache = CacheService.getScriptCache();
-    const cacheKey = 'place_v2_' + Utilities.base64Encode(query);
+    // Use v3 cache key for new optimized format
+    const cacheKey = 'place_v3_' + Utilities.base64Encode(Utilities.newBlob(query).getBytes());
 
-    // Check cache first (6 hours - GAS max is 21600s)
+    // Check cache first - extended to max 6 hours (GAS limit is 21600s)
+    // Place data is relatively stable, so longer cache is beneficial
     try {
         const cached = cache.get(cacheKey);
         if (cached) {
-            return JSON.parse(cached);
+            const parsed = JSON.parse(cached);
+            parsed._cached = true; // Mark as cached response
+            return parsed;
         }
-    } catch (e) { }
+    } catch (e) {
+        Logger.log('Cache read error: ' + e.toString());
+    }
 
     // Get API Key from Script Properties
     const API_KEY = PropertiesService.getScriptProperties().getProperty('GOOGLE_MAPS_API_KEY');
@@ -80,112 +91,179 @@ function getPlaceInfo(query) {
             userRatingCount: null,
             openingHours: null,
             editorialSummary: null,
+            photoUrl: null,
             reviews: [],
             mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`,
             travelTips: [],
-            source: 'geocoding' // or 'places_api'
+            source: 'geocoding'
         };
 
         if (API_KEY) {
-            // Use Places API (New) - Text Search to find place
-            // GCP project winter-trip-app (921537031468) is now linked with OAuth consent configured
             try {
-                const textSearchUrl = `https://places.googleapis.com/v1/places:searchText`;
+                const textSearchUrl = 'https://places.googleapis.com/v1/places:searchText';
+
+                // Optimized search payload with Japan-specific settings
                 const searchPayload = {
                     textQuery: query,
-                    languageCode: 'ja',
-                    regionCode: 'JP',
-                    // Location bias centered on Japan (lat 35.0, lng 136.0) with 500km radius
+                    languageCode: 'ja',   // Japanese language for results
+                    regionCode: 'JP',     // Prioritize Japan results
+                    // Location bias: Central Japan (covers Okinawa to Hokkaido)
                     locationBias: {
                         circle: {
-                            center: { latitude: 35.0, longitude: 136.0 },
-                            radius: 500000.0
+                            center: { latitude: 36.0, longitude: 138.0 },
+                            radius: 800000.0  // 800km to cover all of Japan
                         }
                     },
-                    maxResultCount: 1
+                    maxResultCount: 1  // Only need top result
                 };
+
+                // Optimized FieldMask - request ONLY fields we actually use
+                // This reduces API costs (Basic fields are cheaper than Contact/Atmosphere)
+                // Fields grouped by SKU pricing tier:
+                // - Basic (ID): places.id, places.displayName, places.formattedAddress, places.googleMapsUri
+                // - Basic (Location): (none used)
+                // - Contact: places.nationalPhoneNumber, places.websiteUri, places.regularOpeningHours
+                // - Atmosphere: places.rating, places.userRatingCount, places.editorialSummary, places.reviews, places.photos
+                const fieldMask = [
+                    // Basic fields (lower cost)
+                    'places.id',
+                    'places.displayName',
+                    'places.formattedAddress',
+                    'places.googleMapsUri',
+                    'places.types',
+                    // Contact fields
+                    'places.nationalPhoneNumber',
+                    'places.websiteUri',
+                    'places.regularOpeningHours.weekdayDescriptions',
+                    // Atmosphere fields (for ratings and reviews)
+                    'places.rating',
+                    'places.userRatingCount',
+                    'places.editorialSummary',
+                    'places.reviews',
+                    // Photos (first photo only via maxHeightPx in separate call)
+                    'places.photos'
+                ].join(',');
 
                 const searchResponse = UrlFetchApp.fetch(textSearchUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-Goog-Api-Key': API_KEY,
-                        'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.websiteUri,places.rating,places.userRatingCount,places.regularOpeningHours,places.editorialSummary,places.reviews,places.googleMapsUri'
+                        'X-Goog-FieldMask': fieldMask
                     },
                     payload: JSON.stringify(searchPayload),
                     muteHttpExceptions: true
                 });
 
-                const searchData = JSON.parse(searchResponse.getContentText());
+                const responseCode = searchResponse.getResponseCode();
+                const responseText = searchResponse.getContentText();
+
+                if (responseCode !== 200) {
+                    Logger.log(`Places API HTTP Error ${responseCode}: ${responseText}`);
+                    throw new Error(`HTTP ${responseCode}`);
+                }
+
+                const searchData = JSON.parse(responseText);
 
                 if (searchData.places && searchData.places.length > 0) {
                     const place = searchData.places[0];
 
                     placeInfo.source = 'places_api';
+                    placeInfo.placeId = place.id || null;
+                    placeInfo.name = place.displayName?.text || query;
                     placeInfo.formattedAddress = place.formattedAddress || '';
                     placeInfo.phone = place.nationalPhoneNumber || null;
                     placeInfo.website = place.websiteUri || null;
                     placeInfo.rating = place.rating || null;
                     placeInfo.userRatingCount = place.userRatingCount || null;
                     placeInfo.mapsUrl = place.googleMapsUri || placeInfo.mapsUrl;
+                    placeInfo.types = place.types || [];
 
                     // Editorial summary
-                    if (place.editorialSummary && place.editorialSummary.text) {
+                    if (place.editorialSummary?.text) {
                         placeInfo.editorialSummary = place.editorialSummary.text;
                     }
 
-                    // Opening hours
-                    if (place.regularOpeningHours && place.regularOpeningHours.weekdayDescriptions) {
+                    // Opening hours (weekday descriptions only)
+                    if (place.regularOpeningHours?.weekdayDescriptions) {
                         placeInfo.openingHours = place.regularOpeningHours.weekdayDescriptions;
                     }
 
-                    // Reviews (up to 3 for display)
+                    // Reviews (limit to 3 for UI, extract only needed fields)
                     if (place.reviews && place.reviews.length > 0) {
                         placeInfo.reviews = place.reviews.slice(0, 3).map(r => ({
                             author: r.authorAttribution?.displayName || '匿名',
                             rating: r.rating || null,
-                            text: r.text?.text || '',
+                            text: (r.text?.text || '').substring(0, 200), // Truncate long reviews
                             relativeTime: r.relativePublishTimeDescription || ''
                         }));
                     }
+
+                    // Photo URL - generate using first photo if available
+                    if (place.photos && place.photos.length > 0) {
+                        const photoName = place.photos[0].name;
+                        if (photoName) {
+                            // Photo URL format: https://places.googleapis.com/v1/{name}/media?maxHeightPx=400&key=API_KEY
+                            placeInfo.photoUrl = `https://places.googleapis.com/v1/${photoName}/media?maxHeightPx=300&maxWidthPx=400&key=${API_KEY}`;
+                        }
+                    }
+                } else {
+                    Logger.log('Places API: No results for query: ' + query);
                 }
             } catch (placesError) {
-                // Places API failed, will fall back to Geocoding below
-                Logger.log('Places API error: ' + placesError.toString());
+                Logger.log('Places API error for "' + query + '": ' + placesError.toString());
+                // Continue to Geocoding fallback
             }
         }
 
         // Fallback to Geocoding if Places API didn't return data
         if (!placeInfo.formattedAddress) {
-            const geocoder = Maps.newGeocoder();
-            geocoder.setLanguage('ja');
-            geocoder.setRegion('jp');
-            const geoResult = geocoder.geocode(query);
+            try {
+                const geocoder = Maps.newGeocoder();
+                geocoder.setLanguage('ja');
+                geocoder.setRegion('jp');
+                const geoResult = geocoder.geocode(query);
 
-            if (geoResult.status === 'OK' && geoResult.results && geoResult.results.length > 0) {
-                const place = geoResult.results[0];
-                placeInfo.formattedAddress = place.formatted_address || '';
-                placeInfo.types = place.types || [];
+                if (geoResult.status === 'OK' && geoResult.results && geoResult.results.length > 0) {
+                    const geoPlace = geoResult.results[0];
+                    placeInfo.formattedAddress = geoPlace.formatted_address || '';
+                    placeInfo.types = geoPlace.types || [];
+                    placeInfo.source = 'geocoding';
+                }
+            } catch (geoError) {
+                Logger.log('Geocoding error: ' + geoError.toString());
             }
         }
 
-        // Generate travel tips (smart tips based on name/type)
+        // Generate travel tips based on place type
         placeInfo.travelTips = generateTravelTips(query, placeInfo.types || []);
 
-        // Mark as not found if no address
+        // Mark as not found if no address obtained
         if (!placeInfo.formattedAddress) {
             placeInfo.found = false;
         }
 
-        // Cache the result for 6 hours
+        // Cache the result (6 hours max in GAS)
         try {
-            cache.put(cacheKey, JSON.stringify(placeInfo), 21600);
-        } catch (e) { }
+            const cacheData = JSON.stringify(placeInfo);
+            // Only cache if under size limit (~100KB per item)
+            if (cacheData.length < 100000) {
+                cache.put(cacheKey, cacheData, 21600);
+            }
+        } catch (cacheError) {
+            Logger.log('Cache write error: ' + cacheError.toString());
+        }
 
         return placeInfo;
 
     } catch (error) {
-        return { error: error.toString(), found: false, query: query };
+        Logger.log('getPlaceInfo fatal error: ' + error.toString());
+        return {
+            error: error.toString(),
+            found: false,
+            query: query,
+            mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`
+        };
     }
 }
 

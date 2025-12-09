@@ -94,7 +94,7 @@ const EditModal = ({ isOpen, onClose, item, onSave, onDelete }) => {
                         <label className="text-[11px] font-bold text-gray-500 dark:text-slate-400 uppercase mb-2 block">詳細・メモ</label>
                         <textarea
                             value={formData.details || formData.description || ''}
-                            onChange={e => setFormData({ ...formData, details: e.target.value, description: e.target.value })}
+                            onChange={e => setFormData({ ...formData, description: e.target.value })}
                             className="w-full p-3 bg-gray-50 dark:bg-slate-700 rounded-xl border border-gray-200 dark:border-slate-600 text-gray-800 dark:text-slate-100 h-24 resize-none text-sm leading-relaxed focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all touch-manipulation"
                             placeholder="予約番号や注意事項など"
                         />

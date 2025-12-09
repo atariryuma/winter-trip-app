@@ -21,6 +21,18 @@ const EmergencyContacts = lazy(() => import('./views/EmergencyContacts'));
 import LoginView from './views/LoginView';
 
 // ============================================================================
+// CONSTANTS
+// ============================================================================
+const API_URL = 'https://script.google.com/macros/s/AKfycbyTcPA0MNhP6Y4yKhGiOMWLh-uusIKZs9j08YSTCQi7WqWJfYbszkW_xYM76HRC7uZnGA/exec';
+
+// Helper: Determine event type from category
+const getCategoryType = (category) => {
+    if (category === 'hotel') return 'stay';
+    if (['flight', 'train', 'bus'].includes(category)) return 'transport';
+    return 'activity';
+};
+
+// ============================================================================
 // SERVER ADAPTER
 // ============================================================================
 const server = {
@@ -36,11 +48,7 @@ const server = {
                 .getItineraryData();
         } else {
             console.log('Using local fetch fallback');
-            // Production URL (Stable v33)
-            const API_URL = 'https://script.google.com/macros/s/AKfycbyTcPA0MNhP6Y4yKhGiOMWLh-uusIKZs9j08YSTCQi7WqWJfYbszkW_xYM76HRC7uZnGA/exec';
 
-            // Use simple GET request which mimics browser navigation to follow 302 redirects
-            // Note: If GAS script permissions are set to ANYONE, this works.
             fetch(`${API_URL}?action=getData`, {
                 method: 'GET',
                 redirect: 'follow'
@@ -60,11 +68,7 @@ const server = {
                 .withFailureHandler(reject)
                 .saveItineraryData(data); // Call backend directly
         } else {
-            // Production URL (Stable v33)
-            const API_URL = 'https://script.google.com/macros/s/AKfycbyTcPA0MNhP6Y4yKhGiOMWLh-uusIKZs9j08YSTCQi7WqWJfYbszkW_xYM76HRC7uZnGA/exec';
-
-            // Use URLSearchParams to send data as 'application/x-www-form-urlencoded'
-            // This ensures GAS receives it in e.parameter.data, which is more reliable than raw body in no-cors.
+            // Use URLSearchParams for form-urlencoded (reliable with no-cors)
             const params = new URLSearchParams();
             params.append('data', JSON.stringify(data));
 
@@ -78,7 +82,6 @@ const server = {
         }
     }),
     validatePasscode: (code) => new Promise((resolve) => {
-        const API_URL = 'https://script.google.com/macros/s/AKfycbyTcPA0MNhP6Y4yKhGiOMWLh-uusIKZs9j08YSTCQi7WqWJfYbszkW_xYM76HRC7uZnGA/exec';
         fetch(`${API_URL}?action=validatePasscode&code=${encodeURIComponent(code)}`, { method: 'GET' })
             .then(res => res.json())
             .then(data => resolve(data.valid === true))
@@ -100,7 +103,6 @@ const server = {
             } catch (e) { }
         }
 
-        const API_URL = 'https://script.google.com/macros/s/AKfycbyTcPA0MNhP6Y4yKhGiOMWLh-uusIKZs9j08YSTCQi7WqWJfYbszkW_xYM76HRC7uZnGA/exec';
         fetch(`${API_URL}?action=getPlaceInfo&query=${encodeURIComponent(query)}`, { method: 'GET' })
             .then(res => res.json())
             .then(data => {
@@ -266,7 +268,7 @@ export default function TravelApp() {
                 if (day.id === selectedDayId) {
                     let newEvents = editItem
                         ? day.events.map(e => e.id === newItem.id ? newItem : e)
-                        : [...day.events, { ...newItem, id: generateId(), type: newItem.category === 'hotel' ? 'stay' : (newItem.category === 'flight' || newItem.category === 'train' || newItem.category === 'bus' ? 'transport' : 'activity') }];
+                        : [...day.events, { ...newItem, id: generateId(), type: getCategoryType(newItem.category) }];
                     return { ...day, events: newEvents };
                 }
                 return day;
@@ -295,8 +297,7 @@ export default function TravelApp() {
         if (updatedItinerary) saveToSpreadsheet(updatedItinerary);
     };
 
-    // Login
-    // Login
+    // Login screen
     if (!auth) {
         return (
             <LoginView
@@ -389,7 +390,7 @@ export default function TravelApp() {
             <div className="w-full lg:ml-64 min-h-[100dvh] flex flex-col">
 
                 {/* ========== HEADER (Mobile/Tablet) - Compact Design ========== */}
-                <header className="lg:hidden bg-gradient-to-r from-blue-600 to-indigo-700 text-white sticky top-0 z-40 shrink-0 sticky-header landscape-hide-header">
+                <header className="lg:hidden bg-gradient-to-r from-blue-600 to-indigo-700 text-white shrink-0 sticky-header landscape-hide-header">
                     {/* Safe area for notch */}
                     <div className="h-[env(safe-area-inset-top)]" />
 
@@ -470,7 +471,7 @@ export default function TravelApp() {
                 )}
 
                 {/* ========== MAIN CONTENT ========== */}
-                <main className="flex-1 px-4 lg:px-8 pb-24 lg:pb-8 bg-[#F0F2F5] dark:bg-slate-900 overflow-x-hidden">
+                <main className="flex-1 px-4 lg:px-8 pb-24 lg:pb-8 bg-[#F0F2F5] dark:bg-slate-900">
                     <div className="max-w-6xl mx-auto w-full">
                         <Suspense fallback={<LoadingSpinner />}>
                             {/* Content Area */}

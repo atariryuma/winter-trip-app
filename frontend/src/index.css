@@ -199,6 +199,7 @@ body {
    Targets mobile landscape: orientation landscape + small height
    ========================================================================== */
 @media (orientation: landscape) and (max-height: 500px) {
+
   /* Hide header in landscape */
   .landscape-hide-header {
     display: none !important;
@@ -259,7 +260,8 @@ body {
     display: none !important;
   }
 
-  /* Day tabs in landscape - compact horizontal strip at top */
+  /* Day tabs in landscape - compact horizontal strip at top (unused, kept for future) */
+  /*
   .landscape-day-tabs {
     position: fixed !important;
     top: 0;
@@ -281,11 +283,11 @@ body {
     font-size: 12px !important;
   }
 
-  /* Adjust main container when day tabs are shown */
   .landscape-with-tabs {
     padding-top: 56px !important;
     height: calc(100dvh - 56px) !important;
   }
+  */
 }
 
 /* ==========================================================================
@@ -324,7 +326,7 @@ body {
   transform: translateY(-50%);
   width: 40px;
   height: 60%;
-  background: linear-gradient(to right, transparent, rgba(255,255,255,0.1));
+  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.1));
   pointer-events: none;
 }
 
@@ -336,6 +338,7 @@ body {
     opacity: 0;
     transform: scale(0.98);
   }
+
   to {
     opacity: 1;
     transform: scale(1);

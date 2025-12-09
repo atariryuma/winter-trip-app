@@ -349,8 +349,6 @@ function doPost(e) {
             }
         }
 
-
-
         if (!jsonString) throw new Error('No valid post data found');
 
         const data = JSON.parse(jsonString);
@@ -534,14 +532,10 @@ function saveItineraryData(days) {
     // Prepare rows
     const rows = [];
 
-    // Header
-    const header = [
-        '日付', '曜日', 'タイトル', '場所', '天気(気温)', '天気(状態)', 'サマリー',
-        'カテゴリ', '種別', '名称', '出発時刻', '出発地', '到着時刻', '到着地',
-        'ステータス', '詳細', '宿泊施設名', 'チェックイン時間', '予約番号', '宿泊詳細'
-    ];
-    // Don't add header to rows (we keep existing header or rewrite it)
-    // Actually, let's just clear content from row 2 and rewrite data
+    // Header columns (kept for reference, not used in code):
+    // '日付', '曜日', 'タイトル', '場所', '天気(気温)', '天気(状態)', 'サマリー',
+    // 'カテゴリ', '種別', '名称', '出発時刻', '出発地', '到着時刻', '到着地',
+    // 'ステータス', '詳細', '宿泊施設名', 'チェックイン時間', '予約番号', '宿泊詳細'
 
     days.forEach(day => {
         day.events.forEach(event => {

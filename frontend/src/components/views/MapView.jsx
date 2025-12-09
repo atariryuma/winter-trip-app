@@ -1,3 +1,4 @@
+import React, { useMemo } from 'react';
 import { MapPin, ArrowRight, Navigation, Map as MapIcon } from 'lucide-react';
 import { getIcon } from '../common/IconHelper';
 

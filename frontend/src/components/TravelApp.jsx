@@ -699,7 +699,7 @@ export default function TravelApp() {
                             {activeTab === 'tickets' && <TicketList itinerary={itinerary} />}
 
                             {/* NEW: Map View */}
-                            {activeTab === 'map' && <MapView mapUrl={mapUrl} itinerary={itinerary} />}
+                            {activeTab === 'map' && <MapView mapUrl={mapUrl} itinerary={itinerary} mapError={mapError} />}
 
                             {/* NEW: Settings View */}
                             {activeTab === 'settings' && <SettingsView itinerary={itinerary} setItinerary={setItinerary} setSelectedDayId={setSelectedDayId} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} lastUpdate={lastUpdate} setActiveTab={setActiveTab} />}

@@ -65,14 +65,14 @@ const PackingList = () => {
     }));
 
     return (
-        <div className="pt-4 space-y-4 overflow-hidden">
+        <div className="pt-4 space-y-4">
             {/* Progress */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+            <div className="bg-white dark:bg-slate-700 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-600 p-4">
                 <div className="flex items-center justify-between mb-2">
-                    <span className="font-bold text-gray-800">パッキング進捗</span>
-                    <span className="text-sm text-gray-500">{packedCount}/{items.length}</span>
+                    <span className="font-bold text-gray-800 dark:text-slate-100">パッキング進捗</span>
+                    <span className="text-sm text-gray-500 dark:text-slate-400">{packedCount}/{items.length}</span>
                 </div>
-                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div className="h-2 bg-gray-200 dark:bg-slate-600 rounded-full overflow-hidden">
                     <div className="h-full bg-green-500 transition-all" style={{ width: `${progress}%` }} />
                 </div>
                 <button onClick={resetAll} className="mt-3 text-xs text-red-500 hover:underline">
@@ -82,25 +82,25 @@ const PackingList = () => {
 
             {/* Categories */}
             {groupedItems.map(group => (
-                <div key={group.category} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+                <div key={group.category} className="bg-white dark:bg-slate-700 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-600 overflow-hidden">
+                    <div className="px-4 py-3 border-b border-gray-100 dark:border-slate-600 flex items-center gap-2">
                         <span>{group.icon}</span>
-                        <h3 className="font-bold text-gray-800 text-sm">{group.label}</h3>
-                        <span className="text-xs text-gray-400 ml-auto">
+                        <h3 className="font-bold text-gray-800 dark:text-slate-100 text-sm">{group.label}</h3>
+                        <span className="text-xs text-gray-400 dark:text-slate-500 ml-auto">
                             {group.items.filter(i => i.packed).length}/{group.items.length}
                         </span>
                     </div>
-                    <div className="divide-y divide-gray-50">
+                    <div className="divide-y divide-gray-50 dark:divide-slate-600">
                         {group.items.map(item => (
                             <button
                                 key={item.id}
                                 onClick={() => toggleItem(item.id)}
-                                className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 active:bg-gray-100 transition"
+                                className="w-full px-4 py-3.5 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-slate-600 active:bg-gray-100 dark:active:bg-slate-500 transition"
                             >
-                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition ${item.packed ? 'bg-green-500 border-green-500' : 'border-gray-300'}`}>
+                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition ${item.packed ? 'bg-green-500 border-green-500' : 'border-gray-300 dark:border-slate-500'}`}>
                                     {item.packed && <CheckCircle2 size={14} className="text-white" />}
                                 </div>
-                                <span className={`text-gray-700 ${item.packed ? 'line-through text-gray-400' : ''}`}>{item.name}</span>
+                                <span className={`text-gray-700 dark:text-slate-200 ${item.packed ? 'line-through text-gray-400 dark:text-slate-500' : ''}`}>{item.name}</span>
                             </button>
                         ))}
                     </div>

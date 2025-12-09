@@ -18,10 +18,22 @@ function doGet(e) {
             .setMimeType(ContentService.MimeType.JSON);
     }
 
-    // Default: return HTML app
-    return HtmlService.createHtmlOutputFromFile('index')
-        .setTitle('Winter Trip')
-        .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover');
+    // Default: Redirect to GitHub Pages (Frontend is hosted there)
+    const FRONTEND_URL = 'https://atariryuma.github.io/winter-trip-app/';
+    return HtmlService.createHtmlOutput(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <meta http-equiv="refresh" content="0; url=${FRONTEND_URL}">
+            <title>Redirecting...</title>
+        </head>
+        <body style="font-family: sans-serif; text-align: center; padding: 50px;">
+            <p>アプリに移動しています...</p>
+            <p><a href="${FRONTEND_URL}">こちらをクリック</a>してください。</p>
+        </body>
+        </html>
+    `).setTitle('Redirecting to Winter Trip App');
 }
 
 function doPost(e) {

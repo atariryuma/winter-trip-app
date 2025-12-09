@@ -20,12 +20,12 @@ const EmergencyContacts = () => {
     };
 
     return (
-        <div className="pt-4 space-y-4 overflow-hidden">
+        <div className="pt-4 space-y-4">
             {emergencyData.map((item, idx) => {
                 if (item.type === 'section') {
                     return (
                         <div key={idx} className="px-1">
-                            <h3 className="font-bold text-gray-700 text-sm">{item.title}</h3>
+                            <h3 className="font-bold text-gray-700 dark:text-slate-200 text-sm">{item.title}</h3>
                         </div>
                     );
                 }
@@ -34,11 +34,11 @@ const EmergencyContacts = () => {
                         <button
                             key={idx}
                             onClick={() => handleCall(item.number)}
-                            className="w-full bg-white rounded-2xl shadow-sm border border-gray-100 p-4 flex items-center justify-between hover:bg-gray-50 active:bg-gray-100 transition"
+                            className="w-full bg-white dark:bg-slate-700 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-600 p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-slate-600 active:bg-gray-100 dark:active:bg-slate-500 transition"
                         >
                             <div>
-                                <span className="font-bold text-gray-800">{item.name}</span>
-                                <span className="text-gray-500 ml-2">{item.number}</span>
+                                <span className="font-bold text-gray-800 dark:text-slate-100">{item.name}</span>
+                                <span className="text-gray-500 dark:text-slate-400 ml-2">{item.number}</span>
                             </div>
                             <div className="bg-green-500 text-white px-3 py-1 rounded-full text-sm font-bold">
                                 📞 発信
@@ -48,7 +48,7 @@ const EmergencyContacts = () => {
                 }
                 if (item.type === 'info') {
                     return (
-                        <div key={idx} className="bg-gray-50 rounded-xl p-4 text-center text-sm text-gray-500">
+                        <div key={idx} className="bg-gray-50 dark:bg-slate-700 rounded-xl p-4 text-center text-sm text-gray-500 dark:text-slate-400">
                             {item.text}
                         </div>
                     );

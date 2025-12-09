@@ -315,13 +315,13 @@ export default function TravelApp() {
     ) : null;
 
     return (
-        <div className="min-h-[100dvh] bg-[#F0F2F5] flex justify-center">
+        <div className="min-h-[100dvh] bg-[#F0F2F5] dark:bg-slate-900 flex justify-center">
             <PortraitLock />
             <ReloadPrompt />
             {SavingOverlay}
             {ErrorBanner}
 
-            <div className="w-full max-w-[600px] bg-white shadow-2xl min-h-[100dvh] relative flex flex-col overflow-x-hidden">
+            <div className="w-full max-w-[600px] bg-white dark:bg-slate-800 shadow-2xl min-h-[100dvh] relative flex flex-col overflow-x-hidden">
 
                 {/* ========== HEADER ========== */}
                 <div className="bg-gradient-to-br from-blue-600 to-indigo-800 p-6 text-white pt-10 pb-16 relative overflow-hidden shrink-0">
@@ -372,21 +372,21 @@ export default function TravelApp() {
                             <div className="pt-4 overflow-hidden">
 
                                 {/* Summary Card */}
-                                <div className="bg-white rounded-2xl p-4 shadow-sm mb-4 border border-gray-100">
+                                <div className="bg-white dark:bg-slate-700 rounded-2xl p-4 shadow-sm mb-4 border border-gray-100 dark:border-slate-600">
                                     <div className="flex justify-between items-start mb-3 gap-4">
                                         <div className="flex-1">
-                                            <div className="lg:hidden text-xs text-blue-600 font-bold mb-1">Day {dayIndex + 1}</div>
-                                            <h2 className="text-lg font-bold text-gray-800">{selectedDay.title}</h2>
-                                            <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                                            <div className="lg:hidden text-xs text-blue-600 dark:text-blue-400 font-bold mb-1">Day {dayIndex + 1}</div>
+                                            <h2 className="text-lg font-bold text-gray-800 dark:text-slate-100">{selectedDay.title}</h2>
+                                            <p className="text-xs text-gray-500 dark:text-slate-400 mt-1 flex items-center gap-1">
                                                 <MapPin size={14} /> {selectedDay.location}
                                             </p>
                                         </div>
-                                        <div className="flex flex-col items-center pl-4 border-l border-gray-100">
+                                        <div className="flex flex-col items-center pl-4 border-l border-gray-100 dark:border-slate-600">
                                             {getWeatherIcon(selectedDay.weather?.condition)}
-                                            <span className="text-sm font-bold text-gray-700 mt-1">{selectedDay.weather?.temp}</span>
+                                            <span className="text-sm font-bold text-gray-700 dark:text-slate-200 mt-1">{selectedDay.weather?.temp}</span>
                                         </div>
                                     </div>
-                                    <p className="text-sm text-gray-600 leading-relaxed bg-gray-50 p-3 rounded-xl border border-gray-100">
+                                    <p className="text-sm text-gray-600 dark:text-slate-300 leading-relaxed bg-gray-50 dark:bg-slate-600 p-3 rounded-xl border border-gray-100 dark:border-slate-500">
                                         {selectedDay.summary}
                                     </p>
                                 </div>
@@ -420,7 +420,7 @@ export default function TravelApp() {
                                                 onTouchStart={() => handleTouchStart(event)}
                                                 onTouchEnd={handleTouchEnd}
                                                 onTouchMove={handleTouchEnd}
-                                                className={`rounded-2xl p-5 shadow-sm border border-gray-100 transition bg-white relative overflow-hidden ${event.type === 'stay' ? 'bg-indigo-50/50 border-indigo-100' : ''} ${isEditMode ? 'cursor-pointer hover:shadow-md hover:border-blue-300' : ''}`}
+                                                className={`rounded-2xl p-5 shadow-sm border transition relative overflow-hidden ${event.type === 'stay' ? 'bg-indigo-50/50 dark:bg-indigo-900/30 border-indigo-100 dark:border-indigo-800' : 'bg-white dark:bg-slate-700 border-gray-100 dark:border-slate-600'} ${isEditMode ? 'cursor-pointer hover:shadow-md hover:border-blue-300' : ''}`}
                                             >
                                                 {/* Icon Background Decoration */}
                                                 <div className="absolute top-0 right-0 p-3 opacity-10">
@@ -429,15 +429,15 @@ export default function TravelApp() {
 
                                                 <div className="flex justify-between items-start mb-2 flex-wrap gap-2 relative z-10">
                                                     <div className="flex items-center gap-3">
-                                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${event.type === 'stay' ? 'bg-indigo-100 text-indigo-600' : (event.category === 'flight' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600')}`}>
+                                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${event.type === 'stay' ? 'bg-indigo-100 dark:bg-indigo-800 text-indigo-600 dark:text-indigo-300' : (event.category === 'flight' ? 'bg-blue-100 dark:bg-blue-800 text-blue-600 dark:text-blue-300' : 'bg-gray-100 dark:bg-slate-600 text-gray-600 dark:text-slate-300')}`}>
                                                             {getIcon(event.category, event.type)}
                                                         </div>
                                                         <div className="flex items-baseline gap-2">
-                                                            <span className="text-lg font-bold text-gray-800 font-mono">{event.time}</span>
+                                                            <span className="text-lg font-bold text-gray-800 dark:text-slate-100 font-mono">{event.time}</span>
                                                             {event.endTime && (
                                                                 <>
-                                                                    <ArrowRight size={12} className="text-gray-400" />
-                                                                    <span className="text-sm text-gray-500 font-mono">{event.endTime}</span>
+                                                                    <ArrowRight size={12} className="text-gray-400 dark:text-slate-500" />
+                                                                    <span className="text-sm text-gray-500 dark:text-slate-400 font-mono">{event.endTime}</span>
                                                                 </>
                                                             )}
                                                         </div>
@@ -445,10 +445,10 @@ export default function TravelApp() {
                                                     <StatusBadge status={event.status} />
                                                 </div>
 
-                                                <h3 className="font-bold text-gray-800 text-lg mb-1 mt-1">{event.name}</h3>
+                                                <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg mb-1 mt-1">{event.name}</h3>
 
                                                 {event.type === 'transport' && event.place && event.to && (
-                                                    <div className="flex items-center gap-2 text-sm text-gray-600 mb-2 flex-wrap">
+                                                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-300 mb-2 flex-wrap">
                                                         <span>{event.place}</span>
                                                         <ArrowRight size={14} />
                                                         <span>{event.to}</span>
@@ -456,7 +456,7 @@ export default function TravelApp() {
                                                 )}
 
                                                 {(event.description || event.details) && (
-                                                    <div className="mt-2 text-sm text-gray-600 space-y-1">
+                                                    <div className="mt-2 text-sm text-gray-600 dark:text-slate-300 space-y-1">
                                                         {event.description && <p>{event.description}</p>}
                                                         {event.details && <p>{event.details}</p>}
                                                     </div>
@@ -465,14 +465,14 @@ export default function TravelApp() {
                                                 {event.bookingRef && (
                                                     <div
                                                         onClick={(e) => { e.stopPropagation(); handleCopy(event.bookingRef); }}
-                                                        className="mt-3 bg-white/80 backdrop-blur-sm border border-gray-200 rounded-lg p-2 flex items-center justify-between cursor-pointer active:bg-gray-100 group"
+                                                        className="mt-3 bg-white/80 dark:bg-slate-600 backdrop-blur-sm border border-gray-200 dark:border-slate-500 rounded-lg p-2 flex items-center justify-between cursor-pointer active:bg-gray-100 dark:active:bg-slate-500 group"
                                                     >
                                                         <div className="flex items-center gap-2">
                                                             <Ticket size={14} className="text-blue-500" />
-                                                            <span className="text-xs text-gray-500">予約番号:</span>
-                                                            <span className="font-mono font-bold text-gray-700">{event.bookingRef}</span>
+                                                            <span className="text-xs text-gray-500 dark:text-slate-400">予約番号:</span>
+                                                            <span className="font-mono font-bold text-gray-700 dark:text-slate-200">{event.bookingRef}</span>
                                                         </div>
-                                                        <Copy size={14} className="text-gray-400 group-hover:text-blue-500" />
+                                                        <Copy size={14} className="text-gray-400 dark:text-slate-500 group-hover:text-blue-500" />
                                                     </div>
                                                 )}
                                             </div>

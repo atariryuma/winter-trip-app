@@ -488,6 +488,8 @@ function getItineraryData() {
 
     // Generate Static Map URL (if markers exist)
     let mapUrl = null;
+    let mapError = null;
+
     if (mapMarkers.length > 0) {
         try {
             // Using unique locations only to save URL length
@@ -498,17 +500,17 @@ function getItineraryData() {
                     .setLanguage('ja');
                 uniqueLocations.forEach((loc, i) => {
                     map.addMarker(loc);
-                    // Add path? Maybe too complex for simple view. Markers are fine.
                 });
-                // We cannot return the Blob URL directly to frontend efficiently without base64 or hosting.
-                // Best for GAS Web App: Return Base64 data URI
+                // Return Base64 data URI
                 const blob = map.getBlob();
                 const base64 = Utilities.base64Encode(blob.getBytes());
                 mapUrl = 'data:image/png;base64,' + base64;
             }
         } catch (e) {
-            // Map generation failed (quota or bad address), ignore
+            // Map generation failed (quota, bad address, or unknown error)
             mapUrl = null;
+            mapError = 'Map Gen Error: ' + e.toString();
+            Logger.log(mapError);
         }
     }
 
@@ -521,8 +523,10 @@ function getItineraryData() {
     const response = {
         days: result,
         mapUrl: mapUrl,
+        mapError: mapError,
         lastUpdate: PropertiesService.getScriptProperties().getProperty('lastUpdate') || null
     };
+
 
     // Cache the response (JSON string) for 30 minutes (1800 seconds)
     try {

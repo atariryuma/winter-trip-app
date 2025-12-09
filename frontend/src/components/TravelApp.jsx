@@ -130,6 +130,7 @@ export default function TravelApp() {
     const [selectedDayId, setSelectedDayId] = useState(null);
     const [activeTab, setActiveTab] = useState('timeline');
     const [mapUrl, setMapUrl] = useState(null);
+    const [mapError, setMapError] = useState(null);
     const [isEditMode, setIsEditMode] = useState(false);
     const [auth, setAuth] = useState(false);
     const [modalOpen, setModalOpen] = useState(false);
@@ -210,6 +211,7 @@ export default function TravelApp() {
                 } else if (data && data.days) {
                     daysData = data.days;
                     if (data.mapUrl) setMapUrl(data.mapUrl);
+                    if (data.mapError) setMapError(data.mapError);
                 }
 
                 if (daysData && daysData.length > 0) {

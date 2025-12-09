@@ -30,7 +30,14 @@ const getDayRouteUrl = (day) => {
     return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}&travelmode=transit`;
 };
 
-const MapView = ({ mapUrl, itinerary }) => {
+const MapView = ({ mapUrl, itinerary, mapError }) => {
+    const [imageError, setImageError] = React.useState(false);
+
+    // Reset image error when URL changes
+    React.useEffect(() => {
+        if (mapUrl) setImageError(false);
+    }, [mapUrl]);
+
     const markers = useMemo(() => {
         return itinerary.flatMap(day => {
             const locs = [];
@@ -47,15 +54,29 @@ const MapView = ({ mapUrl, itinerary }) => {
     return (
         <div className="pt-4 space-y-6">
             <div className="bg-white dark:bg-slate-700 rounded-2xl p-2 shadow-sm border border-gray-100 dark:border-slate-600 overflow-hidden">
-                {mapUrl ? (
+                {mapUrl && !imageError ? (
                     <div className="relative">
-                        <img src={mapUrl} alt="Trip Map" loading="lazy" className="w-full h-auto object-cover rounded-xl bg-gray-100 dark:bg-slate-600 min-h-[200px] lg:min-h-[400px]" />
+                        <img
+                            src={mapUrl}
+                            alt="Trip Map"
+                            loading="lazy"
+                            className="w-full h-auto object-cover rounded-xl bg-gray-100 dark:bg-slate-600 min-h-[200px] lg:min-h-[400px]"
+                            onError={(e) => {
+                                console.error('Map image load error:', e);
+                                setImageError(true);
+                            }}
+                        />
                         <div className="absolute bottom-2 right-2 bg-white/80 dark:bg-slate-800/80 backdrop-blur px-2 py-1 rounded text-[10px] text-gray-500 dark:text-slate-400">Google Maps Data</div>
                     </div>
                 ) : (
-                    <div className="w-full h-48 lg:h-80 bg-gray-50 dark:bg-slate-600 rounded-xl flex items-center justify-center text-gray-400 dark:text-slate-400 flex-col gap-2 border-2 border-dashed border-gray-200 dark:border-slate-500">
+                    <div className="w-full h-48 lg:h-80 bg-gray-50 dark:bg-slate-600 rounded-xl flex items-center justify-center text-gray-400 dark:text-slate-400 flex-col gap-2 border-2 border-dashed border-gray-200 dark:border-slate-500 p-4 text-center">
                         <MapPin size={32} className="opacity-20" />
                         <span className="text-xs font-bold">マップ画像を生成できませんでした</span>
+                        {(mapError || imageError) && (
+                            <div className="text-[10px] text-red-500 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded mt-1 break-all">
+                                {mapError || '画像の読み込みに失敗しました'}
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

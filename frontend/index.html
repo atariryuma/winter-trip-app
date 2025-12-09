@@ -1,23 +1,51 @@
 <!doctype html>
-<html lang="en">
+<html lang="ja">
 
 <head>
   <meta charset="UTF-8" />
-  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
   <meta name="viewport"
     content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <link rel="manifest" href="/manifest.json">
+
+  <!-- PWA Meta Tags -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#2563EB">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="旅程">
+  <link rel="apple-touch-icon" href="icons/icon.svg">
+
+  <!-- SEO / OGP Meta Tags -->
+  <meta name="description" content="家族旅行の旅程管理アプリ - 沖縄から飛騨高山・下呂温泉・名古屋への冬の旅">
+  <meta property="og:title" content="Winter Journey - 冬の飛騨高山旅行">
+  <meta property="og:description" content="家族旅行の旅程管理アプリ - 沖縄から飛騨高山・下呂温泉・名古屋への冬の旅">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="icons/icon.svg">
+
+  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
     href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap"
     rel="stylesheet">
-  <title>Tabi Log - Winter Trip</title>
+
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg" />
+  <title>Winter Journey - 冬の飛騨高山旅行</title>
 </head>
 
 <body style="overflow-x: hidden; margin: 0; padding: 0;">
   <div id="root"></div>
   <script type="module" src="/src/main.jsx"></script>
+
+  <!-- Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+          .then(reg => console.log('SW registered:', reg.scope))
+          .catch(err => console.log('SW registration failed:', err));
+      });
+    }
+  </script>
 </body>
 
 </html>

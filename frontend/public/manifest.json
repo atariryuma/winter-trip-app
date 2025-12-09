@@ -1,17 +1,24 @@
 {
-    "short_name": "WinterTrip",
-    "name": "Winter Trip Journey",
-    "description": "Travel Itinerary for Okinawa to Takayama",
-    "start_url": ".",
+    "name": "Winter Journey",
+    "short_name": "旅程",
+    "description": "家族旅行の旅程管理アプリ - 沖縄から飛騨高山への冬の旅",
+    "start_url": "/winter-trip-app/",
+    "scope": "/winter-trip-app/",
     "display": "standalone",
-    "orientation": "portrait",
+    "background_color": "#1e40af",
     "theme_color": "#2563EB",
-    "background_color": "#F0F2F5",
+    "orientation": "portrait",
     "icons": [
         {
-            "src": "vite.svg",
-            "sizes": "192x192 512x512",
-            "type": "image/svg+xml"
+            "src": "icons/icon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "any maskable"
         }
-    ]
+    ],
+    "categories": [
+        "travel",
+        "lifestyle"
+    ],
+    "lang": "ja"
 }

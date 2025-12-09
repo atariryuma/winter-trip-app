@@ -43,16 +43,7 @@ function doPost(e) {
             }
         }
 
-        // --- DEBUG LOGGING START ---
-        try {
-            const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-            let logSheet = ss.getSheetByName('DebugLog');
-            if (!logSheet) logSheet = ss.insertSheet('DebugLog');
-            logSheet.appendRow([new Date(), 'POST Received', jsonString ? jsonString.substring(0, 100) : 'Empty/Null']);
-        } catch (logErr) {
-            // ignore logging errors
-        }
-        // --- DEBUG LOGGING END ---
+
 
         if (!jsonString) throw new Error('No valid post data found');
 
@@ -79,13 +70,6 @@ function doPost(e) {
         })).setMimeType(ContentService.MimeType.JSON);
 
     } catch (error) {
-        // Log error too
-        try {
-            const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-            let logSheet = ss.getSheetByName('DebugLog');
-            if (logSheet) logSheet.appendRow([new Date(), 'ERROR', error.toString()]);
-        } catch (e) { }
-
         return ContentService.createTextOutput(JSON.stringify({
             status: 'error',
             message: error.toString()
@@ -97,9 +81,10 @@ function doPost(e) {
  * Read itinerary data from Google Spreadsheet and transform to app format
  */
 function getItineraryData() {
+    const cache = CacheService.getScriptCache();
+
     // Check Cache first
     try {
-        const cache = CacheService.getScriptCache();
         const cachedData = cache.get('itinerary_json');
         if (cachedData) {
             return JSON.parse(cachedData);

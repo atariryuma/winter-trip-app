@@ -7,6 +7,28 @@
   line-height: 1.5;
   font-weight: 400;
   color-scheme: light dark;
+  
+  /* Light mode colors */
+  --bg-primary: #F0F2F5;
+  --bg-card: #FFFFFF;
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
+  --border-color: #e5e7eb;
+}
+
+/* Dark mode colors */
+.dark {
+  --bg-primary: #0f172a;
+  --bg-card: #1e293b;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --border-color: #334155;
+  color-scheme: dark;
+}
+
+.dark body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
 }
 
 /* Scrollbar hiding for horizontal scroll areas */

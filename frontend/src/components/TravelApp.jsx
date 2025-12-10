@@ -828,8 +828,8 @@ export default function TravelApp() {
 
                         {/* Standard Layout for Other Tabs */}
                         {activeTab !== 'timeline' && (
-                            <main className="px-4 lg:px-12 pt-[calc(5rem+env(safe-area-inset-top))] lg:pt-8 pb-32 lg:pb-0 pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]">
-                                <div className="max-w-xl mx-auto w-full">
+                            <main className="px-4 lg:px-12 pt-[calc(4rem+env(safe-area-inset-top))] lg:pt-8 pb-32 lg:pb-0 pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]">
+                                <div className="max-w-3xl mx-auto w-full">
                                     {activeTab === 'tickets' && <TicketList itinerary={itinerary} onForceReload={fetchData} />}
                                     {activeTab === 'map' && <MapView mapUrl={mapUrl} itinerary={itinerary} mapError={mapError} />}
                                     {activeTab === 'budget' && <BudgetView itinerary={itinerary} onForceReload={fetchData} />}

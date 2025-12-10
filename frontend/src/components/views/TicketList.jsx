@@ -87,7 +87,7 @@ const SimpleTicketCard = ({ event, isBooked, onSearchClick }) => {
                         ) : (
                             <button
                                 onClick={() => onSearchClick(event)}
-                                className="flex-1 flex items-center justify-center gap-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 py-2.5 rounded-xl font-bold text-sm active:scale-95 transition-transform"
+                                className="flex-1 flex items-center justify-center gap-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 py-2.5 rounded-xl font-bold text-sm active:scale-95 transition-transform"
                             >
                                 <Search size={14} />
                                 予約を探す
@@ -152,7 +152,6 @@ const SearchModal = ({ event, onClose }) => {
 };
 
 export default function TicketList({ itinerary }) {
-    const [viewMode, setViewMode] = useState('upcoming');
     const [searchEvent, setSearchEvent] = useState(null);
 
     // Process events
@@ -187,15 +186,15 @@ export default function TicketList({ itinerary }) {
     return (
         <div className="space-y-6 pt-2 pb-20">
             {/* Header / Stats */}
-            <div className="flex gap-3 overflow-x-auto pb-2 -mx-2 px-2 scrollbar-hide">
-                <div className="flex-none w-32 bg-white dark:bg-slate-800 rounded-2xl p-4 border border-gray-100 dark:border-slate-700 shadow-sm">
+            <div className="flex gap-3 overflow-x-auto pb-2 -mx-2 px-2 scrollbar-hide lg:overflow-visible lg:mx-0 lg:px-0">
+                <div className="flex-none w-32 lg:flex-1 bg-white dark:bg-slate-800 rounded-2xl p-4 border border-gray-100 dark:border-slate-700 shadow-sm">
                     <div className="text-gray-400 dark:text-slate-500 text-xs font-bold mb-1">未予約</div>
                     <div className="flex items-end gap-1">
                         <span className="text-3xl font-black text-rose-500">{pending.length}</span>
                         <span className="text-sm font-bold text-gray-400 mb-1">件</span>
                     </div>
                 </div>
-                <div className="flex-none w-32 bg-white dark:bg-slate-800 rounded-2xl p-4 border border-gray-100 dark:border-slate-700 shadow-sm">
+                <div className="flex-none w-32 lg:flex-1 bg-white dark:bg-slate-800 rounded-2xl p-4 border border-gray-100 dark:border-slate-700 shadow-sm">
                     <div className="text-gray-400 dark:text-slate-500 text-xs font-bold mb-1">予約済み</div>
                     <div className="flex items-end gap-1">
                         <span className="text-3xl font-black text-emerald-500">{booked.length}</span>
@@ -211,7 +210,7 @@ export default function TicketList({ itinerary }) {
                         <AlertCircle className="text-rose-500" />
                         予約が必要 ({pending.length})
                     </h2>
-                    <div className="space-y-3">
+                    <div className="space-y-3 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-4 lg:space-y-0">
                         {pending.map((event, i) => (
                             <SimpleTicketCard key={`pending-${i}`} event={event} isBooked={false} onSearchClick={setSearchEvent} />
                         ))}
@@ -225,7 +224,7 @@ export default function TicketList({ itinerary }) {
                     <CheckCircle className="text-emerald-500" />
                     予約済み ({booked.length})
                 </h2>
-                <div className="space-y-3">
+                <div className="space-y-3 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-4 lg:space-y-0">
                     {booked.map((event, i) => (
                         <SimpleTicketCard key={`booked-${i}`} event={event} isBooked={true} onSearchClick={setSearchEvent} />
                     ))}

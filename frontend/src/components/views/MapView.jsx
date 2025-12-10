@@ -90,24 +90,14 @@ const MapView = ({ mapUrl, itinerary, mapError }) => {
     };
 
     return (
-        <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            height: '100vh',
-            marginTop: '-80px'
-        }}>
-            {/* Map Area - Takes 2/3 of screen */}
-            <div style={{
-                flex: '2 1 0%',
-                position: 'relative',
-                minHeight: '0',
-                backgroundColor: '#f3f4f6'
-            }}>
+        <div className="flex flex-col lg:flex-row lg:gap-4 h-[calc(100vh-10rem)] lg:h-[calc(100vh-8rem)] min-h-[500px]">
+            {/* Map Area */}
+            <div className="flex-[2_1_0%] lg:flex-1 relative min-h-0 bg-gray-100 dark:bg-slate-800 rounded-2xl overflow-hidden">
                 <iframe
                     src={embedUrl}
                     width="100%"
                     height="100%"
-                    style={{ border: 'none', display: 'block' }}
+                    className="border-0 block"
                     allowFullScreen
                     loading="lazy"
                     referrerPolicy="no-referrer-when-downgrade"
@@ -119,42 +109,19 @@ const MapView = ({ mapUrl, itinerary, mapError }) => {
                     href={allMarkersUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    style={{
-                        position: 'absolute',
-                        top: '90px',
-                        right: '16px',
-                        zIndex: 10,
-                        padding: '10px 14px',
-                        backgroundColor: 'white',
-                        borderRadius: '12px',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                        color: '#2563eb',
-                        border: '1px solid #e5e7eb',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        textDecoration: 'none',
-                        fontSize: '12px',
-                        fontWeight: 'bold'
-                    }}
+                    className="absolute top-4 right-4 z-10 px-3.5 py-2.5 bg-white dark:bg-slate-800 rounded-xl shadow-lg text-indigo-600 dark:text-indigo-400 border border-gray-200 dark:border-slate-700 flex items-center gap-1.5 no-underline text-xs font-bold hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
                 >
                     <Navigation size={14} />
                     <span>ルート</span>
                 </a>
             </div>
 
-            {/* Bottom Section - Takes 1/3 of screen */}
-            <div style={{
-                flex: '1 1 0%',
-                backgroundColor: 'white',
-                borderTop: '1px solid #e5e7eb',
-                padding: '16px',
-                overflowY: 'auto'
-            }}>
+            {/* Bottom/Right Section */}
+            <div className="flex-1 lg:flex-none lg:w-80 bg-white dark:bg-slate-900 border-t lg:border-t-0 border-gray-200 dark:border-slate-800 p-4 overflow-y-auto rounded-2xl lg:border lg:border-gray-200 lg:dark:border-slate-700">
                 {/* Title */}
                 <div className="flex items-center gap-2 mb-3">
-                    <MapPin size={18} className="text-blue-500" />
-                    <h3 className="font-bold text-gray-800 text-sm">場所をマップで表示</h3>
+                    <MapPin size={18} className="text-indigo-500" />
+                    <h3 className="font-bold text-gray-800 dark:text-white text-sm">場所をマップで表示</h3>
                     <span className="text-xs text-gray-400 ml-auto">{markers.length}件</span>
                 </div>
 
@@ -163,8 +130,8 @@ const MapView = ({ mapUrl, itinerary, mapError }) => {
                     <button
                         onClick={() => { setActiveDay('all'); setMapCenter(null); }}
                         className={`flex-none px-4 py-1.5 rounded-full text-xs font-bold transition-all border ${activeDay === 'all'
-                            ? 'bg-blue-600 text-white border-blue-600'
-                            : 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-blue-50'
+                            ? 'bg-indigo-600 text-white border-indigo-600'
+                            : 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300 border-gray-200 dark:border-slate-600 hover:bg-indigo-50 dark:hover:bg-slate-600'
                             }`}
                     >
                         全て
@@ -174,8 +141,8 @@ const MapView = ({ mapUrl, itinerary, mapError }) => {
                             key={day.id}
                             onClick={() => { setActiveDay(day.id); setMapCenter(null); }}
                             className={`flex-none px-4 py-1.5 rounded-full text-xs font-bold transition-all border ${activeDay === day.id
-                                ? 'bg-blue-600 text-white border-blue-600'
-                                : 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-blue-50'
+                                ? 'bg-indigo-600 text-white border-indigo-600'
+                                : 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300 border-gray-200 dark:border-slate-600 hover:bg-indigo-50 dark:hover:bg-slate-600'
                                 }`}
                         >
                             Day {i + 1}
@@ -190,15 +157,15 @@ const MapView = ({ mapUrl, itinerary, mapError }) => {
                             key={i}
                             onClick={() => setMapCenter(m.query)}
                             className={`px-3 py-1.5 rounded-full text-sm transition-all border ${currentMapQuery === m.query
-                                ? 'bg-blue-500 text-white border-blue-500'
-                                : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-blue-100'
+                                ? 'bg-indigo-500 text-white border-indigo-500'
+                                : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 border-gray-200 dark:border-slate-600 hover:bg-indigo-100 dark:hover:bg-slate-600'
                                 }`}
                         >
                             <span>{getEmoji(m.type)}</span>
                             <span className="ml-1">{m.name.length > 12 ? m.name.slice(0, 12) + '...' : m.name}</span>
                         </button>
                     )) : (
-                        <div className="text-gray-400 text-sm">スポットがありません</div>
+                        <div className="text-gray-400 dark:text-slate-500 text-sm">スポットがありません</div>
                     )}
                 </div>
             </div>

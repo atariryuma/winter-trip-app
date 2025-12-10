@@ -1,7 +1,7 @@
 {
-    "name": "Winter Journey",
-    "short_name": "旅程",
-    "description": "家族旅行の旅程管理アプリ - 沖縄から飛騨高山への冬の旅",
+    "name": "TripPlanner",
+    "short_name": "TripPlanner",
+    "description": "家族旅行の旅程管理アプリ",
     "start_url": "/winter-trip-app/",
     "scope": "/winter-trip-app/",
     "display": "standalone",

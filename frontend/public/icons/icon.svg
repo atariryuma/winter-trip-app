@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4F46E5"/>
+      <stop offset="100%" stop-color="#3730A3"/>
+    </linearGradient>
+  </defs>
+  <!-- Background Circle -->
+  <circle cx="256" cy="256" r="240" fill="url(#bg)"/>
+  <!-- Airplane Icon (rotated -45deg, white) -->
+  <g transform="translate(256, 256) rotate(-45) translate(-256, -256)">
+    <path 
+      d="M432 128L80 256l120 40 40 120 192-288z" 
+      fill="#ffffff" 
+      stroke="#ffffff" 
+      stroke-width="8" 
+      stroke-linejoin="round"
+    />
+    <path 
+      d="M200 296l24 72 48-48-72-24z" 
+      fill="#c7d2fe" 
+    />
+    <line x1="200" y1="296" x2="280" y2="216" stroke="#ffffff" stroke-width="6" stroke-linecap="round"/>
+  </g>
+</svg>

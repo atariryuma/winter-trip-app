@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-    Luggage, ChevronRight, Phone, Download, Upload, Clock, Moon,
+    ChevronRight, Phone, Download, Upload, Clock, Moon,
     FileText, CheckCircle, XCircle, Loader2, ChevronDown, ChevronUp,
     Package, AlertTriangle
 } from 'lucide-react';
@@ -117,7 +117,7 @@ const SettingsView = ({ itinerary, setItinerary, setSelectedDayId, isDarkMode, s
                     </div>
                     <button
                         onClick={() => setIsDarkMode(!isDarkMode)}
-                        className={`w-12 h-7 rounded-full transition-colors relative ${isDarkMode ? 'bg-blue-600' : 'bg-gray-300 dark:bg-slate-600'}`}
+                        className={`w-12 h-7 rounded-full transition-colors relative ${isDarkMode ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-slate-600'}`}
                     >
                         <div className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform ${isDarkMode ? 'translate-x-6' : 'translate-x-1'}`} />
                     </button>
@@ -153,11 +153,11 @@ const SettingsView = ({ itinerary, setItinerary, setSelectedDayId, isDarkMode, s
                         {/* CSV Import */}
                         <label className={`w-full px-4 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors touch-manipulation min-h-[56px] border-t border-gray-50 dark:border-slate-700 cursor-pointer ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
                             <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
+                                <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center">
                                     {uploading ? (
-                                        <Loader2 size={18} className="text-blue-500 animate-spin" />
+                                        <Loader2 size={18} className="text-indigo-500 animate-spin" />
                                     ) : (
-                                        <Upload size={18} className="text-blue-500" />
+                                        <Upload size={18} className="text-indigo-500" />
                                     )}
                                 </div>
                                 <div className="text-left">

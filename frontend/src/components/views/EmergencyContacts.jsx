@@ -15,7 +15,7 @@ const EmergencyContacts = () => {
     };
 
     const emergencyNumbers = [
-        { name: '警察', number: '110', icon: '🚔', color: 'from-blue-500 to-blue-600', desc: '事件・事故' },
+        { name: '警察', number: '110', icon: '🚔', color: 'from-indigo-500 to-indigo-600', desc: '事件・事故' },
         { name: '救急・消防', number: '119', icon: '🚑', color: 'from-red-500 to-red-600', desc: '火災・救急' },
         { name: '海上保安', number: '118', icon: '⛵', color: 'from-cyan-500 to-cyan-600', desc: '海の事故' },
     ];

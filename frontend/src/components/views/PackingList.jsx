@@ -125,7 +125,7 @@ export default function PackingList() {
                     </div>
                     <button
                         onClick={() => setIsAddModalOpen(true)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white p-2.5 rounded-full shadow-lg transition-transform active:scale-90"
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white p-2.5 rounded-full shadow-lg transition-transform active:scale-90"
                     >
                         <Plus size={22} />
                     </button>
@@ -134,7 +134,7 @@ export default function PackingList() {
                 {/* Progress Bar */}
                 <div className="w-full bg-gray-100 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
                     <div
-                        className={`h-full transition-all duration-500 ${progress === 100 ? 'bg-green-500' : 'bg-blue-500'}`}
+                        className={`h-full transition-all duration-500 ${progress === 100 ? 'bg-green-500' : 'bg-indigo-500'}`}
                         style={{ width: `${progress}%` }}
                     />
                 </div>
@@ -144,10 +144,10 @@ export default function PackingList() {
             </div>
 
             {/* List */}
-            <div className="p-4 space-y-4">
+            <div className="p-4 space-y-4 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-4 lg:space-y-0">
                 {loading ? (
                     <div className="flex justify-center py-12">
-                        <Loader2 className="animate-spin text-blue-500" size={32} />
+                        <Loader2 className="animate-spin text-indigo-500" size={32} />
                     </div>
                 ) : items.length === 0 ? (
                     <div className="text-center py-16 text-gray-400 dark:text-slate-600">
@@ -178,9 +178,9 @@ export default function PackingList() {
                                         >
                                             <button
                                                 onClick={() => handleToggleCheck(item)}
-                                                className={`shrink-0 transition-colors ${item.isChecked ? 'text-blue-500' : 'text-gray-300 dark:text-slate-600'}`}
+                                                className={`shrink-0 transition-colors ${item.isChecked ? 'text-indigo-500' : 'text-gray-300 dark:text-slate-600'}`}
                                             >
-                                                {item.isChecked ? <CheckCircle2 size={24} className="fill-blue-50 dark:fill-blue-900/30" /> : <Circle size={24} />}
+                                                {item.isChecked ? <CheckCircle2 size={24} className="fill-indigo-50 dark:fill-indigo-900/30" /> : <Circle size={24} />}
                                             </button>
                                             <span className={`flex-1 ${item.isChecked ? 'text-gray-400 dark:text-slate-500 line-through' : 'text-gray-800 dark:text-slate-200 font-medium'}`}>
                                                 {item.name}
@@ -202,7 +202,7 @@ export default function PackingList() {
 
             {/* Add Modal */}
             {isAddModalOpen && (
-                <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                <div className="fixed inset-0 z-modal flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
                     <div className="bg-white dark:bg-slate-800 w-full max-w-md rounded-2xl p-4 shadow-xl animate-scale-in">
                         <div className="flex justify-between items-center mb-4 border-b dark:border-slate-700 pb-3">
                             <h3 className="font-bold text-lg dark:text-white">アイテム追加</h3>
@@ -219,7 +219,7 @@ export default function PackingList() {
                                     value={newItem.name}
                                     onChange={e => setNewItem({ ...newItem, name: e.target.value })}
                                     placeholder="例: パジャマ、充電器"
-                                    className="w-full bg-gray-50 dark:bg-slate-700 border-none rounded-xl px-4 py-3 font-medium text-gray-800 dark:text-white focus:ring-2 focus:ring-blue-500"
+                                    className="w-full bg-gray-50 dark:bg-slate-700 border-none rounded-xl px-4 py-3 font-medium text-gray-800 dark:text-white focus:ring-2 focus:ring-indigo-500"
                                     autoFocus
                                 />
                             </div>
@@ -229,7 +229,7 @@ export default function PackingList() {
                                 <select
                                     value={newItem.category}
                                     onChange={e => setNewItem({ ...newItem, category: e.target.value })}
-                                    className="w-full appearance-none bg-gray-50 dark:bg-slate-700 border-none rounded-xl px-4 py-3 font-medium text-gray-800 dark:text-white focus:ring-2 focus:ring-blue-500"
+                                    className="w-full appearance-none bg-gray-50 dark:bg-slate-700 border-none rounded-xl px-4 py-3 font-medium text-gray-800 dark:text-white focus:ring-2 focus:ring-indigo-500"
                                 >
                                     {CATEGORIES.map(cat => (
                                         <option key={cat.id} value={cat.id}>{cat.label}</option>
@@ -240,7 +240,7 @@ export default function PackingList() {
                             <button
                                 type="submit"
                                 disabled={submitting || !newItem.name.trim()}
-                                className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold py-3 rounded-xl shadow-lg flex justify-center items-center gap-2"
+                                className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold py-3 rounded-xl shadow-lg flex justify-center items-center gap-2"
                             >
                                 {submitting ? <Loader2 className="animate-spin" size={20} /> : '追加する'}
                             </button>

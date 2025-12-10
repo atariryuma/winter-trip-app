@@ -8,7 +8,7 @@ const StatusBadge = ({ status }) => {
         </span>
     );
     if (status === 'planned') return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-bold border border-blue-200">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-bold border border-indigo-200">
             <Circle size={10} /> 計画中
         </span>
     );

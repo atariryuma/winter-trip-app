@@ -222,7 +222,11 @@ const BudgetView = ({ itinerary, onForceReload }) => {
     const selectedEvent = allEvents.find(e => e.id === selectedEventId);
 
     return (
-        <div className="space-y-4 pt-4 pb-24">
+        <div className="space-y-4 pb-24">
+            {/* Large Title */}
+            <div className="pb-2">
+                <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Budget</h1>
+            </div>
             {/* Summary Card */}
             <div className="bg-gradient-to-br from-indigo-600 to-violet-700 dark:from-indigo-900 dark:to-slate-800 rounded-2xl p-5 text-white shadow-xl relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl" />

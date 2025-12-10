@@ -96,6 +96,7 @@ export default function TravelApp() {
     const [routeConfig, setRouteConfig] = useState(null); // { origin, destination }
 
     const [scrollDirection, setScrollDirection] = useState('up');
+    const [isScrolled, setIsScrolled] = useState(false);
     const [auth, setAuth] = useState(false);
     const [modalOpen, setModalOpen] = useState(false);
     const [editItem, setEditItem] = useState(null);
@@ -117,9 +118,11 @@ export default function TravelApp() {
         const updateScrollDirection = () => {
             const scrollY = window.scrollY;
             const direction = scrollY > lastScrollY && scrollY > 50 ? "down" : "up";
+
             if (direction !== scrollDirection) {
                 setScrollDirection(direction);
             }
+            setIsScrolled(scrollY > 20);
             lastScrollY = scrollY > 0 ? scrollY : 0;
         };
 
@@ -618,199 +621,234 @@ export default function TravelApp() {
             <div className="lg:pl-64 flex-1 min-h-screen pb-24 lg:pb-0">
                 <div className="w-full h-full">
 
-                    {/* ========== HEADER (Mobile/Tablet) - Flat iOS Style ========== */}
-                    <header className={`lg:hidden fixed top-0 left-0 right-0 z-50 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 transition-transform duration-300 ${scrollDirection === 'down' ? '-translate-y-full' : 'translate-y-0'}`}>
+                    {/* ========== HEADER (Mobile/Tablet) - Large Title Style ========== */}
+                    <header className={`lg:hidden fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled
+                        ? 'bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-gray-200 dark:border-slate-800'
+                        : 'bg-transparent border-transparent'
+                        }`}>
                         <div className="flex items-center justify-between px-4 h-14 max-w-5xl mx-auto">
-                            <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 bg-blue-600 rounded-md flex items-center justify-center shadow-sm">
-                                    <Plane className="text-white transform -rotate-45" size={12} />
-                                </div>
+                            <div className={`flex items-center gap-2 transition-opacity duration-300 ${isScrolled || activeTab !== 'timeline' ? 'opacity-100' : 'opacity-0'}`}>
+                                {activeTab !== 'timeline' && (
+                                    <div className="w-6 h-6 bg-blue-600 rounded-md flex items-center justify-center shadow-sm">
+                                        <Plane className="text-white transform -rotate-45" size={12} />
+                                    </div>
+                                )}
                                 <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 tracking-tight">
-                                    {activeTab === 'timeline' && 'Timeline'}
-                                    {activeTab === 'tickets' && 'Tickets'}
-                                    {activeTab === 'map' && 'Places'}
-                                    {activeTab === 'budget' && 'Budget'}
-                                    {activeTab === 'settings' && 'Other'}
+                                    {activeTab === 'timeline' ? 'Winter Trip' :
+                                        activeTab === 'tickets' ? 'Tickets' :
+                                            activeTab === 'map' ? 'Places' :
+                                                activeTab === 'budget' ? 'Budget' :
+                                                    activeTab === 'settings' ? 'Other' : ''}
                                 </h2>
                             </div>
                         </div>
                     </header>
 
-                    {/* ========== DATE TABS (Timeline only) ========== */}
-                    {activeTab === 'timeline' && (
-                        <div className={`fixed top-14 lg:top-0 left-0 lg:left-64 right-0 z-40 bg-[#F2F4F7] dark:bg-slate-900 transition-transform duration-300 ${scrollDirection === 'down' ? '-translate-y-[150%]' : 'translate-y-0'}`}>
-                            <div className="max-w-2xl mx-auto px-4 py-4 lg:pt-8">
-                                <div className="flex justify-between items-center bg-white dark:bg-slate-800 rounded-xl p-1 shadow-sm border border-gray-200 dark:border-slate-700">
-                                    {itinerary.map((day, idx) => (
-                                        <button
-                                            key={day.id}
-                                            onClick={() => setSelectedDayId(day.id)}
-                                            className={`flex-1 flex flex-col items-center justify-center py-2 rounded-lg transition-all duration-200 ${selectedDayId === day.id
-                                                ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-white shadow-sm ring-1 ring-gray-100 dark:ring-slate-600"
-                                                : "text-gray-400 dark:text-slate-500 hover:bg-gray-50 dark:hover:bg-slate-700"
-                                                }`}
-                                        >
-                                            <span className="text-[10px] font-bold uppercase mb-0.5 opacity-80">{day.dayOfWeek}</span>
-                                            <span className="text-sm font-bold leading-none">{day.date.split('/')[1]}</span>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
                     {/* ========== CONTENT BODY ========== */}
-                    <main className={`px-4 lg:px-12 ${activeTab === 'timeline' ? 'pt-36 lg:pt-32' : 'pt-20 lg:pt-8'}`}>
-                        <div className="max-w-xl mx-auto w-full">
-                            <Suspense fallback={<LoadingSpinner />}>
+                    <Suspense fallback={<LoadingSpinner />}>
 
-                                {activeTab === 'timeline' && selectedDay && (
-                                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        {activeTab === 'timeline' && (
+                            <div className="pt-0 lg:pt-8 max-w-5xl mx-auto">
+                                {/* Large Title Area */}
+                                <div className={`pt-16 pb-2 px-4 transition-all duration-300 ${isScrolled ? 'opacity-0 scale-95 translate-y-[-10px]' : 'opacity-100 scale-100 translate-y-0'}`}>
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight mb-1">
+                                                Winter Trip
+                                            </h1>
+                                            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                                                {yearRange} • {itinerary.length} Days
+                                            </p>
+                                        </div>
+                                        <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-600/20">
+                                            <Plane className="text-white transform -rotate-45" size={20} />
+                                        </div>
+                                    </div>
+                                </div>
 
-                                        <DynamicSummary day={selectedDay} events={sortedEvents} dayIdx={dayIndex} />
+                                {/* Sticky Date Tabs */}
+                                <div className="sticky top-14 lg:top-0 z-40 bg-[#F2F4F7]/95 dark:bg-slate-900/95 backdrop-blur-sm pt-2 pb-4 px-4 border-b border-gray-200/50 dark:border-slate-800/50 lg:border-none lg:bg-transparent lg:backdrop-blur-none">
+                                    <div className="flex justify-between items-center bg-white dark:bg-slate-800 rounded-xl p-1 shadow-sm border border-gray-200 dark:border-slate-700 max-w-2xl mx-auto">
+                                        {itinerary.map((day, idx) => (
+                                            <button
+                                                key={day.id}
+                                                onClick={() => setSelectedDayId(day.id)}
+                                                className={`flex-1 flex flex-col items-center justify-center py-2 rounded-lg transition-all duration-200 ${selectedDayId === day.id
+                                                    ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-white shadow-sm ring-1 ring-gray-100 dark:ring-slate-600"
+                                                    : "text-gray-400 dark:text-slate-500 hover:bg-gray-50 dark:hover:bg-slate-700"
+                                                    }`}
+                                            >
+                                                <span className="text-[10px] font-bold uppercase tracking-wider opacity-70">
+                                                    Day {idx + 1}
+                                                </span>
+                                                <span className="text-sm font-black">
+                                                    {day.date.split('/')[1]}
+                                                    <span className="text-[10px] font-medium ml-0.5 opacity-60">
+                                                        {day.dayOfWeek}
+                                                    </span>
+                                                </span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
 
-                                        {/* Event List */}
-                                        <div className="relative pb-12">
-                                            {sortedEvents.map((event, index) => {
-                                                const prevEvent = index > 0 ? sortedEvents[index - 1] : null;
-                                                const nextEvent = index < sortedEvents.length - 1 ? sortedEvents[index + 1] : null;
-                                                const durationToNext = getDurationMinutes(event, nextEvent);
+                                {/* Events List */}
+                                <div className="px-4 space-y-6 pb-24 lg:px-0">
+                                    {/* Error State */}
+                                    {mapError && (
+                                        <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm p-4 rounded-xl flex items-center gap-2">
+                                            <span>⚠️ マップの読み込みに失敗しました</span>
+                                        </div>
+                                    )}                 <DynamicSummary day={selectedDay} events={sortedEvents} dayIdx={dayIndex} />
 
-                                                return (
-                                                    <div key={event.id} className="relative">
-                                                        {/* Event Card */}
-                                                        <div
-                                                            className={`relative bg-white dark:bg-slate-800 rounded-2xl p-4 transition-all duration-200 ${isEditMode ? 'border-2 border-dashed border-gray-300 dark:border-slate-600 hover:border-blue-400 cursor-pointer' : 'border border-gray-200 dark:border-slate-700 shadow-sm'}`}
-                                                            onClick={() => {
-                                                                if (isEditMode) {
-                                                                    setEditItem(event);
-                                                                    setModalOpen(true);
-                                                                } else {
-                                                                    // Open MapModal with route from prev event or single pin
-                                                                    const query = event.type === 'transport'
-                                                                        ? event.to
-                                                                        : (event.address || event.name);
-                                                                    setMapModalQuery(query);
-                                                                    setMapModalOpen(true);
-                                                                }
-                                                            }}
-                                                            onTouchStart={() => handleTouchStart(event)}
-                                                            onTouchEnd={handleTouchEnd}
-                                                            onTouchMove={handleTouchEnd}
-                                                        >
-                                                            <div className="flex justify-between items-start mb-2">
+                                    {/* Event List */}
+                                    <div className="relative pb-12">
+                                        {sortedEvents.map((event, index) => {
+                                            const prevEvent = index > 0 ? sortedEvents[index - 1] : null;
+                                            const nextEvent = index < sortedEvents.length - 1 ? sortedEvents[index + 1] : null;
+                                            const durationToNext = getDurationMinutes(event, nextEvent);
+
+                                            return (
+                                                <div key={event.id} className="relative">
+                                                    {/* Event Card */}
+                                                    <div
+                                                        className={`relative bg-white dark:bg-slate-800 rounded-2xl p-4 transition-all duration-200 ${isEditMode ? 'border-2 border-dashed border-gray-300 dark:border-slate-600 hover:border-blue-400 cursor-pointer' : 'border border-gray-200 dark:border-slate-700 shadow-sm'}`}
+                                                        onClick={() => {
+                                                            if (isEditMode) {
+                                                                setEditItem(event);
+                                                                setModalOpen(true);
+                                                            } else {
+                                                                // Open MapModal with route from prev event or single pin
+                                                                const query = event.type === 'transport'
+                                                                    ? event.to
+                                                                    : (event.address || event.name);
+                                                                setMapModalQuery(query);
+                                                                setMapModalOpen(true);
+                                                            }
+                                                        }}
+                                                        onTouchStart={() => handleTouchStart(event)}
+                                                        onTouchEnd={handleTouchEnd}
+                                                        onTouchMove={handleTouchEnd}
+                                                    >
+                                                        <div className="flex justify-between items-start mb-2">
+                                                            <div className="flex items-center gap-2">
+                                                                {/* Time with vertical line indicator */}
                                                                 <div className="flex items-center gap-2">
-                                                                    {/* Time with vertical line indicator */}
-                                                                    <div className="flex items-center gap-2">
-                                                                        <div className="w-1 h-6 rounded-full bg-blue-500"></div>
-                                                                        <span className="font-mono font-bold text-base text-slate-700 dark:text-slate-200">
-                                                                            {event.time || '未定'}
-                                                                        </span>
-                                                                    </div>
-
-                                                                    <div className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase flex items-center gap-1 ${event.type === 'stay' ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30' : event.type === 'transport' ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30' : 'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-300'}`}>
-                                                                        {getIcon(event.category, event.type, { size: 10 })}
-                                                                        <span>{event.category}</span>
-                                                                    </div>
+                                                                    <div className="w-1 h-6 rounded-full bg-blue-500"></div>
+                                                                    <span className="font-mono font-bold text-base text-slate-700 dark:text-slate-200">
+                                                                        {event.time || '未定'}
+                                                                    </span>
                                                                 </div>
 
-                                                                <div onClick={(e) => { e.stopPropagation(); setEditItem(event); setModalOpen(true); }} className="cursor-pointer hover:opacity-80 active:scale-95 transition-transform">
-                                                                    <StatusBadge status={event.status} />
+                                                                <div className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase flex items-center gap-1 ${event.type === 'stay' ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30' : event.type === 'transport' ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30' : 'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-300'}`}>
+                                                                    {getIcon(event.category, event.type, { size: 10 })}
+                                                                    <span>{event.category}</span>
                                                                 </div>
                                                             </div>
 
-                                                            <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight mb-1">
-                                                                {event.name}
-                                                            </h3>
-
-                                                            {/* From/To for transport */}
-                                                            {event.type === 'transport' && (event.from || event.to) && (
-                                                                <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-slate-400 mb-2">
-                                                                    <span>{event.from || '?'}</span>
-                                                                    <ArrowRight size={12} className="shrink-0" />
-                                                                    <span>{event.to || '?'}</span>
-                                                                </div>
-                                                            )}
-
-                                                            {/* Memo display */}
-                                                            {event.details && (
-                                                                <p className="text-xs text-gray-500 dark:text-slate-400 bg-gray-50 dark:bg-slate-700/50 rounded-lg px-2 py-1.5 mb-2">
-                                                                    {event.details}
-                                                                </p>
-                                                            )}
-
-                                                            {/* Action Buttons Row */}
-                                                            <div className="flex items-center gap-2 mt-2 justify-end">
-                                                                {!isEditMode && (
-                                                                    <button
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            setSelectedPlaceEvent(event);
-                                                                        }}
-                                                                        className="h-8 w-8 bg-gray-100 dark:bg-slate-700 rounded-lg flex items-center justify-center text-blue-600 dark:text-blue-400 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
-                                                                        title="詳しく調べる"
-                                                                    >
-                                                                        <Search size={16} />
-                                                                    </button>
-                                                                )}
-
-
+                                                            <div onClick={(e) => { e.stopPropagation(); setEditItem(event); setModalOpen(true); }} className="cursor-pointer hover:opacity-80 active:scale-95 transition-transform">
+                                                                <StatusBadge status={event.status} />
                                                             </div>
                                                         </div>
 
-                                                        {/* Time Connector - show duration to next event */}
-                                                        {nextEvent && (
-                                                            <TimeConnector
-                                                                duration={durationToNext}
-                                                                isEditMode={isEditMode}
-                                                                onInsert={() => {
-                                                                    const midTime = getMidTime(event.endTime || event.time, nextEvent.time);
-                                                                    setEditItem({ type: 'activity', category: 'sightseeing', status: 'planned', time: midTime, name: '' });
-                                                                    setModalOpen(true);
-                                                                }}
-                                                            />
+                                                        <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight mb-1">
+                                                            {event.name}
+                                                        </h3>
+
+                                                        {/* From/To for transport */}
+                                                        {event.type === 'transport' && (event.from || event.to) && (
+                                                            <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-slate-400 mb-2">
+                                                                <span>{event.from || '?'}</span>
+                                                                <ArrowRight size={12} className="shrink-0" />
+                                                                <span>{event.to || '?'}</span>
+                                                            </div>
                                                         )}
+
+                                                        {/* Memo display */}
+                                                        {event.details && (
+                                                            <p className="text-xs text-gray-500 dark:text-slate-400 bg-gray-50 dark:bg-slate-700/50 rounded-lg px-2 py-1.5 mb-2">
+                                                                {event.details}
+                                                            </p>
+                                                        )}
+
+                                                        {/* Action Buttons Row */}
+                                                        <div className="flex items-center gap-2 mt-2 justify-end">
+                                                            {!isEditMode && (
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setSelectedPlaceEvent(event);
+                                                                    }}
+                                                                    className="h-8 w-8 bg-gray-100 dark:bg-slate-700 rounded-lg flex items-center justify-center text-blue-600 dark:text-blue-400 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
+                                                                    title="詳しく調べる"
+                                                                >
+                                                                    <Search size={16} />
+                                                                </button>
+                                                            )}
+
+
+                                                        </div>
                                                     </div>
-                                                );
-                                            })}
 
-                                            {isEditMode && (
-                                                <button
-                                                    onClick={() => {
-                                                        const lastTime = sortedEvents.length > 0 ? sortedEvents[sortedEvents.length - 1].time : '09:00';
-                                                        const nextTime = toTimeStr(toMinutes(lastTime) + 60);
-                                                        setEditItem({ type: 'activity', category: 'sightseeing', status: 'planned', time: nextTime, name: '' });
-                                                        setModalOpen(true);
-                                                    }}
-                                                    className="w-full mt-6 py-4 border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-2xl text-gray-400 hover:text-blue-600 hover:border-blue-400 transition-colors flex items-center justify-center gap-2 font-bold"
-                                                >
-                                                    <Plus size={20} /> 予定を追加
-                                                </button>
-                                            )}
-                                        </div>
+                                                    {/* Time Connector - show duration to next event */}
+                                                    {nextEvent && (
+                                                        <TimeConnector
+                                                            duration={durationToNext}
+                                                            isEditMode={isEditMode}
+                                                            onInsert={() => {
+                                                                const midTime = getMidTime(event.endTime || event.time, nextEvent.time);
+                                                                setEditItem({ type: 'activity', category: 'sightseeing', status: 'planned', time: midTime, name: '' });
+                                                                setModalOpen(true);
+                                                            }}
+                                                        />
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+
+                                        {isEditMode && (
+                                            <button
+                                                onClick={() => {
+                                                    const lastTime = sortedEvents.length > 0 ? sortedEvents[sortedEvents.length - 1].time : '09:00';
+                                                    const nextTime = toTimeStr(toMinutes(lastTime) + 60);
+                                                    setEditItem({ type: 'activity', category: 'sightseeing', status: 'planned', time: nextTime, name: '' });
+                                                    setModalOpen(true);
+                                                }}
+                                                className="w-full mt-6 py-4 border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-2xl text-gray-400 hover:text-blue-600 hover:border-blue-400 transition-colors flex items-center justify-center gap-2 font-bold"
+                                            >
+                                                <Plus size={20} /> 予定を追加
+                                            </button>
+                                        )}
                                     </div>
-                                )}
+                                </div>
+                            </div>
+                        )}
 
-                                {activeTab === 'tickets' && <TicketList itinerary={itinerary} onForceReload={fetchData} />}
-                                {activeTab === 'map' && <MapView mapUrl={mapUrl} itinerary={itinerary} mapError={mapError} />}
-                                {activeTab === 'budget' && <BudgetView itinerary={itinerary} onForceReload={fetchData} />}
-                                {activeTab === 'packing' && <PackingList />}
-                                {activeTab === 'emergency' && <EmergencyContacts />}
-                                {activeTab === 'settings' && (
-                                    <SettingsView
-                                        itinerary={itinerary}
-                                        setItinerary={setItinerary}
-                                        setSelectedDayId={setSelectedDayId}
-                                        isDarkMode={isDarkMode}
-                                        setIsDarkMode={setIsDarkMode}
-                                        lastUpdate={lastUpdate}
-                                        setActiveTab={setActiveTab}
-                                        onDataRefresh={fetchData}
-                                    />
-                                )}
-                            </Suspense>
-                        </div>
-                    </main>
+                        {/* Standard Layout for Other Tabs */}
+                        {activeTab !== 'timeline' && (
+                            <main className="px-4 lg:px-12 pt-20 lg:pt-8 pb-24 lg:pb-0">
+                                <div className="max-w-xl mx-auto w-full">
+                                    {activeTab === 'tickets' && <TicketList itinerary={itinerary} onForceReload={fetchData} />}
+                                    {activeTab === 'map' && <MapView mapUrl={mapUrl} itinerary={itinerary} mapError={mapError} />}
+                                    {activeTab === 'budget' && <BudgetView itinerary={itinerary} onForceReload={fetchData} />}
+                                    {activeTab === 'packing' && <PackingList />}
+                                    {activeTab === 'emergency' && <EmergencyContacts />}
+                                    {activeTab === 'settings' && (
+                                        <SettingsView
+                                            itinerary={itinerary}
+                                            setItinerary={setItinerary}
+                                            setSelectedDayId={setSelectedDayId}
+                                            isDarkMode={isDarkMode}
+                                            setIsDarkMode={setIsDarkMode}
+                                            lastUpdate={lastUpdate}
+                                            setActiveTab={setActiveTab}
+                                            onDataRefresh={fetchData}
+                                        />
+                                    )}
+                                </div>
+                            </main>
+                        )}
+                    </Suspense>
 
                     {/* ========== BOTTOM NAV (Mobile only) ========== */}
                     <nav className={`lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800 transition-transform duration-300 ${scrollDirection === 'down' ? 'translate-y-full' : 'translate-y-0'}`}>
@@ -896,8 +934,8 @@ export default function TravelApp() {
                         })()}
                     />
                 </div>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 }
 

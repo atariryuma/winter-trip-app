@@ -58,7 +58,12 @@ const SettingsView = ({ itinerary, setItinerary, setSelectedDayId, isDarkMode, s
     };
 
     return (
-        <div className="pt-4 space-y-4 pb-24">
+        <div className="space-y-4 pb-24">
+            {/* Large Title */}
+            <div className="pb-2">
+                <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Other</h1>
+            </div>
+
             {/* 便利ツール - Main Features */}
             <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden">
                 <div className="px-4 py-3 border-b border-gray-100 dark:border-slate-700">

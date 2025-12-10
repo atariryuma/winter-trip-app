@@ -4,27 +4,28 @@ import { getIcon } from '../common/IconHelper';
 
 /**
  * Generates a Google Maps Directions URL for a given day's itinerary
- * Uses addresses when available for more accurate routing
+ * Uses addresses when available for more accurate routing:
+ * - Transport: placeAddress/toAddress (full addresses from autoFill)
+ * - Hotels/Activities: address from details
  */
 const getDayRouteUrl = (day) => {
-    // Extract meaningful locations in chronological order
-    // Prefer address over name for accuracy
     const locations = [];
+
     day.events.forEach(e => {
-        // For transport: use place/to names (stations, airports)
-        if (e.place) locations.push(e.place);
-        if (e.to) locations.push(e.to);
-        // For hotels: use address if available, fallback to name
-        if (e.category === 'hotel' && e.name) {
+        if (e.type === 'transport') {
+            // For transport: prefer full address, fallback to short name
+            if (e.place) locations.push(e.placeAddress || e.place);
+            if (e.to) locations.push(e.toAddress || e.to);
+        } else if (e.category === 'hotel' && e.name) {
+            // For hotels: use address if available
             locations.push(e.address || e.name);
-        }
-        // For sightseeing/activities: use address if available
-        if ((e.category === 'sightseeing' || e.category === 'meal') && e.name) {
+        } else if ((e.category === 'sightseeing' || e.category === 'meal') && e.name) {
+            // For sightseeing/activities: use address if available
             locations.push(e.address || e.name);
         }
     });
 
-    // Deduplicate consecutive locations (avoid A -> A)
+    // Deduplicate consecutive locations
     const uniqueLocs = locations.filter((loc, i, arr) => i === 0 || loc !== arr[i - 1]);
 
     if (uniqueLocs.length < 2) return null;
@@ -51,10 +52,15 @@ const MapView = ({ mapUrl, itinerary, mapError }) => {
         return itinerary.flatMap(day => {
             const locs = [];
             day.events.forEach(e => {
-                if (e.place) locs.push({ name: e.place, type: 'transport', address: null });
-                if (e.to) locs.push({ name: e.to, type: 'transport', address: null });
-                if (e.category === 'hotel') locs.push({ name: e.name, type: 'hotel', address: e.address });
-                if (e.category === 'sightseeing') locs.push({ name: e.name, type: 'sightseeing', address: e.address });
+                if (e.type === 'transport') {
+                    // Use placeAddress/toAddress for transport events
+                    if (e.place) locs.push({ name: e.place, type: 'transport', address: e.placeAddress || null });
+                    if (e.to) locs.push({ name: e.to, type: 'transport', address: e.toAddress || null });
+                } else if (e.category === 'hotel') {
+                    locs.push({ name: e.name, type: 'hotel', address: e.address });
+                } else if (e.category === 'sightseeing') {
+                    locs.push({ name: e.name, type: 'sightseeing', address: e.address });
+                }
             });
             return locs;
         }).filter((v, i, a) => a.findIndex(t => (t.name === v.name)) === i);

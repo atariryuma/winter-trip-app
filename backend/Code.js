@@ -55,65 +55,49 @@ function autoFillAllMissingDetails() {
 
 /**
  * Core Logic: Auto-fill range
+ * Extended to 24 columns for address data:
+ * - Col 20 (T): 出発地_住所
+ * - Col 21 (U): 出発地_PlaceID
+ * - Col 22 (V): 到着地_住所
+ * - Col 23 (W): 到着地_PlaceID
  */
 function processAutoFill(sheet, startRow, numRows) {
-    const dataRange = sheet.getRange(startRow, 1, numRows, 20);
+    const dataRange = sheet.getRange(startRow, 1, numRows, 24);  // Extended to 24 columns
     const values = dataRange.getValues();
     let processedCount = 0;
 
     values.forEach((row, rIdx) => {
-        // Indicies (0-based) from Code.js save logic:
-        // Col 7 (Index 7): Category
-        // Col 9 (Index 9): Name (Transport/Activity)
-        // Col 16 (Index 16): Hotel Name (Stay) -> Actually it's Index 16? Let's check saveItineraryData.
-        // saveItineraryData: 
-        //  Stay: row[16] = event.name (Hotel Name). row[19] = event.details. 
-        //  Trans: row[9] = event.name. row[15] = event.details. row[11]=place, row[13]=to
-        //  Activ: row[9] = event.name. row[15] = event.description.
-
         const category = row[7];
         let targetName = '';
         let targetDetailIdx = -1;
         let currentDetail = '';
 
+        // === Part 1: Fill event details (existing logic) ===
         if (category === '宿泊') {
-            targetName = row[16]; // Receiver: Hotel Name
-            targetDetailIdx = 19; // Receiver: Hotel Details
+            targetName = row[16]; // Hotel Name
+            targetDetailIdx = 19; // Hotel Details
         } else {
             targetName = row[9]; // Transport/Activity Name
             if (!targetName && category === '交通') {
-                // If Name is empty, try Departure Place or Arrival Place
                 targetName = row[11] || row[13];
             }
             targetDetailIdx = 15; // Details
         }
 
-        // If we have a valid target name and a valid detail column
         if (targetName && targetDetailIdx > 0) {
             currentDetail = row[targetDetailIdx];
-
-            // Only fill if detail doesn't already have the pin icon (avoid dups)
             if (!currentDetail || !currentDetail.includes('📍')) {
                 try {
-                    // Use reusable getPlaceInfo logic
-                    // We need a wrapper because getPlaceInfo returns object, we want string block
                     const info = getPlaceInfo(targetName);
-
                     if (info && info.found) {
                         const chunks = [];
                         if (info.formattedAddress) chunks.push(`📍 ${info.formattedAddress}`);
                         if (info.rating) chunks.push(`⭐️ ${info.rating} (${info.userRatingCount || 0})`);
                         if (info.phone) chunks.push(`📞 ${info.phone}`);
                         if (info.website) chunks.push(`🌐 ${info.website}`);
-
                         const infoBlock = chunks.join('\n');
-
                         if (infoBlock) {
-                            if (currentDetail) {
-                                values[rIdx][targetDetailIdx] = currentDetail + '\n\n' + infoBlock;
-                            } else {
-                                values[rIdx][targetDetailIdx] = infoBlock;
-                            }
+                            values[rIdx][targetDetailIdx] = currentDetail ? currentDetail + '\n\n' + infoBlock : infoBlock;
                             processedCount++;
                         }
                     }
@@ -122,10 +106,43 @@ function processAutoFill(sheet, startRow, numRows) {
                 }
             }
         }
+
+        // === Part 2: Fill departure/arrival addresses for transport events ===
+        if (category === '交通') {
+            const departurePlace = row[11]; // 出発地 (short name)
+            const arrivalPlace = row[13];   // 到着地 (short name)
+
+            // Fill departure address if empty
+            if (departurePlace && !row[20]) {
+                try {
+                    const depInfo = getPlaceInfo(departurePlace);
+                    if (depInfo && depInfo.found) {
+                        values[rIdx][20] = depInfo.formattedAddress || '';
+                        values[rIdx][21] = depInfo.placeId || '';
+                        processedCount++;
+                    }
+                } catch (e) {
+                    Logger.log(`Error getting departure info for ${departurePlace}: ${e}`);
+                }
+            }
+
+            // Fill arrival address if empty
+            if (arrivalPlace && !row[22]) {
+                try {
+                    const arrInfo = getPlaceInfo(arrivalPlace);
+                    if (arrInfo && arrInfo.found) {
+                        values[rIdx][22] = arrInfo.formattedAddress || '';
+                        values[rIdx][23] = arrInfo.placeId || '';
+                        processedCount++;
+                    }
+                } catch (e) {
+                    Logger.log(`Error getting arrival info for ${arrivalPlace}: ${e}`);
+                }
+            }
+        }
     });
 
     if (processedCount > 0) {
-        // Write back
         dataRange.setValues(values);
     }
 
@@ -568,7 +585,9 @@ function getItineraryData() {
         const [
             date, dayOfWeek, title, location, weatherTemp, weatherCondition, summary,
             category, type, name, departureTime, departurePlace, arrivalTime, arrivalPlace,
-            status, details, hotelName, checkInTime, bookingRef, hotelDetails
+            status, details, hotelName, checkInTime, bookingRef, hotelDetails,
+            // New columns (20-23)
+            depAddress, depPlaceId, arrAddress, arrPlaceId
         ] = row;
 
         // Collect locations for map (Airport, Hotel, Sightseeing)
@@ -617,8 +636,14 @@ function getItineraryData() {
                 address: extractAddressFromDetails(details),
                 time: departureTime,
                 endTime: arrivalTime,
+                // Departure
                 place: departurePlace,
+                placeAddress: depAddress || null,
+                placePlaceId: depPlaceId || null,
+                // Arrival
                 to: arrivalPlace,
+                toAddress: arrAddress || null,
+                toPlaceId: arrPlaceId || null,
                 status: status || 'planned',
                 details: details
             });
@@ -707,14 +732,13 @@ function saveItineraryData(days) {
     // Prepare rows
     const rows = [];
 
-    // Header columns (kept for reference, not used in code):
-    // '日付', '曜日', 'タイトル', '場所', '天気(気温)', '天気(状態)', 'サマリー',
-    // 'カテゴリ', '種別', '名称', '出発時刻', '出発地', '到着時刻', '到着地',
-    // 'ステータス', '詳細', '宿泊施設名', 'チェックイン時間', '予約番号', '宿泊詳細'
+    // Header columns (24 total):
+    // 0-19: existing columns
+    // 20: 出発地_住所, 21: 出発地_PlaceID, 22: 到着地_住所, 23: 到着地_PlaceID
 
     days.forEach(day => {
         day.events.forEach(event => {
-            let row = new Array(20).fill('');
+            let row = new Array(24).fill('');  // Extended to 24 columns
 
             // Common Day Info
             row[0] = day.date;
@@ -729,12 +753,7 @@ function saveItineraryData(days) {
             if (event.type === 'stay') {
                 row[7] = '宿泊';
                 row[8] = '';
-                row[9] = ''; // 名称 col 10 is empty for stay in original CSV mapping? No, wait.
-                // In original CSV: 
-                // Col 10 (J) is '名称' for transport/activity
-                // Col 17 (Q) is '宿泊施設名'
-                // Let's follow the reading logic reversed.
-
+                row[9] = '';
                 row[14] = event.status;
                 row[16] = event.name;
                 row[17] = event.checkIn;
@@ -751,6 +770,11 @@ function saveItineraryData(days) {
                 row[13] = event.to;
                 row[14] = event.status;
                 row[15] = event.details;
+                // New: Address and PlaceID columns
+                row[20] = event.placeAddress || '';
+                row[21] = event.placePlaceId || '';
+                row[22] = event.toAddress || '';
+                row[23] = event.toPlaceId || '';
 
             } else { // activity
                 row[7] = 'アクティビティ';
@@ -765,15 +789,14 @@ function saveItineraryData(days) {
         });
     });
 
-    // Clear old data and write new
-    // Assuming row 1 is header, data starts at row 2
+    // Clear old data and write new (24 columns)
     const lastRow = sheet.getLastRow();
     if (lastRow > 1) {
-        sheet.getRange(2, 1, lastRow - 1, 20).clearContent();
+        sheet.getRange(2, 1, lastRow - 1, 24).clearContent();
     }
 
     if (rows.length > 0) {
-        sheet.getRange(2, 1, rows.length, 20).setValues(rows);
+        sheet.getRange(2, 1, rows.length, 24).setValues(rows);
     }
 
     try {

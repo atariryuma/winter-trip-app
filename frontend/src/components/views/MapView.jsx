@@ -90,7 +90,7 @@ const MapView = ({ mapUrl, itinerary, mapError }) => {
     };
 
     return (
-        <div className="flex flex-col lg:flex-row lg:gap-4 h-full max-h-[calc(100vh-12rem)] lg:max-h-[calc(100vh-10rem)] overflow-hidden">
+        <div className="flex flex-col lg:flex-row lg:gap-4 h-[70vh] lg:h-[calc(100vh-10rem)] w-full max-w-full box-border">
             {/* Map Area */}
             <div className="flex-[2_1_0%] lg:flex-1 relative min-h-0 bg-gray-100 dark:bg-slate-800 rounded-2xl overflow-hidden">
                 <iframe

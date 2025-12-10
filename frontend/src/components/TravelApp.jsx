@@ -605,7 +605,7 @@ export default function TravelApp() {
                     {/* Mobile Header (Fixed) */}
                     <header
                         className={`lg:hidden fixed top-0 left-0 right-0 z-sticky transition-all duration-300 pt-[env(safe-area-inset-top)] ${isScrolled
-                            ? 'bg-indigo-600 dark:bg-indigo-900 backdrop-blur-md shadow-sm'
+                            ? 'bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-200 dark:border-slate-800 shadow-sm'
                             : 'bg-transparent'
                             } ${scrollDirection === 'down' && isScrolled ? '-translate-y-full' : 'translate-y-0'}`}
                     >
@@ -616,7 +616,7 @@ export default function TravelApp() {
                                         <Plane className="text-white transform -rotate-45" size={12} />
                                     </div>
                                 )}
-                                <h2 className={`text-lg font-bold tracking-tight ${isScrolled ? 'text-white' : 'text-slate-800 dark:text-slate-100'}`}>
+                                <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 tracking-tight">
                                     {activeTab === 'timeline' ? 'TripPlanner' :
                                         activeTab === 'tickets' ? 'Tickets' :
                                             activeTab === 'map' ? 'Places' :

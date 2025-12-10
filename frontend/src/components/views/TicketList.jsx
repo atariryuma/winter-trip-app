@@ -187,7 +187,7 @@ export default function TicketList({ itinerary }) {
     return (
         <div className="space-y-6 pt-2 pb-20">
             {/* Header / Stats */}
-            <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+            <div className="flex gap-3 overflow-x-auto pb-2 -mx-2 px-2 scrollbar-hide">
                 <div className="flex-none w-32 bg-white dark:bg-slate-800 rounded-2xl p-4 border border-gray-100 dark:border-slate-700 shadow-sm">
                     <div className="text-gray-400 dark:text-slate-500 text-xs font-bold mb-1">未予約</div>
                     <div className="flex items-end gap-1">

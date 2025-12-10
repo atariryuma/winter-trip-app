@@ -686,6 +686,41 @@ export default function TravelApp() {
                                                                         <Copy size={16} className="text-blue-300 group-hover:text-blue-500 transition-colors shrink-0" />
                                                                     </div>
                                                                 )}
+
+                                                                {/* Smart Quick Actions - Always visible for beginners */}
+                                                                <div className="mt-3 flex flex-wrap gap-2">
+                                                                    {/* Google Search with context */}
+                                                                    <a
+                                                                        href={`https://www.google.com/search?q=${encodeURIComponent(event.name + ' ' + (selectedDay?.location || '') + ' 旅行 おすすめ')}`}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        onClick={(e) => e.stopPropagation()}
+                                                                        className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 px-2.5 py-1.5 rounded-lg transition-colors"
+                                                                    >
+                                                                        🔍 おすすめを検索
+                                                                    </a>
+
+                                                                    {/* Map Link */}
+                                                                    <a
+                                                                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.address || event.placeAddress || event.name)}`}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        onClick={(e) => e.stopPropagation()}
+                                                                        className="flex items-center gap-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 px-2.5 py-1.5 rounded-lg transition-colors"
+                                                                    >
+                                                                        📍 マップで見る
+                                                                    </a>
+
+                                                                    {/* Edit button when not in edit mode */}
+                                                                    {!isEditMode && (
+                                                                        <button
+                                                                            onClick={(e) => { e.stopPropagation(); setEditItem(event); setModalOpen(true); }}
+                                                                            className="flex items-center gap-1.5 text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 px-2.5 py-1.5 rounded-lg transition-colors"
+                                                                        >
+                                                                            ✏️ メモを追加
+                                                                        </button>
+                                                                    )}
+                                                                </div>
                                                             </div>
                                                         </div>
 

@@ -1,211 +1,42 @@
 const SPREADSHEET_ID = '1eoZtWfOECvkp_L3919yWYnZtlMPlTaq0cohV56SrE7I';
-const SHEET_NAME = 'tripdata';
+const DAYS_SHEET = 'days';
+const EVENTS_SHEET = 'events';
+const PACKING_SHEET = 'packing_list';
 
 /**
- * Triggered when the spreadsheet is opened.
- * Adds a custom menu to the spreadsheet.
+ * Convert cell value to string (handles Date objects, numbers, etc.)
+ * GAS Date handling:
+ * - Date values: Year >= 2000 -> format as M/D
+ * - Time values: Year is 1899/1900 (GAS time-only base date) -> format as HH:MM
  */
-function onOpen() {
-    const ui = SpreadsheetApp.getUi();
-    ui.createMenu('Trips')
-        .addItem('Location Auto-fill', 'fillLocationDetails')
-        .addToUi();
-}
+function toString(value) {
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'string') return value;
+    if (value instanceof Date) {
+        const year = value.getFullYear();
 
-/**
- * Menu Handler: Auto-fill active selection
- */
-function fillLocationDetails() {
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
-    if (!sheet) return;
-
-    const ui = SpreadsheetApp.getUi();
-    const selection = sheet.getSelection();
-    const range = selection.getActiveRange();
-
-    if (range.getRow() < 2) {
-        ui.alert('Please select data rows (excluding header).');
-        return;
-    }
-
-    // Process the selected range
-    const processedCount = processAutoFill(sheet, range.getRow(), range.getNumRows());
-
-    if (processedCount > 0) {
-        ui.alert(`Updated ${processedCount} rows with location details.`);
-    } else {
-        ui.alert('No rows updated.');
-    }
-}
-
-/**
- * Scan entire sheet for missing details and fill them
- * NOTE: Uses openById instead of getActiveSpreadsheet for HTTP API compatibility
- */
-function autoFillAllMissingDetails() {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const sheet = ss.getSheetByName(SHEET_NAME);
-    if (!sheet) throw new Error('Sheet not found');
-
-    const lastRow = sheet.getLastRow();
-    if (lastRow < 2) return 0;
-
-    return processAutoFill(sheet, 2, lastRow - 1);
-}
-
-/**
- * Core Logic: Auto-fill range
- * Extended to 24 columns for address data:
- * - Col 20 (T): 出発地_住所
- * - Col 21 (U): 出発地_PlaceID
- * - Col 22 (V): 到着地_住所
- * - Col 23 (W): 到着地_PlaceID
- */
-function processAutoFill(sheet, startRow, numRows) {
-    const dataRange = sheet.getRange(startRow, 1, numRows, 24);  // Extended to 24 columns
-    const values = dataRange.getValues();
-    let processedCount = 0;
-
-    values.forEach((row, rIdx) => {
-        const category = row[7];
-        let targetName = '';
-        let targetDetailIdx = -1;
-        let currentDetail = '';
-
-        // === Part 1: Fill event details (existing logic) ===
-        if (category === '宿泊') {
-            targetName = row[16]; // Hotel Name
-            targetDetailIdx = 19; // Hotel Details
-        } else {
-            targetName = row[9]; // Transport/Activity Name
-            if (!targetName && category === '交通') {
-                targetName = row[11] || row[13];
-            }
-            targetDetailIdx = 15; // Details
+        // GAS represents time-only values with base date 1899-12-30 or 1900-01-01
+        if (year <= 1900) {
+            // This is a time-only value - use formatDate with JST timezone
+            return Utilities.formatDate(value, 'Asia/Tokyo', 'HH:mm');
         }
 
-        if (targetName && targetDetailIdx > 0) {
-            currentDetail = row[targetDetailIdx];
-            if (!currentDetail || !currentDetail.includes('📍')) {
-                try {
-                    const info = getPlaceInfo(targetName);
-                    if (info && info.found) {
-                        const chunks = [];
-                        if (info.formattedAddress) chunks.push(`📍 ${info.formattedAddress}`);
-                        if (info.rating) chunks.push(`⭐️ ${info.rating} (${info.userRatingCount || 0})`);
-                        if (info.phone) chunks.push(`📞 ${info.phone}`);
-                        if (info.website) chunks.push(`🌐 ${info.website}`);
-                        const infoBlock = chunks.join('\n');
-                        if (infoBlock) {
-                            values[rIdx][targetDetailIdx] = currentDetail ? currentDetail + '\n\n' + infoBlock : infoBlock;
-                            processedCount++;
-                        }
-                    }
-                } catch (e) {
-                    Logger.log(`Error processing ${targetName}: ${e}`);
-                }
-            }
-        }
-
-        // === Part 2: Fill departure/arrival addresses for transport events ===
-        if (category === '交通') {
-            const departurePlace = row[11]; // 出発地 (short name)
-            const arrivalPlace = row[13];   // 到着地 (short name)
-
-            // Fill departure address if empty
-            if (departurePlace && !row[20]) {
-                try {
-                    const depInfo = getPlaceInfo(departurePlace);
-                    if (depInfo && depInfo.found) {
-                        values[rIdx][20] = depInfo.formattedAddress || '';
-                        values[rIdx][21] = depInfo.placeId || '';
-                        processedCount++;
-                    }
-                } catch (e) {
-                    Logger.log(`Error getting departure info for ${departurePlace}: ${e}`);
-                }
-            }
-
-            // Fill arrival address if empty
-            if (arrivalPlace && !row[22]) {
-                try {
-                    const arrInfo = getPlaceInfo(arrivalPlace);
-                    if (arrInfo && arrInfo.found) {
-                        values[rIdx][22] = arrInfo.formattedAddress || '';
-                        values[rIdx][23] = arrInfo.placeId || '';
-                        processedCount++;
-                    }
-                } catch (e) {
-                    Logger.log(`Error getting arrival info for ${arrivalPlace}: ${e}`);
-                }
-            }
-        }
-    });
-
-    if (processedCount > 0) {
-        dataRange.setValues(values);
+        // This is a date value
+        return Utilities.formatDate(value, 'Asia/Tokyo', 'M/d');
     }
-
-    return processedCount;
+    return String(value);
 }
 
 // ============================================================================
 // API ROUTER & HANDLERS
 // ============================================================================
 
-/**
- * Standard API Response Envelope
- * @param {string} status - 'success' or 'error'
- * @param {object} data - Data payload (for success)
- * @param {object} error - Error details (for error)
- */
 function createApiResponse(status, data = null, error = null) {
     const response = { status };
     if (status === 'success') response.data = data;
     if (status === 'error') response.error = error;
     return ContentService.createTextOutput(JSON.stringify(response))
         .setMimeType(ContentService.MimeType.JSON);
-}
-
-function doGet(e) {
-    try {
-        const action = e?.parameter?.action;
-
-        // API Router
-        switch (action) {
-            case 'getData':
-                return handleGetData();
-            case 'validatePasscode':
-                return handleValidatePasscode(e);
-            case 'getPlaceInfo':
-                return handleGetPlaceInfo(e);
-            case 'autoFill':
-                const count = autoFillAllMissingDetails();
-                return createApiResponse('success', {
-                    message: `Updated ${count} items`,
-                    count: count
-                });
-            default:
-                // Default: Redirect to GitHub Pages (Frontend)
-                const FRONTEND_URL = 'https://atariryuma.github.io/winter-trip-app/';
-                return HtmlService.createHtmlOutput(`
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <meta charset="UTF-8">
-                        <meta http-equiv="refresh" content="0; url=${FRONTEND_URL}">
-                        <title>Redirecting...</title>
-                    </head>
-                    <body style="font-family: sans-serif; text-align: center; padding: 50px;">
-                        <p>アプリに移動しています...</p>
-                        <p><a href="${FRONTEND_URL}">こちらをクリック</a>してください。</p>
-                    </body>
-                    </html>
-                `).setTitle('Redirecting to Winter Trip App');
-        }
-    } catch (err) {
-        return createApiResponse('error', null, { message: err.toString() });
-    }
 }
 
 function handleGetData() {
@@ -217,609 +48,878 @@ function handleGetData() {
     }
 }
 
-function handleValidatePasscode(e) {
-    const inputCode = e.parameter.code || '';
-    const storedCode = PropertiesService.getScriptProperties().getProperty('APP_PASSCODE') || '2025';
-    console.log(`[Login] Checking code. Input: '${inputCode}', Stored: '${storedCode}'`);
-    const valid = inputCode === storedCode;
-    return createApiResponse('success', { valid });
-}
-
-function handleGetPlaceInfo(e) {
-    const query = e.parameter.query || '';
-    if (!query) return createApiResponse('error', null, { message: 'No query provided' });
-
-    const placeInfo = getPlaceInfo(query);
-    return createApiResponse('success', placeInfo);
-}
-
-/**
- * Get place information using Google Places API (New)
- * Optimized based on Google's best practices
- */
-function getPlaceInfo(query) {
-    if (!query || query.trim() === '') {
-        return { error: 'No query provided', found: false };
-    }
-
-    const cache = CacheService.getScriptCache();
-    // Use v3 cache key for new optimized format
-    const cacheKey = 'place_v3_' + Utilities.base64Encode(Utilities.newBlob(query).getBytes());
-
-    // Check cache first (6 hours - GAS max is 21600s)
+function doGet(e) {
     try {
-        const cached = cache.get(cacheKey);
-        if (cached) {
-            const parsed = JSON.parse(cached);
-            parsed._cached = true; // Mark as cached response
-            return parsed;
+        const action = e?.parameter?.action;
+
+        switch (action) {
+            case 'getData':
+                return handleGetData();
+            case 'validatePasscode':
+                return handleValidatePasscode(e);
+            case 'getPlaceInfo':
+                return handleGetPlaceInfo(e);
+            case 'updateEvent':
+                return handleUpdateEvent(e);
+            case 'getWeather':
+                return handleGetWeather(e);
+            case 'fixTimeData':
+                const fixResult = fixTimeData();
+                return createApiResponse('success', fixResult);
+
+            case 'uploadEvents':
+                return handleUploadEvents(e);
+            case 'getPackingList':
+                return createApiResponse('success', getPackingList());
+            case 'updatePackingItem':
+                return handleUpdatePackingItem(e);
+            case 'deletePackingItem':
+                deletePackingItem(e.parameter.id);
+                return createApiResponse('success');
+            default:
+                const FRONTEND_URL = 'https://atariryuma.github.io/winter-trip-app/';
+                return HtmlService.createHtmlOutput(`
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <meta charset="UTF-8">
+                        <meta http-equiv="refresh" content="0; url=${FRONTEND_URL}">
+                    </head>
+                    <body><p>Redirecting to app...</p></body>
+                    </html>
+                `);
         }
-    } catch (e) {
-        Logger.log('Cache read error: ' + e.toString());
+    } catch (err) {
+        return createApiResponse('error', null, { message: err.toString() });
     }
-
-    // Get API Key from Script Properties
-    const API_KEY = PropertiesService.getScriptProperties().getProperty('GOOGLE_MAPS_API_KEY');
-
-    try {
-        let placeInfo = {
-            found: true,
-            name: query,
-            formattedAddress: '',
-            phone: null,
-            website: null,
-            rating: null,
-            userRatingCount: null,
-            openingHours: null,
-            editorialSummary: null,
-            photoUrl: null,
-            reviews: [],
-            mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`,
-            travelTips: [],
-            source: 'geocoding'
-        };
-
-        if (API_KEY) {
-            try {
-                const textSearchUrl = 'https://places.googleapis.com/v1/places:searchText';
-
-                // Optimized search payload with Japan-specific settings
-                const searchPayload = {
-                    textQuery: query,
-                    languageCode: 'ja',   // Japanese language for results
-                    regionCode: 'JP',     // Prioritize Japan results
-                    // Location bias: Central Japan (covers Okinawa to Hokkaido)
-                    locationBias: {
-                        circle: {
-                            center: { latitude: 36.0, longitude: 138.0 },
-                            radius: 800000.0  // 800km to cover all of Japan
-                        }
-                    },
-                    maxResultCount: 1  // Only need top result
-                };
-
-                // Optimized FieldMask - request ONLY fields we actually use
-                const fieldMask = [
-                    'places.id',
-                    'places.displayName',
-                    'places.formattedAddress',
-                    'places.googleMapsUri',
-                    'places.types',
-                    'places.nationalPhoneNumber',
-                    'places.websiteUri',
-                    'places.regularOpeningHours.weekdayDescriptions',
-                    'places.rating',
-                    'places.userRatingCount',
-                    'places.editorialSummary',
-                    'places.reviews',
-                    'places.photos'
-                ].join(',');
-
-                const searchResponse = UrlFetchApp.fetch(textSearchUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Goog-Api-Key': API_KEY,
-                        'X-Goog-FieldMask': fieldMask
-                    },
-                    payload: JSON.stringify(searchPayload),
-                    muteHttpExceptions: true
-                });
-
-                const responseCode = searchResponse.getResponseCode();
-                const responseText = searchResponse.getContentText();
-
-                if (responseCode !== 200) {
-                    Logger.log(`Places API HTTP Error ${responseCode}: ${responseText}`);
-                    throw new Error(`HTTP ${responseCode}`);
-                }
-
-                const searchData = JSON.parse(responseText);
-
-                if (searchData.places && searchData.places.length > 0) {
-                    const place = searchData.places[0];
-
-                    placeInfo.source = 'places_api';
-                    placeInfo.placeId = place.id || null;
-                    placeInfo.name = place.displayName?.text || query;
-                    placeInfo.formattedAddress = place.formattedAddress || '';
-                    placeInfo.phone = place.nationalPhoneNumber || null;
-                    placeInfo.website = place.websiteUri || null;
-                    placeInfo.rating = place.rating || null;
-                    placeInfo.userRatingCount = place.userRatingCount || null;
-                    placeInfo.mapsUrl = place.googleMapsUri || placeInfo.mapsUrl;
-                    placeInfo.types = place.types || [];
-
-                    // Editorial summary
-                    if (place.editorialSummary?.text) {
-                        placeInfo.editorialSummary = place.editorialSummary.text;
-                    }
-
-                    // Opening hours (weekday descriptions only)
-                    if (place.regularOpeningHours?.weekdayDescriptions) {
-                        placeInfo.openingHours = place.regularOpeningHours.weekdayDescriptions;
-                    }
-
-                    // Reviews (limit to 3 for UI, extract only needed fields)
-                    if (place.reviews && place.reviews.length > 0) {
-                        placeInfo.reviews = place.reviews.slice(0, 3).map(r => ({
-                            author: r.authorAttribution?.displayName || '匿名',
-                            rating: r.rating || null,
-                            text: (r.text?.text || '').substring(0, 200), // Truncate long reviews
-                            relativeTime: r.relativePublishTimeDescription || ''
-                        }));
-                    }
-
-                    // Photo URL - generate using first photo if available
-                    if (place.photos && place.photos.length > 0) {
-                        const photoName = place.photos[0].name;
-                        if (photoName) {
-                            placeInfo.photoUrl = `https://places.googleapis.com/v1/${photoName}/media?maxHeightPx=300&maxWidthPx=400&key=${API_KEY}`;
-                        }
-                    }
-                } else {
-                    Logger.log('Places API: No results for query: ' + query);
-                }
-            } catch (placesError) {
-                Logger.log('Places API error for "' + query + '": ' + placesError.toString());
-            }
-        }
-
-        // Fallback to Geocoding if Places API didn't return data
-        if (!placeInfo.formattedAddress) {
-            try {
-                const geocoder = Maps.newGeocoder();
-                geocoder.setLanguage('ja');
-                geocoder.setRegion('jp');
-                const geoResult = geocoder.geocode(query);
-
-                if (geoResult.status === 'OK' && geoResult.results && geoResult.results.length > 0) {
-                    const geoPlace = geoResult.results[0];
-                    placeInfo.formattedAddress = geoPlace.formatted_address || '';
-                    placeInfo.types = geoPlace.types || [];
-                    placeInfo.source = 'geocoding';
-                }
-            } catch (geoError) {
-                Logger.log('Geocoding error: ' + geoError.toString());
-            }
-        }
-
-        // Generate travel tips based on place type
-        placeInfo.travelTips = generateTravelTips(query, placeInfo.types || []);
-
-        // Mark as not found if no address obtained
-        if (!placeInfo.formattedAddress) {
-            placeInfo.found = false;
-        }
-
-        // Cache the result (6 hours max in GAS)
-        try {
-            const cacheData = JSON.stringify(placeInfo);
-            // Only cache if under size limit (~100KB per item)
-            if (cacheData.length < 100000) {
-                cache.put(cacheKey, cacheData, 21600);
-            }
-        } catch (cacheError) {
-            Logger.log('Cache write error: ' + cacheError.toString());
-        }
-
-        return placeInfo;
-
-    } catch (error) {
-        Logger.log('getPlaceInfo fatal error: ' + error.toString());
-        return {
-            error: error.toString(),
-            found: false,
-            query: query,
-            mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`
-        };
-    }
-}
-
-/**
- * Generate travel tips based on place type and name
- */
-function generateTravelTips(name, types) {
-    const tips = [];
-    const nameLower = name.toLowerCase();
-
-    // Hotel/Lodging tips
-    if (types.includes('lodging') || nameLower.includes('ホテル') || nameLower.includes('inn') || nameLower.includes('旅館') || nameLower.includes('温泉')) {
-        tips.push('💡 チェックイン前でも荷物を預けられることが多いです');
-        tips.push('🏪 近くのコンビニの場所を事前に確認しておくと便利です');
-        tips.push('📱 WiFiパスワードはフロントで確認できます');
-    }
-
-    // Airport tips
-    if (types.includes('airport') || nameLower.includes('空港') || nameLower.includes('airport')) {
-        tips.push('✈️ 国内線は出発の1.5〜2時間前に到着がおすすめ');
-        tips.push('💧 液体は100ml以下の容器で透明な袋に入れましょう');
-        tips.push('🎒 モバイルバッテリーは預け荷物に入れられません');
-    }
-
-    // Train station tips
-    if (types.includes('train_station') || nameLower.includes('駅') || nameLower.includes('station')) {
-        tips.push('🚃 特急券は乗車前にホームを確認しましょう');
-        tips.push('🎫 JRと私鉄は改札が別の場合があります');
-        tips.push('📍 大きな駅では待ち合わせ場所を事前に決めておきましょう');
-    }
-
-    // Temple/Shrine tips
-    if (types.includes('temple') || types.includes('shrine') || nameLower.includes('神社') || nameLower.includes('寺')) {
-        tips.push('🙏 参拝前に手水舎で手を清めましょう');
-        tips.push('💰 お賽銭用の小銭を用意しておくと便利です');
-        tips.push('📸 撮影禁止の場所もあるので確認しましょう');
-    }
-
-    // Tourist attraction tips
-    if (types.includes('tourist_attraction') || types.includes('museum') || nameLower.includes('観光')) {
-        tips.push('🕐 午前中は比較的空いていることが多いです');
-        tips.push('🎟️ 事前にオンライン予約できる場合があります');
-    }
-
-    // Onsen/Spa tips
-    if (nameLower.includes('温泉') || nameLower.includes('onsen') || nameLower.includes('spa')) {
-        tips.push('♨️ 入浴前に体を洗ってから湯船に入りましょう');
-        tips.push('🧴 タオルは湯船に入れないのがマナーです');
-        tips.push('🚫 タトゥーがある場合は事前に確認しましょう');
-    }
-
-    // Restaurant tips
-    if (types.includes('restaurant') || types.includes('food') || nameLower.includes('レストラン') || nameLower.includes('ランチ')) {
-        tips.push('📞 人気店は予約がおすすめです');
-        tips.push('💴 現金のみの場合もあるので準備しておきましょう');
-    }
-
-    // Default tips if none matched
-    if (tips.length === 0) {
-        tips.push('📍 現地の営業時間を事前に確認しましょう');
-        tips.push('🗺️ オフラインマップをダウンロードしておくと安心です');
-    }
-
-    return tips;
-}
-
-/**
- * Extract address from details field (looks for 📍 prefix)
- */
-function extractAddressFromDetails(details) {
-    if (!details) return null;
-    const match = details.match(/📍\s*(.+?)(?:\n|$)/);
-    return match ? match[1].trim() : null;
 }
 
 function doPost(e) {
     try {
-        let jsonString;
+        const action = e.parameter?.action;
 
-        // 1. Try 'data' parameter (Form URL Encoded) - Most reliable for no-cors
-        if (e.parameter && e.parameter.data) {
-            jsonString = e.parameter.data;
+        // Handle CSV uploads
+
+        if (action === 'uploadEvents') {
+            return handleUploadEvents(e);
         }
 
-        // 2. Try raw postData content
-        if (!jsonString && e.postData) {
+        // Default: save itinerary data
+        let jsonString;
+        if (e.parameter?.data) {
+            jsonString = e.parameter.data;
+        } else if (e.postData) {
             jsonString = e.postData.contents;
-            if (!jsonString) {
-                try {
-                    jsonString = e.postData.getDataAsString();
-                } catch (err) { }
-            }
         }
 
         if (!jsonString) throw new Error('No valid post data found');
 
         const data = JSON.parse(jsonString);
-
-        // Full Sync: Overwrite sheet with new data
         saveItineraryData(data);
 
-        // Save last update timestamp
-        const now = new Date();
-        const timestamp = Utilities.formatDate(now, 'Asia/Tokyo', 'yyyy/MM/dd HH:mm');
+        const timestamp = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy/MM/dd HH:mm');
         PropertiesService.getScriptProperties().setProperty('lastUpdate', timestamp);
 
-        // Invalidate Cache
-        try {
-            const cache = CacheService.getScriptCache();
-            cache.remove('itinerary_json');
-        } catch (e) { }
+        CacheService.getScriptCache().remove('itinerary_json');
 
-        return createApiResponse('success', {
-            message: 'Data saved successfully',
-            lastUpdate: timestamp
-        });
-
+        return createApiResponse('success', { message: 'Saved', lastUpdate: timestamp });
     } catch (error) {
         return createApiResponse('error', null, { message: error.toString() });
     }
 }
 
+// ============================================================================
+// DATA FIX: Convert Date objects in time columns to HH:MM format
+// ============================================================================
+
 /**
- * Read itinerary data from Google Spreadsheet and transform to app format
+ * Fix time data in events sheet - converts Date objects to HH:MM strings
+ * Call via API: ?action=fixTimeData
+ */
+function fixTimeData() {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const eventsSheet = ss.getSheetByName(EVENTS_SHEET);
+
+    if (!eventsSheet) {
+        return { fixed: 0, error: 'Events sheet not found' };
+    }
+
+    const lastRow = eventsSheet.getLastRow();
+    if (lastRow < 2) {
+        return { fixed: 0, message: 'No data to fix' };
+    }
+
+    // Get time and endTime columns (columns 5 and 6)
+    const timeRange = eventsSheet.getRange(2, 5, lastRow - 1, 2);
+    const timeData = timeRange.getValues();
+    let fixedCount = 0;
+
+    const fixedData = timeData.map(row => {
+        return row.map(cell => {
+            if (cell instanceof Date) {
+                // Convert Date to HH:MM format using JST
+                fixedCount++;
+                return Utilities.formatDate(cell, 'Asia/Tokyo', 'HH:mm');
+            }
+            return cell;
+        });
+    });
+
+    // Write back the fixed data
+    timeRange.setValues(fixedData);
+
+    // Also fix the date column (column 1) - convert to M/D format
+    const dateRange = eventsSheet.getRange(2, 1, lastRow - 1, 1);
+    const dateData = dateRange.getValues();
+    let dateFixedCount = 0;
+
+    const fixedDates = dateData.map(row => {
+        const cell = row[0];
+        if (cell instanceof Date) {
+            const month = cell.getMonth() + 1;
+            const day = cell.getDate();
+            dateFixedCount++;
+            return [`${month}/${day}`];
+        }
+        return row;
+    });
+
+    dateRange.setValues(fixedDates);
+
+    // Also fix days sheet date column
+    const daysSheet = ss.getSheetByName(DAYS_SHEET);
+    if (daysSheet) {
+        const daysLastRow = daysSheet.getLastRow();
+        if (daysLastRow > 1) {
+            const daysDateRange = daysSheet.getRange(2, 1, daysLastRow - 1, 1);
+            const daysDateData = daysDateRange.getValues();
+
+            const fixedDaysDates = daysDateData.map(row => {
+                const cell = row[0];
+                if (cell instanceof Date) {
+                    const month = cell.getMonth() + 1;
+                    const day = cell.getDate();
+                    return [`${month}/${day}`];
+                }
+                return row;
+            });
+
+            daysDateRange.setValues(fixedDaysDates);
+        }
+    }
+
+    // Clear cache
+    CacheService.getScriptCache().remove('itinerary_json');
+
+    return {
+        fixed: fixedCount,
+        datesFixed: dateFixedCount,
+        message: `Fixed ${fixedCount} time values and ${dateFixedCount} date values`
+    };
+}
+
+// ============================================================================
+// CSV UPLOAD HANDLERS
+// ============================================================================
+
+/**
+ * Handle Days CSV upload - overwrites days sheet
+ */
+
+
+/**
+ * Handle Events CSV upload - overwrites events sheet
+ */
+function handleUploadEvents(e) {
+    try {
+        const csvData = e.parameter.data;
+        if (!csvData) {
+            return createApiResponse('error', null, { message: 'No CSV data provided' });
+        }
+
+        const rows = parseCSV(csvData);
+        if (rows.length < 2) {
+            return createApiResponse('error', null, { message: 'CSV must have header and at least one row' });
+        }
+
+        const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+        const sheet = ss.getSheetByName(EVENTS_SHEET);
+
+        if (!sheet) {
+            return createApiResponse('error', null, { message: 'Events sheet not found' });
+        }
+
+        // Clear existing data (except header)
+        const lastRow = sheet.getLastRow();
+        if (lastRow > 1) {
+            sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).clearContent();
+        }
+
+        // Write new data (skip header from CSV, use existing header)
+        // Prepend ' to time columns (5, 6) to prevent auto-date conversion
+        const dataRows = rows.slice(1).filter(row => row[0]).map(row => {
+            return row.map((cell, idx) => {
+                // Column 5 (time) and 6 (endTime) - 0-indexed: 4 and 5
+                if ((idx === 4 || idx === 5) && cell && /^\d{1,2}:\d{2}$/.test(cell)) {
+                    return "'" + cell;
+                }
+                return cell;
+            });
+        });
+
+        if (dataRows.length > 0) {
+            sheet.getRange(2, 1, dataRows.length, dataRows[0].length).setValues(dataRows);
+        }
+
+        CacheService.getScriptCache().remove('itinerary_json');
+
+        return createApiResponse('success', {
+            uploaded: dataRows.length,
+            message: `Uploaded ${dataRows.length} events`
+        });
+    } catch (err) {
+        return createApiResponse('error', null, { message: err.toString() });
+    }
+}
+
+/**
+ * Parse CSV string into 2D array
+ */
+function parseCSV(csvString) {
+    const rows = [];
+    let currentRow = [];
+    let currentCell = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < csvString.length; i++) {
+        const char = csvString[i];
+        const nextChar = csvString[i + 1];
+
+        if (char === '"') {
+            if (inQuotes && nextChar === '"') {
+                currentCell += '"';
+                i++; // Skip next quote
+            } else {
+                inQuotes = !inQuotes;
+            }
+        } else if (char === ',' && !inQuotes) {
+            currentRow.push(currentCell);
+            currentCell = '';
+        } else if ((char === '\n' || (char === '\r' && nextChar === '\n')) && !inQuotes) {
+            currentRow.push(currentCell);
+            rows.push(currentRow);
+            currentRow = [];
+            currentCell = '';
+            if (char === '\r') i++; // Skip \n after \r
+        } else if (char === '\r' && !inQuotes) {
+            currentRow.push(currentCell);
+            rows.push(currentRow);
+            currentRow = [];
+            currentCell = '';
+        } else {
+            currentCell += char;
+        }
+    }
+
+    // Handle last cell/row
+    if (currentCell || currentRow.length > 0) {
+        currentRow.push(currentCell);
+        rows.push(currentRow);
+    }
+
+    return rows;
+}
+
+// ============================================================================
+// DATA OPERATIONS
+// ============================================================================
+
+/**
+ * Get itinerary data from days/events sheets
  */
 function getItineraryData() {
     const cache = CacheService.getScriptCache();
 
-    // Check Cache first
     try {
-        const cachedData = cache.get('itinerary_json');
-        if (cachedData) {
-            return JSON.parse(cachedData);
-        }
+        const cached = cache.get('itinerary_json');
+        if (cached) return JSON.parse(cached);
     } catch (e) { }
 
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const sheet = ss.getSheetByName(SHEET_NAME);
-    const data = sheet.getDataRange().getDisplayValues();
+    const daysSheet = ss.getSheetByName(DAYS_SHEET);
+    const eventsSheet = ss.getSheetByName(EVENTS_SHEET);
 
-    // Skip header row
-    const rows = data.slice(1).filter(row => row[0]); // Filter empty rows
-
-    // Group by date
-    const daysMap = {};
-    // Track all locations for the map
-    const mapMarkers = [];
-
-    rows.forEach((row, idx) => {
-        const [
-            date, dayOfWeek, title, location, weatherTemp, weatherCondition, summary,
-            category, type, name, departureTime, departurePlace, arrivalTime, arrivalPlace,
-            status, details, hotelName, checkInTime, bookingRef, hotelDetails,
-            // New columns (20-23)
-            depAddress, depPlaceId, arrAddress, arrPlaceId
-        ] = row;
-
-        // Collect locations for map (Airport, Hotel, Sightseeing)
-        if (category === '宿泊' && hotelName) mapMarkers.push(hotelName);
-        if (category === '交通' && departurePlace) mapMarkers.push(departurePlace);
-        if (category === '交通' && arrivalPlace) mapMarkers.push(arrivalPlace);
-        if (category === 'アクティビティ' && name) mapMarkers.push(name);
-
-        // ... (existing logic) ...
-        // Create or get day object
-        if (!daysMap[date]) {
-            daysMap[date] = {
-                id: `day-${Object.keys(daysMap).length + 1}`,
-                date: date,
-                dayOfWeek: dayOfWeek,
-                title: title,
-                location: location,
-                weather: { temp: weatherTemp, condition: weatherCondition },
-                summary: summary,
-                events: []
-            };
-        }
-
-        const day = daysMap[date];
-
-        // Create event based on category
-        if (category === '宿泊') {
-            day.events.push({
-                id: `e${Object.keys(daysMap).length}-${day.events.length + 1}`,
-                type: 'stay',
-                category: 'hotel',
-                name: hotelName,
-                address: extractAddressFromDetails(hotelDetails),
-                time: (checkInTime || '').split('-')[0] || '15:00',
-                checkIn: checkInTime,
-                status: status || 'confirmed',
-                bookingRef: (bookingRef || '').replace('予約番号: ', ''),
-                details: hotelDetails
-            });
-        } else if (category === '交通') {
-            day.events.push({
-                id: `e${Object.keys(daysMap).length}-${day.events.length + 1}`,
-                type: 'transport',
-                category: type || 'other',
-                name: name,
-                address: extractAddressFromDetails(details),
-                time: departureTime,
-                endTime: arrivalTime,
-                // Departure
-                place: departurePlace,
-                placeAddress: depAddress || null,
-                placePlaceId: depPlaceId || null,
-                // Arrival
-                to: arrivalPlace,
-                toAddress: arrAddress || null,
-                toPlaceId: arrPlaceId || null,
-                status: status || 'planned',
-                details: details
-            });
-        } else if (category === 'アクティビティ') {
-            day.events.push({
-                id: `e${Object.keys(daysMap).length}-${day.events.length + 1}`,
-                type: 'activity',
-                category: type || 'sightseeing',
-                name: name,
-                address: extractAddressFromDetails(details),
-                time: departureTime,
-                description: details,
-                status: status || 'planned'
-            });
-        }
-    });
-
-    // Generate Static Map URL (with fallback strategy)
-    let mapUrl = null;
-    let mapError = null;
-
-    if (mapMarkers.length > 0) {
-        const uniqueLocations = [...new Set(mapMarkers)].filter(l => l && !l.match(/^\d{3}-\d{4}$/));
-
-        // Strategy 1: Try all markers (limit 15)
-        try {
-            mapUrl = generateStaticMapUrl(uniqueLocations.slice(0, 15));
-        } catch (e1) {
-            Logger.log(`Map Gen Strategy 1 Failed: ${e1}`);
-
-            // Strategy 2: Try fewer markers (Start, End, and up to 3 intermediates)
-            try {
-                const importantLocs = [];
-                if (uniqueLocations.length > 0) importantLocs.push(uniqueLocations[0]);
-                if (uniqueLocations.length > 1) importantLocs.push(uniqueLocations[uniqueLocations.length - 1]);
-                // Add a few random middles if available
-                if (uniqueLocations.length > 5) {
-                    importantLocs.push(uniqueLocations[Math.floor(uniqueLocations.length / 2)]);
-                }
-                mapUrl = generateStaticMapUrl(importantLocs);
-            } catch (e2) {
-                Logger.log(`Map Gen Strategy 2 Failed: ${e2}`);
-
-                // Strategy 3: Try just the FIRST location (Center map)
-                try {
-                    if (uniqueLocations.length > 0) {
-                        mapUrl = generateStaticMapUrl([uniqueLocations[0]]);
-                    }
-                } catch (e3) {
-                    mapError = 'Map Gen Failed: ' + e3.toString();
-                    Logger.log(mapError);
-                }
-            }
-        }
+    if (!daysSheet || !eventsSheet) {
+        throw new Error('Required sheets (days/events) not found');
     }
 
-    // Convert to array and sort events by time
-    const result = Object.values(daysMap).map(day => ({
-        ...day,
-        events: day.events.sort((a, b) => (a.time || '23:59').localeCompare(b.time || '23:59'))
-    }));
+    // Read days
+    const daysLastRow = daysSheet.getLastRow();
+    const daysData = daysLastRow > 1
+        ? daysSheet.getRange(2, 1, daysLastRow - 1, 5).getValues()
+        : [];
 
-    const response = {
-        days: result,
-        mapUrl: mapUrl,
-        mapError: mapError,
+    // Read events
+    const eventsLastRow = eventsSheet.getLastRow();
+    const eventsData = eventsLastRow > 1
+        ? eventsSheet.getRange(2, 1, eventsLastRow - 1, 12).getValues()
+        : [];
+
+    // Build days map
+    const daysMap = {};
+    daysData.forEach(([date, dayOfWeek, title, summary, theme]) => {
+        if (!date) return;
+        daysMap[toString(date)] = {
+            id: `day-${toString(date).replace('/', '-')}`,
+            date: toString(date),
+            dayOfWeek: toString(dayOfWeek),
+            title: toString(title),
+            summary: toString(summary),
+            theme: theme || 'default',
+            weather: null,
+            events: []
+        };
+    });
+
+    const mapLocations = [];
+
+    // Process events
+    eventsData.forEach((row, idx) => {
+        const [date, type, category, name, time, endTime, from, to, status, bookingRef, memo, budget] = row;
+        const dateStr = toString(date);
+
+        if (!dateStr || !daysMap[dateStr]) return;
+
+        let budgetAmount = '', budgetPaidBy = '';
+        if (budget && toString(budget).includes('/')) {
+            const parts = toString(budget).split('/');
+            budgetAmount = parts[0];
+            budgetPaidBy = parts[1] || '';
+        }
+
+        const event = {
+            id: `e-${dateStr.replace('/', '-')}-${idx}`,
+            type: toString(type),
+            category: toString(category),
+            name: toString(name),
+            time: toString(time),
+            endTime: toString(endTime),
+            from: toString(from),
+            to: toString(to),
+            status: toString(status) || 'planned',
+            bookingRef: toString(bookingRef),
+            details: toString(memo),
+            budgetAmount,
+            budgetPaidBy
+        };
+
+        if (type === 'stay') {
+            event.checkIn = toString(time);
+        }
+
+        if (from) mapLocations.push(toString(from));
+        if (to) mapLocations.push(toString(to));
+        if (type === 'stay' && name) mapLocations.push(toString(name));
+
+        daysMap[dateStr].events.push(event);
+    });
+
+    // Sort events by time
+    Object.values(daysMap).forEach(day => {
+        day.events.sort((a, b) => (a.time || '23:59').localeCompare(b.time || '23:59'));
+    });
+
+    // Generate map
+    let mapUrl = null, mapError = null;
+    try {
+        const uniqueLocations = [...new Set(mapLocations)].filter(l => l && l.trim());
+        if (uniqueLocations.length > 0) {
+            mapUrl = generateStaticMapUrl(uniqueLocations.slice(0, 15));
+        }
+    } catch (e) {
+        mapError = e.toString();
+    }
+
+    const result = {
+        days: Object.values(daysMap),
+        mapUrl,
+        mapError,
         lastUpdate: PropertiesService.getScriptProperties().getProperty('lastUpdate') || null
     };
 
-
-    // Cache the response (JSON string) for 30 minutes (1800 seconds)
     try {
-        cache.put('itinerary_json', JSON.stringify(response), 1800);
+        cache.put('itinerary_json', JSON.stringify(result), 1800);
     } catch (e) { }
 
-    return response;
+    return result;
 }
 
 /**
- * Save itinerary data (Full Sync) to Spreadsheet
+ * Save itinerary data to sheets
  */
-function saveItineraryData(days) {
+function saveItineraryData(data) {
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const sheet = ss.getSheetByName(SHEET_NAME);
 
-    // Prepare rows
-    const rows = [];
+    const daysData = data.map(day => [
+        day.date,
+        day.dayOfWeek,
+        day.title,
+        day.summary || '',
+        day.theme || 'default'
+    ]);
 
-    // Header columns (24 total):
-    // 0-19: existing columns
-    // 20: 出発地_住所, 21: 出発地_PlaceID, 22: 到着地_住所, 23: 到着地_PlaceID
+    const eventsData = [];
+    data.forEach(day => {
+        (day.events || []).forEach(event => {
+            const budget = event.budgetAmount
+                ? `${event.budgetAmount}/${event.budgetPaidBy || ''}`
+                : '';
 
-    days.forEach(day => {
-        day.events.forEach(event => {
-            let row = new Array(24).fill('');  // Extended to 24 columns
-
-            // Common Day Info
-            row[0] = day.date;
-            row[1] = day.dayOfWeek;
-            row[2] = day.title;
-            row[3] = day.location;
-            row[4] = day.weather ? day.weather.temp : '';
-            row[5] = day.weather ? day.weather.condition : '';
-            row[6] = day.summary;
-
-            // Event Specifics
-            if (event.type === 'stay') {
-                row[7] = '宿泊';
-                row[8] = '';
-                row[9] = '';
-                row[14] = event.status;
-                row[16] = event.name;
-                row[17] = event.checkIn;
-                row[18] = event.bookingRef ? `予約番号: ${event.bookingRef}` : '';
-                row[19] = event.details;
-
-            } else if (event.type === 'transport') {
-                row[7] = '交通';
-                row[8] = event.category;
-                row[9] = event.name;
-                row[10] = event.time;
-                row[11] = event.place;
-                row[12] = event.endTime;
-                row[13] = event.to;
-                row[14] = event.status;
-                row[15] = event.details;
-                // New: Address and PlaceID columns
-                row[20] = event.placeAddress || '';
-                row[21] = event.placePlaceId || '';
-                row[22] = event.toAddress || '';
-                row[23] = event.toPlaceId || '';
-
-            } else { // activity
-                row[7] = 'アクティビティ';
-                row[8] = event.category;
-                row[9] = event.name;
-                row[10] = event.time;
-                row[14] = event.status;
-                row[15] = event.description;
-            }
-
-            rows.push(row);
+            eventsData.push([
+                day.date,
+                event.type,
+                event.category,
+                event.name,
+                event.time || '',
+                event.endTime || '',
+                event.from || event.place || '',
+                event.to || '',
+                event.status || 'planned',
+                event.bookingRef || '',
+                event.details || '',
+                budget
+            ]);
         });
     });
 
-    // Clear old data and write new (24 columns)
-    const lastRow = sheet.getLastRow();
-    if (lastRow > 1) {
-        sheet.getRange(2, 1, lastRow - 1, 24).clearContent();
+    let daysSheet = ss.getSheetByName(DAYS_SHEET);
+    if (!daysSheet) {
+        daysSheet = ss.insertSheet(DAYS_SHEET);
+        daysSheet.appendRow(['date', 'dayOfWeek', 'title', 'summary', 'theme']);
+    } else if (daysSheet.getLastRow() > 1) {
+        daysSheet.getRange(2, 1, daysSheet.getLastRow() - 1, 5).clearContent();
     }
 
-    if (rows.length > 0) {
-        sheet.getRange(2, 1, rows.length, 24).setValues(rows);
+    let eventsSheet = ss.getSheetByName(EVENTS_SHEET);
+    if (!eventsSheet) {
+        eventsSheet = ss.insertSheet(EVENTS_SHEET);
+        eventsSheet.appendRow(['date', 'type', 'category', 'name', 'time', 'endTime', 'from', 'to', 'status', 'bookingRef', 'memo', 'budget']);
+    } else if (eventsSheet.getLastRow() > 1) {
+        eventsSheet.getRange(2, 1, eventsSheet.getLastRow() - 1, 12).clearContent();
+    }
+
+    if (daysData.length > 0) {
+        daysSheet.getRange(2, 1, daysData.length, 5).setValues(daysData);
+    }
+    if (eventsData.length > 0) {
+        eventsSheet.getRange(2, 1, eventsData.length, 12).setValues(eventsData);
+    }
+}
+
+// ============================================================================
+// WEATHER API (Open-Meteo)
+// ============================================================================
+
+function getWeather(date, locationName) {
+    const cache = CacheService.getScriptCache();
+    const cacheKey = `weather_${date}_${Utilities.base64Encode(locationName)}`;
+
+    try {
+        const cached = cache.get(cacheKey);
+        if (cached) return JSON.parse(cached);
+    } catch (e) { }
+
+    try {
+        const geocoder = Maps.newGeocoder().setLanguage('ja').setRegion('jp');
+        const geoResult = geocoder.geocode(locationName);
+
+        if (geoResult.status !== 'OK' || !geoResult.results.length) {
+            return { error: 'Location not found' };
+        }
+
+        const loc = geoResult.results[0].geometry.location;
+        const currentYear = new Date().getFullYear();
+        const [month, day] = date.split('/').map(Number);
+        const year = month >= 10 ? currentYear : currentYear + 1;
+        const isoDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lng}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Asia/Tokyo&start_date=${isoDate}&end_date=${isoDate}`;
+
+        const response = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+        const data = JSON.parse(response.getContentText());
+
+        if (!data.daily || !data.daily.weathercode) {
+            return { error: 'No weather data' };
+        }
+
+        const weatherCode = data.daily.weathercode[0];
+        const result = {
+            temp: `${Math.round(data.daily.temperature_2m_max[0])}°/${Math.round(data.daily.temperature_2m_min[0])}°`,
+            condition: getWeatherCondition(weatherCode),
+            icon: getWeatherIcon(weatherCode),
+            code: weatherCode
+        };
+
+        cache.put(cacheKey, JSON.stringify(result), 21600);
+        return result;
+
+    } catch (e) {
+        return { error: e.toString() };
+    }
+}
+
+function getWeatherCondition(code) {
+    const conditions = {
+        0: 'Clear', 1: 'Mainly Clear', 2: 'Partly Cloudy', 3: 'Overcast',
+        45: 'Fog', 48: 'Fog',
+        51: 'Light Rain', 53: 'Rain', 55: 'Heavy Rain',
+        61: 'Light Rain', 63: 'Rain', 65: 'Heavy Rain',
+        71: 'Light Snow', 73: 'Snow', 75: 'Heavy Snow',
+        77: 'Snow', 80: 'Light Rain', 81: 'Rain', 82: 'Heavy Rain',
+        85: 'Light Snow', 86: 'Heavy Snow',
+        95: 'Thunderstorm', 96: 'Thunderstorm', 99: 'Thunderstorm'
+    };
+    return conditions[code] || 'Unknown';
+}
+
+function getWeatherIcon(code) {
+    if (code === 0) return '☀️';
+    if (code <= 3) return '⛅';
+    if (code <= 48) return '🌫️';
+    if (code <= 65) return '🌧️';
+    if (code <= 77) return '❄️';
+    if (code <= 82) return '🌧️';
+    if (code <= 86) return '❄️';
+    return '⛈️';
+}
+
+function handleGetWeather(e) {
+    const date = e.parameter.date;
+    const location = e.parameter.location;
+    if (!date || !location) {
+        return createApiResponse('error', null, { message: 'Missing date or location' });
+    }
+    return createApiResponse('success', getWeather(date, location));
+}
+
+// ============================================================================
+// PLACES API
+// ============================================================================
+
+function handleGetPlaceInfo(e) {
+    const query = e.parameter.query || '';
+    if (!query) return createApiResponse('error', null, { message: 'No query provided' });
+    return createApiResponse('success', getPlaceInfo(query));
+}
+
+function getPlaceInfo(query) {
+    if (!query || query.trim() === '') {
+        return { found: false };
+    }
+
+    const cache = CacheService.getScriptCache();
+    const cacheKey = 'place_v3_' + Utilities.base64Encode(Utilities.newBlob(query).getBytes());
+
+    try {
+        const cached = cache.get(cacheKey);
+        if (cached) return JSON.parse(cached);
+    } catch (e) { }
+
+    const API_KEY = PropertiesService.getScriptProperties().getProperty('GOOGLE_MAPS_API_KEY');
+
+    let placeInfo = {
+        found: true,
+        name: query,
+        formattedAddress: '',
+        phone: null,
+        website: null,
+        rating: null,
+        userRatingCount: null,
+        mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`,
+        source: 'geocoding'
+    };
+
+    if (API_KEY) {
+        try {
+            const textSearchUrl = 'https://places.googleapis.com/v1/places:searchText';
+            const searchPayload = {
+                textQuery: query,
+                languageCode: 'ja',
+                regionCode: 'JP',
+                locationBias: {
+                    circle: { center: { latitude: 36.0, longitude: 138.0 }, radius: 800000.0 }
+                },
+                maxResultCount: 1
+            };
+
+            const fieldMask = [
+                'places.id', 'places.displayName', 'places.formattedAddress',
+                'places.googleMapsUri', 'places.nationalPhoneNumber', 'places.websiteUri',
+                'places.rating', 'places.userRatingCount', 'places.photos'
+            ].join(',');
+
+            const response = UrlFetchApp.fetch(textSearchUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Goog-Api-Key': API_KEY,
+                    'X-Goog-FieldMask': fieldMask
+                },
+                payload: JSON.stringify(searchPayload),
+                muteHttpExceptions: true
+            });
+
+            if (response.getResponseCode() === 200) {
+                const data = JSON.parse(response.getContentText());
+                if (data.places && data.places.length > 0) {
+                    const place = data.places[0];
+                    placeInfo = {
+                        found: true,
+                        source: 'places_api',
+                        placeId: place.id,
+                        name: place.displayName?.text || query,
+                        formattedAddress: place.formattedAddress || '',
+                        phone: place.nationalPhoneNumber || null,
+                        website: place.websiteUri || null,
+                        rating: place.rating || null,
+                        userRatingCount: place.userRatingCount || null,
+                        mapsUrl: place.googleMapsUri || placeInfo.mapsUrl,
+                        photoUrl: place.photos?.[0]?.name
+                            ? `https://places.googleapis.com/v1/${place.photos[0].name}/media?maxHeightPx=300&maxWidthPx=400&key=${API_KEY}`
+                            : null
+                    };
+                }
+            }
+        } catch (e) {
+            Logger.log('Places API error: ' + e);
+        }
+    }
+
+    // Fallback to geocoding
+    if (!placeInfo.formattedAddress) {
+        try {
+            const geo = Maps.newGeocoder().setLanguage('ja').setRegion('jp').geocode(query);
+            if (geo.status === 'OK' && geo.results.length) {
+                placeInfo.formattedAddress = geo.results[0].formatted_address;
+                placeInfo.source = 'geocoding';
+            }
+        } catch (e) { }
+    }
+
+    if (!placeInfo.formattedAddress) {
+        placeInfo.found = false;
     }
 
     try {
-        const cache = CacheService.getScriptCache();
-        cache.remove('itinerary_json');
+        cache.put(cacheKey, JSON.stringify(placeInfo), 21600);
     } catch (e) { }
+
+    return placeInfo;
 }
 
 /**
- * Helper to generate static map base64 from list of locations
+ * Auto-fill location details for events
  */
+function autoFillAllMissingDetails() {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const eventsSheet = ss.getSheetByName(EVENTS_SHEET);
+
+    if (!eventsSheet) return 0;
+
+    const lastRow = eventsSheet.getLastRow();
+    if (lastRow < 2) return 0;
+
+    const data = eventsSheet.getRange(2, 1, lastRow - 1, 12).getValues();
+    let count = 0;
+
+    data.forEach((row, idx) => {
+        const [date, type, category, name, time, endTime, from, to, status, bookingRef, memo, budget] = row;
+
+        if (memo && toString(memo).includes('📍')) return;
+
+        let targetName = toString(name);
+        if (type === 'transport') {
+            targetName = toString(from) || toString(to);
+        }
+
+        if (targetName) {
+            try {
+                const info = getPlaceInfo(targetName);
+                if (info && info.found && info.formattedAddress) {
+                    const newMemo = memo
+                        ? `${toString(memo)}\n📍 ${info.formattedAddress}`
+                        : `📍 ${info.formattedAddress}`;
+                    eventsSheet.getRange(idx + 2, 11).setValue(newMemo);
+                    count++;
+                }
+            } catch (e) { }
+        }
+    });
+
+    return count;
+}
+
+// ============================================================================
+// EVENT UPDATE
+// ============================================================================
+
+function handleUpdateEvent(e) {
+    const date = e.parameter.date;
+    const name = e.parameter.name;
+    const field = e.parameter.field;
+    const value = e.parameter.value;
+
+    if (!date || !name || !field) {
+        return createApiResponse('error', null, { message: 'Missing params' });
+    }
+
+    const result = updateEventField(date, name, field, value);
+    return createApiResponse(result.success ? 'success' : 'error', result.success ? result : null, result.error ? { message: result.error } : null);
+}
+
+function updateEventField(date, eventName, field, value) {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const eventsSheet = ss.getSheetByName(EVENTS_SHEET);
+
+    if (!eventsSheet) {
+        return { success: false, error: 'Events sheet not found' };
+    }
+
+    const colMap = {
+        'status': 9,
+        'bookingRef': 10,
+        'memo': 11,
+        'budget': 12
+    };
+
+    const colIndex = colMap[field];
+    if (!colIndex) return { success: false, error: 'Invalid field' };
+
+    const lastRow = eventsSheet.getLastRow();
+    if (lastRow < 2) return { success: false, error: 'No data' };
+
+    const data = eventsSheet.getRange(2, 1, lastRow - 1, 4).getValues();
+
+    for (let i = 0; i < data.length; i++) {
+        if (toString(data[i][0]) === date && toString(data[i][3]) === eventName) {
+            eventsSheet.getRange(i + 2, colIndex).setValue(value);
+            CacheService.getScriptCache().remove('itinerary_json');
+            return { success: true };
+        }
+    }
+
+    return { success: false, error: 'Event not found' };
+}
+
+// ============================================================================
+// MAP GENERATION
+// ============================================================================
+
 function generateStaticMapUrl(locations) {
     if (!locations || locations.length === 0) return null;
 
-    const map = Maps.newStaticMap()
-        .setSize(600, 400)
-        .setLanguage('ja'); // Note: 'ja' sometimes causes issues if locale not supported 
-
-    locations.forEach(loc => {
-        map.addMarker(loc);
-    });
+    const map = Maps.newStaticMap().setSize(600, 400).setLanguage('ja');
+    locations.forEach(loc => map.addMarker(loc));
 
     const blob = map.getBlob();
-    const base64 = Utilities.base64Encode(blob.getBytes());
-    return 'data:image/png;base64,' + base64;
+    return 'data:image/png;base64,' + Utilities.base64Encode(blob.getBytes());
+}
+
+// ============================================================================
+// PACKING LIST
+// ============================================================================
+
+function getPackingList() {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    let sheet = ss.getSheetByName(PACKING_SHEET);
+
+    if (!sheet) {
+        sheet = ss.insertSheet(PACKING_SHEET);
+        sheet.appendRow(['id', 'name', 'category', 'isShared', 'assignee', 'isChecked', 'createdAt']);
+        return [];
+    }
+
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return [];
+
+    return sheet.getRange(2, 1, lastRow - 1, 7).getValues().map(row => ({
+        id: row[0], name: row[1], category: row[2],
+        isShared: row[3], assignee: row[4],
+        isChecked: row[5], createdAt: row[6]
+    }));
+}
+
+function handleUpdatePackingItem(e) {
+    const item = {
+        id: e.parameter.id,
+        name: e.parameter.name,
+        category: e.parameter.category,
+        isShared: e.parameter.isShared === 'true',
+        assignee: e.parameter.assignee,
+        isChecked: e.parameter.isChecked === 'true'
+    };
+    return createApiResponse('success', updatePackingItem(item));
+}
+
+function updatePackingItem(item) {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    let sheet = ss.getSheetByName(PACKING_SHEET);
+
+    if (!sheet) {
+        getPackingList();
+        sheet = ss.getSheetByName(PACKING_SHEET);
+    }
+
+    const lastRow = sheet.getLastRow();
+    let rowIndex = -1;
+
+    if (item.id && lastRow >= 2) {
+        const ids = sheet.getRange(2, 1, lastRow - 1, 1).getValues().flat();
+        const found = ids.indexOf(item.id);
+        if (found !== -1) rowIndex = found + 2;
+    }
+
+    const rowData = [
+        item.id || Utilities.getUuid(),
+        item.name, item.category, item.isShared,
+        item.assignee, item.isChecked, new Date()
+    ];
+
+    if (rowIndex !== -1) {
+        sheet.getRange(rowIndex, 1, 1, 7).setValues([rowData]);
+    } else {
+        sheet.appendRow(rowData);
+    }
+
+    return {
+        id: rowData[0], name: rowData[1], category: rowData[2],
+        isShared: rowData[3], assignee: rowData[4],
+        isChecked: rowData[5], createdAt: rowData[6]
+    };
+}
+
+function deletePackingItem(id) {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheet = ss.getSheetByName(PACKING_SHEET);
+    if (!sheet) return;
+
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return;
+
+    const ids = sheet.getRange(2, 1, lastRow - 1, 1).getValues().flat();
+    const index = ids.indexOf(id);
+
+    if (index !== -1) {
+        sheet.deleteRow(index + 2);
+    }
+}
+
+// ============================================================================
+// PASSCODE VALIDATION
+// ============================================================================
+
+function handleValidatePasscode(e) {
+    const inputCode = e.parameter.code || '';
+    const storedCode = PropertiesService.getScriptProperties().getProperty('APP_PASSCODE') || '2025';
+    return createApiResponse('success', { valid: inputCode === storedCode });
 }

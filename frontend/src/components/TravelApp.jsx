@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useRef, useMemo, Suspense, lazy } from 'react';
+const PlaceDetailModal = React.lazy(() => import('./views/PlaceDetailModal'));
+const RouteModal = React.lazy(() => import('./views/RouteModal'));
 import {
-    Calendar, MapPin, Settings, Plus, Ticket, Plane, Edit2, ArrowRight, Copy
+    Calendar, Map, Settings as SettingsIcon,
+    Plane, Train, Bus, Hotel, MapPin, Utensils, Ticket,
+    Plus, ArrowRight, Wallet, CheckCircle, Search,
+    Copy, Menu, X, Edit3, Save, Navigation, Phone, Sun, Cloud, Moon, Wind
 } from 'lucide-react';
 import { initialItinerary } from '../data/initialData';
 import { generateId, toMinutes, toTimeStr, getMidTime } from '../utils';
@@ -10,7 +15,8 @@ import LoadingSpinner from './common/LoadingSpinner';
 import PortraitLock from './common/PortraitLock';
 import ReloadPrompt from './common/ReloadPrompt';
 import EditModal from './EditModal';
-import PlaceInfoModal from './PlaceInfoModal';
+import LoginView from './views/LoginView';
+import server from '../api/gas';
 
 // Lazy load view components
 const TicketList = lazy(() => import('./views/TicketList'));
@@ -18,12 +24,7 @@ const MapView = lazy(() => import('./views/MapView'));
 const SettingsView = lazy(() => import('./views/SettingsView'));
 const PackingList = lazy(() => import('./views/PackingList'));
 const EmergencyContacts = lazy(() => import('./views/EmergencyContacts'));
-import LoginView from './views/LoginView';
-
-// ============================================================================
-// CONSTANTS
-// ============================================================================
-const API_URL = 'https://script.google.com/macros/s/AKfycbyVmdxEnX8UCokHiRjda-jJ7SAexeRywQs7Cz_f80x9W0MHHiNwDAV0AVeNMrMVlVnPLw/exec';
+const BudgetView = lazy(() => import('./views/BudgetView'));
 
 // Helper: Determine event type from category
 const getCategoryType = (category) => {
@@ -32,116 +33,53 @@ const getCategoryType = (category) => {
     return 'activity';
 };
 
-// ============================================================================
-// SERVER ADAPTER
-// ============================================================================
-const server = {
-    getData: () => new Promise((resolve, reject) => {
-        if (typeof google === 'object' && google.script && google.script.run) {
-            console.log('Using google.script.run');
-            google.script.run
-                .withSuccessHandler(resolve)
-                .withFailureHandler((error) => {
-                    console.error('GAS Server Error:', error);
-                    reject(new Error('GAS Error: ' + (error.message || error)));
-                })
-                .getItineraryData();
-        } else {
-            console.log('Using local fetch fallback');
+// Helper: Calculate duration between two events in minutes
+const getDurationMinutes = (currentEvent, nextEvent) => {
+    const currentEnd = currentEvent.endTime || currentEvent.time;
+    const nextStart = nextEvent?.time;
+    if (!currentEnd || !nextStart) return null;
+    return toMinutes(nextStart) - toMinutes(currentEnd);
+};
 
-            fetch(`${API_URL}?action=getData`, {
-                method: 'GET',
-                redirect: 'follow'
-            })
-                .then(res => {
-                    if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
-                    return res.json();
-                })
-                .then(json => {
-                    if (json.status === 'error') throw new Error(json.error?.message || 'Server Error');
-                    resolve(json.data);
-                })
-                .catch(e => reject(new Error('Fetch Error: ' + e.message)));
-        }
-    }),
-    saveData: (data) => new Promise((resolve, reject) => {
-        if (typeof google === 'object' && google.script && google.script.run) {
-            google.script.run
-                .withSuccessHandler(resolve)
-                .withFailureHandler(reject)
-                .saveItineraryData(data); // Call backend directly
-        } else {
-            // Use URLSearchParams for form-urlencoded (reliable with no-cors)
-            const params = new URLSearchParams();
-            params.append('data', JSON.stringify(data));
+// Helper: Format duration for display
+const formatDuration = (minutes) => {
+    if (minutes === null || minutes === undefined) return null;
+    if (minutes < 0) return null; // Overlap
+    if (minutes === 0) return '直後';
+    if (minutes < 60) return `${minutes}分`;
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return mins > 0 ? `${hours}時間${mins}分` : `${hours}時間`;
+};
 
-            fetch(API_URL, {
-                method: 'POST',
-                mode: 'no-cors',
-                body: params
-            })
-                .then(res => res.text()) // no-cors returns opaque response usually, but we try
-                .then(() => resolve({ status: 'success' }))
-                .catch(reject);
-        }
-    }),
-    validatePasscode: (code) => new Promise((resolve) => {
-        fetch(`${API_URL}?action=validatePasscode&code=${encodeURIComponent(code)}`, { method: 'GET' })
-            .then(res => res.json())
-            .then(json => {
-                if (json.status === 'success') resolve(json.data.valid === true);
-                else resolve(false);
-            })
-            .catch(() => resolve(false)); // Secure fallback
-    }),
-    getPlaceInfo: (query) => new Promise((resolve, reject) => {
-        if (!query || query.trim() === '') {
-            resolve({ found: false, error: 'No query' });
-            return;
-        }
+// TimeConnector component - shows line between cards with duration and insert button
+const TimeConnector = ({ duration, isEditMode, onInsert }) => {
+    const durationText = formatDuration(duration);
 
-        // Check sessionStorage cache first
-        const cacheKey = `place_${btoa(unescape(encodeURIComponent(query)))}`;
-        const cached = sessionStorage.getItem(cacheKey);
-        if (cached) {
-            try {
-                resolve(JSON.parse(cached));
-                return;
-            } catch (e) { }
-        }
-
-        fetch(`${API_URL}?action=getPlaceInfo&query=${encodeURIComponent(query)}`, { method: 'GET' })
-            .then(res => res.json())
-            .then(json => {
-                if (json.status === 'error') throw new Error(json.error?.message);
-                const data = json.data;
-                // Cache in sessionStorage
-                try {
-                    sessionStorage.setItem(cacheKey, JSON.stringify(data));
-                } catch (e) { }
-                resolve(data);
-            })
-            .catch(e => reject(new Error('Place Info Error: ' + e.message)));
-    }),
-    autoFill: () => new Promise((resolve, reject) => {
-        if (typeof google === 'object' && google.script && google.script.run) {
-            google.script.run
-                .withSuccessHandler((result) => {
-                    // GAS returns number directly, wrap it
-                    resolve(typeof result === 'number' ? { count: result } : result);
-                })
-                .withFailureHandler(reject)
-                .autoFillAllMissingDetails();
-        } else {
-            fetch(`${API_URL}?action=autoFill`, { method: 'GET' })
-                .then(res => res.json())
-                .then(json => {
-                    if (json.status === 'success') resolve(json.data);
-                    else throw new Error(json.error?.message || 'Failed');
-                })
-                .catch(e => reject(new Error('Auto-fill Error: ' + e.message)));
-        }
-    })
+    return (
+        <div className="flex items-center py-2 pl-6">
+            {/* Vertical line with insert button */}
+            <div className="w-0.5 h-10 bg-gray-200 dark:bg-slate-700 relative">
+                {/* Insert button in edit mode */}
+                {isEditMode && onInsert && (
+                    <button
+                        onClick={onInsert}
+                        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-blue-700 active:scale-95 transition-all z-10"
+                    >
+                        <Plus size={14} />
+                    </button>
+                )}
+                {/* Duration badge - shown when not in edit mode */}
+                {!isEditMode && durationText && (
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 whitespace-nowrap">
+                        <span className="text-[11px] font-bold text-gray-400 dark:text-slate-500 bg-gray-50 dark:bg-slate-800 px-2 py-0.5 rounded-full border border-gray-200 dark:border-slate-700">
+                            {durationText}
+                        </span>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
 };
 
 export default function TravelApp() {
@@ -151,25 +89,64 @@ export default function TravelApp() {
     const [mapUrl, setMapUrl] = useState(null);
     const [mapError, setMapError] = useState(null);
     const [isEditMode, setIsEditMode] = useState(false);
+    const [selectedPlaceEvent, setSelectedPlaceEvent] = useState(null);
+
+    // Route Modal State
+    const [routeModalOpen, setRouteModalOpen] = useState(false);
+    const [routeConfig, setRouteConfig] = useState(null); // { origin, destination }
+
+    const [scrollDirection, setScrollDirection] = useState('up');
     const [auth, setAuth] = useState(false);
     const [modalOpen, setModalOpen] = useState(false);
     const [editItem, setEditItem] = useState(null);
-    // const [sidebarOpen, setSidebarOpen] = useState(false); // Unused
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
     const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('darkMode') === 'true');
     const [lastUpdate, setLastUpdate] = useState(() => localStorage.getItem('lastUpdate') || null);
-    const [placeInfoOpen, setPlaceInfoOpen] = useState(false);
-    const [selectedPlaceName, setSelectedPlaceName] = useState(null);
+    const [isLandscape, setIsLandscape] = useState(false);
+    const [mapModalOpen, setMapModalOpen] = useState(false);
+    const [mapModalQuery, setMapModalQuery] = useState(null);
+
     const longPressTimer = useRef(null);
 
-    // Long-press handlers
+    // Scroll detection for immersive mode
+    useEffect(() => {
+        let lastScrollY = window.scrollY;
+
+        const updateScrollDirection = () => {
+            const scrollY = window.scrollY;
+            const direction = scrollY > lastScrollY && scrollY > 50 ? "down" : "up";
+            if (direction !== scrollDirection) {
+                setScrollDirection(direction);
+            }
+            lastScrollY = scrollY > 0 ? scrollY : 0;
+        };
+
+        window.addEventListener("scroll", updateScrollDirection);
+        return () => window.removeEventListener("scroll", updateScrollDirection);
+    }, [scrollDirection]);
+
+    // Landscape mode detection
+    useEffect(() => {
+        const checkOrientation = () => {
+            const isLandscapeMode = window.innerWidth > window.innerHeight && window.innerWidth < 1024;
+            setIsLandscape(isLandscapeMode);
+        };
+        window.addEventListener('resize', checkOrientation);
+        window.addEventListener('orientationchange', checkOrientation);
+        checkOrientation();
+        return () => {
+            window.removeEventListener('resize', checkOrientation);
+            window.removeEventListener('orientationchange', checkOrientation);
+        };
+    }, []);
+
     const handleTouchStart = (eventData) => {
         longPressTimer.current = setTimeout(() => {
             setEditItem(eventData);
             setModalOpen(true);
-            navigator.vibrate?.(50); // Haptic feedback if supported
+            navigator.vibrate?.(50);
         }, 500);
     };
     const handleTouchEnd = () => {
@@ -187,13 +164,10 @@ export default function TravelApp() {
     }, [selectedDay]);
     const dayIndex = useMemo(() => itinerary.findIndex(d => d.id === selectedDayId), [itinerary, selectedDayId]);
 
-    // Calculate year range from itinerary dates
     const yearRange = useMemo(() => {
         if (itinerary.length === 0) return '';
         const parseDate = (dateStr) => {
-            // Format: "12/28" or "1/1"
             const [month, day] = dateStr.split('/').map(Number);
-            // Assume year based on month: 12 = current year end, 1 = next year start
             const baseYear = new Date().getFullYear();
             return month >= 10 ? baseYear : baseYear + 1;
         };
@@ -202,12 +176,10 @@ export default function TravelApp() {
         return firstYear === lastYear ? `${firstYear}` : `${firstYear}-${lastYear}`;
     }, [itinerary]);
 
-    // Auth check
     useEffect(() => {
         if (sessionStorage.getItem('trip_auth') === 'true') setAuth(true);
     }, []);
 
-    // Dark mode persistence and class toggle
     useEffect(() => {
         localStorage.setItem('darkMode', isDarkMode);
         if (isDarkMode) {
@@ -217,49 +189,44 @@ export default function TravelApp() {
         }
     }, [isDarkMode]);
 
-    // Fetch data from Spreadsheet via GAS API
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                setLoading(true);
-                const data = await server.getData();
-                // Handle new API structure { days, mapUrl } or fallback to array
-                let daysData = [];
-                if (Array.isArray(data)) {
-                    daysData = data;
-                } else if (data && data.days) {
-                    daysData = data.days;
-                    if (data.mapUrl) setMapUrl(data.mapUrl);
-                    if (data.mapError) setMapError(data.mapError);
-                }
-
-                if (daysData && daysData.length > 0) {
-                    setItinerary(daysData);
-                    setSelectedDayId(daysData[0].id);
-                    setError(null);
-                    // Update lastUpdate from API
-                    if (data.lastUpdate) {
-                        setLastUpdate(data.lastUpdate);
-                        localStorage.setItem('lastUpdate', data.lastUpdate);
-                    }
-                } else {
-                    throw new Error('No data');
-                }
-            } catch (err) {
-                console.error('Fetch error:', err);
-                // Fallback to hardcoded data
-                setItinerary(initialItinerary);
-                setSelectedDayId(initialItinerary[0].id);
-                // Show detailed error
-                setError(`読込エラー: ${err.message}`);
-            } finally {
-                setLoading(false);
+    const fetchData = React.useCallback(async () => {
+        try {
+            setLoading(true);
+            const data = await server.getData();
+            let daysData = [];
+            if (Array.isArray(data)) {
+                daysData = data;
+            } else if (data && data.days) {
+                daysData = data.days;
+                if (data.mapUrl) setMapUrl(data.mapUrl);
+                if (data.mapError) setMapError(data.mapError);
             }
-        };
-        if (auth) fetchData();
-    }, [auth]);
 
-    // Save to session (local edits)
+            if (daysData && daysData.length > 0) {
+                setItinerary(daysData);
+                setSelectedDayId(daysData[0].id);
+                setError(null);
+                if (data.lastUpdate) {
+                    setLastUpdate(data.lastUpdate);
+                    localStorage.setItem('lastUpdate', data.lastUpdate);
+                }
+            } else {
+                throw new Error('No data');
+            }
+        } catch (err) {
+            console.error('Fetch error:', err);
+            setItinerary(initialItinerary);
+            setSelectedDayId(initialItinerary[0].id);
+            setError(`読込エラー: ${err.message}`);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (auth) fetchData();
+    }, [auth, fetchData]);
+
     useEffect(() => {
         if (itinerary.length > 0) {
             sessionStorage.setItem('trip_data_v7', JSON.stringify(itinerary));
@@ -268,17 +235,17 @@ export default function TravelApp() {
 
     const handleCopy = (text) => { navigator.clipboard.writeText(text); alert(`コピーしました: ${text}`); };
 
-    // Open place info modal with location context for better API search
-    const openPlaceInfo = (placeName, location) => {
-        // Combine name with location for more accurate Places API search
-        const searchQuery = location && !placeName.includes(location)
-            ? `${placeName} ${location}`
-            : placeName;
-        setSelectedPlaceName(searchQuery);
-        setPlaceInfoOpen(true);
+    const openRouteModal = (toEvent, fromEvent) => {
+        let origin = '現在地';
+        if (fromEvent) {
+            origin = fromEvent.place || fromEvent.name || fromEvent.address;
+        }
+        const destination = toEvent.placeAddress || toEvent.address || toEvent.name;
+
+        setRouteConfig({ origin, destination });
+        setRouteModalOpen(true);
     };
 
-    // Save entire itinerary to Spreadsheet
     const saveToSpreadsheet = async (newItinerary) => {
         try {
             setSaving(true);
@@ -307,8 +274,6 @@ export default function TravelApp() {
         });
         setModalOpen(false);
         setEditItem(null);
-
-        // Trigger save
         if (updatedItinerary) saveToSpreadsheet(updatedItinerary);
     };
 
@@ -322,12 +287,9 @@ export default function TravelApp() {
         });
         setModalOpen(false);
         setEditItem(null);
-
-        // Trigger save
         if (updatedItinerary) saveToSpreadsheet(updatedItinerary);
     };
 
-    // Login screen
     if (!auth) {
         return (
             <LoginView
@@ -341,7 +303,6 @@ export default function TravelApp() {
         );
     }
 
-    // Creating Saving Overlay
     const SavingOverlay = saving ? (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-black/80 text-white px-6 py-3 rounded-full shadow-xl z-[100] flex items-center gap-3 animate-pulse">
             <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
@@ -349,10 +310,9 @@ export default function TravelApp() {
         </div>
     ) : null;
 
-    // Loading
     if (loading) {
         return (
-            <div className="fixed inset-0 w-full h-[100dvh] bg-gradient-to-br from-blue-600 to-indigo-800 flex items-center justify-center z-[9999]">
+            <div className="fixed inset-0 w-full h-[100dvh] bg-blue-600 flex items-center justify-center z-[9999]">
                 <div className="text-center text-white">
                     <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin mx-auto mb-6"></div>
                     <p className="font-bold tracking-widest text-sm uppercase opacity-80">Loading...</p>
@@ -361,516 +321,583 @@ export default function TravelApp() {
         );
     }
 
-    // Error banner (optional - show above main content)
-    const ErrorBanner = error ? (
-        <div className="bg-yellow-100 border-b border-yellow-200 text-yellow-800 text-sm p-3 text-center">
-            ⚠️ {error}
-        </div>
-    ) : null;
+    const DynamicSummary = ({ day, events, dayIdx }) => {
+        if (!day || !events) return null;
 
-    return (
-        <div className="min-h-[100dvh] bg-[#F0F2F5] dark:bg-slate-900 flex overflow-x-clip">
-            <PortraitLock />
-            <ReloadPrompt />
-            {SavingOverlay}
-            {ErrorBanner}
+        // Calculate from Events data only
+        const spotCount = events.filter(e => e.type !== 'transport').length;
+        const moveCount = events.filter(e => e.type === 'transport').length;
+        const confirmedCount = events.filter(e => e.status === 'booked' || e.status === 'confirmed').length;
+        const plannedCount = events.filter(e => e.status === 'planned' || e.status === 'suggested').length;
+        const pendingBooking = events.filter(e => e.status === 'planned' && ['flight', 'train', 'hotel'].includes(e.category));
 
-            {/* ========== DESKTOP SIDEBAR (lg+) ========== */}
-            <aside className="hidden lg:flex flex-col w-64 bg-white dark:bg-slate-800 border-r border-gray-200 dark:border-slate-700 min-h-[100dvh] fixed left-0 top-0 z-40">
-                <div className="p-6 bg-gradient-to-br from-blue-600 to-indigo-800 text-white">
-                    <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                            <Plane size={24} />
-                        </div>
-                        <div>
-                            <h1 className="font-bold text-lg">Winter Journey</h1>
-                            <p className="text-xs opacity-80">{yearRange}</p>
-                        </div>
+        // Determine trip phase and next action
+        const today = new Date();
+        const [month, dayNum] = day.date.split('/').map(Number);
+        const tripDate = new Date(today.getFullYear(), month - 1, dayNum);
+        const daysUntil = Math.ceil((tripDate - today) / (1000 * 60 * 60 * 24));
+        const isTripDay = daysUntil === 0;
+        const isPast = daysUntil < 0;
+
+        // Generate next action message
+        const getNextAction = () => {
+            if (isPast) {
+                return { icon: <CheckCircle size={18} />, text: '完了した日程', sub: '' };
+            }
+
+            if (isTripDay) {
+                // During trip - show next event
+                const now = new Date();
+                const currentHour = now.getHours();
+                const currentMin = now.getMinutes();
+                const nextEvent = events.find(e => {
+                    if (!e.time) return false;
+                    const [h, m] = e.time.split(':').map(Number);
+                    return h > currentHour || (h === currentHour && m > currentMin);
+                });
+                if (nextEvent) {
+                    const categoryLabel = { flight: '搭乗', train: '乗車', bus: '乗車', hotel: 'チェックイン', meal: '食事', sightseeing: '観光' }[nextEvent.category] || '予定';
+                    return {
+                        icon: getIcon(nextEvent.category, nextEvent.type, { size: 18, className: 'text-white/80' }),
+                        text: `${nextEvent.time} ${categoryLabel}`,
+                        sub: nextEvent.name
+                    };
+                }
+                return { icon: <CheckCircle size={18} />, text: '本日の予定は完了', sub: '' };
+            }
+
+            // Planning phase - show booking action
+            if (pendingBooking.length > 0) {
+                const urgent = pendingBooking[0];
+                const categoryLabel = { flight: '航空券', train: '電車', hotel: 'ホテル' }[urgent.category] || '予約';
+                return {
+                    icon: <Ticket size={18} />,
+                    text: `${categoryLabel}の予約が必要`,
+                    sub: urgent.name
+                };
+            }
+
+            if (plannedCount > 0) {
+                return { icon: <Edit3 size={18} />, text: `${plannedCount}件の計画を確認`, sub: '' };
+            }
+
+            return { icon: <CheckCircle size={18} />, text: '準備完了', sub: `${daysUntil}日後に出発` };
+        };
+
+        const nextAction = getNextAction();
+
+        return (
+            <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl p-5 mb-6 shadow-lg">
+                {/* Day Header */}
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                        <span className="px-3 py-1.5 rounded-xl bg-white/20 text-white text-sm font-black">
+                            DAY {dayIdx + 1}
+                        </span>
+                        <span className="text-sm font-bold text-white/80">
+                            {day.date}
+                        </span>
                     </div>
-                </div>
-                <nav className="flex-1 p-4 space-y-2">
-                    {[
-                        { id: 'timeline', icon: Calendar, label: '旅程' },
-                        { id: 'tickets', icon: Ticket, label: 'チケット' },
-                        { id: 'map', icon: MapPin, label: 'マップ' },
-                        { id: 'settings', icon: Settings, label: '設定' },
-                    ].map(item => (
-                        <button
-                            key={item.id}
-                            onClick={() => setActiveTab(item.id)}
-                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === item.id ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-bold' : 'text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700'}`}
-                        >
-                            <item.icon size={20} />
-                            <span>{item.label}</span>
-                        </button>
-                    ))}
-                </nav>
-                <div className="p-4 border-t border-gray-100 dark:border-slate-700">
-                    <button
-                        onClick={() => setIsEditMode(!isEditMode)}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${isEditMode ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 font-bold' : 'text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700'}`}
-                    >
-                        <Edit2 size={20} />
-                        <span>{isEditMode ? '編集モード ON' : '編集モード'}</span>
-                    </button>
-                </div>
-            </aside>
-
-            {/* ========== MAIN CONTENT AREA ========== */}
-            <div className="w-full lg:ml-64 min-h-[100dvh] flex flex-col">
-
-                {/* ========== HEADER (Mobile/Tablet) - Compact Design ========== */}
-                <header className="lg:hidden bg-gradient-to-r from-blue-600 to-indigo-700 text-white shrink-0 sticky-header landscape-hide-header">
-                    {/* Safe area for notch */}
-                    <div className="h-[env(safe-area-inset-top)]" />
-
-                    <div className="px-4 py-3 flex items-center justify-between gap-3">
-                        {/* Left: App title and subtitle */}
-                        <div className="flex items-center gap-3 min-w-0 flex-1">
-                            <div className="w-9 h-9 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center shrink-0">
-                                <Plane size={18} />
-                            </div>
-                            <div className="min-w-0">
-                                <h1 className="font-bold text-base leading-tight truncate">Winter Journey</h1>
-                                <p className="text-[11px] text-white/70 truncate">{yearRange}</p>
-                            </div>
-                        </div>
-
-                        {/* Right: Edit button (always visible) */}
-                        <button
-                            onClick={() => setIsEditMode(!isEditMode)}
-                            aria-label={isEditMode ? '編集モード終了' : '編集モード'}
-                            className={`p-2.5 rounded-xl transition-all touch-manipulation active:scale-95 ${isEditMode
-                                ? 'bg-yellow-400 text-yellow-900 shadow-lg shadow-yellow-500/30'
-                                : 'bg-white/15 text-white hover:bg-white/25'
-                                }`}
-                        >
-                            <Edit2 size={18} strokeWidth={isEditMode ? 2.5 : 2} />
-                        </button>
-                    </div>
-                </header>
-
-                {/* ========== DESKTOP HEADER ========== */}
-                <div className="hidden lg:block bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-8 py-6">
-                    <div className="max-w-6xl mx-auto flex items-center justify-between">
-                        <div>
-                            <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100">
-                                {activeTab === 'timeline' && '旅程'}
-                                {activeTab === 'tickets' && 'チケット一覧'}
-                                {activeTab === 'map' && 'マップ'}
-                                {activeTab === 'settings' && '設定'}
-                                {activeTab === 'packing' && 'パッキングリスト'}
-                                {activeTab === 'emergency' && '緊急連絡先'}
-                            </h2>
-                            <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">沖縄 → 飛騨高山・下呂温泉・名古屋</p>
-                        </div>
-                        {activeTab === 'timeline' && selectedDay && (
-                            <div className="flex items-center gap-4 bg-gray-50 dark:bg-slate-700 px-4 py-2 rounded-xl">
-                                {getWeatherIcon(selectedDay.weather?.condition, { size: 24 })}
-                                <span className="text-lg font-bold text-gray-700 dark:text-slate-200">{selectedDay.weather?.temp}</span>
-                            </div>
+                    {/* Status indicator */}
+                    <div className="flex items-center gap-1">
+                        {confirmedCount > 0 && (
+                            <span className="px-2 py-0.5 rounded-full bg-green-400/20 text-green-100 text-[10px] font-bold flex items-center gap-1">
+                                <CheckCircle size={10} /> {confirmedCount}
+                            </span>
+                        )}
+                        {plannedCount > 0 && (
+                            <span className="px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-100 text-[10px] font-bold">
+                                計画中 {plannedCount}
+                            </span>
                         )}
                     </div>
                 </div>
 
-                {/* ========== DATE TABS (Only for Timeline) ========== */}
-                {activeTab === 'timeline' && (
-                    <div className="px-4 lg:px-8 lg:mt-0 relative z-20 mb-3 lg:mb-4 bg-[#F0F2F5] dark:bg-slate-900 pt-3">
-                        <div className="max-w-6xl mx-auto">
-                            <div className="flex gap-2 lg:gap-3 pb-2 pt-1 lg:pt-4 overflow-x-auto scrollbar-hide snap-x snap-mandatory scroll-smooth -mx-1 px-1">
-                                {itinerary.map((day, idx) => (
-                                    <button
-                                        key={day.id}
-                                        onClick={() => setSelectedDayId(day.id)}
-                                        className={`flex-shrink-0 snap-center flex flex-col items-center justify-center min-w-[68px] h-[76px] lg:min-w-[80px] lg:h-[88px] rounded-2xl transition-all duration-200 border touch-manipulation active:scale-95 ${selectedDayId === day.id
-                                            ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-700 shadow-lg shadow-blue-500/10 scale-105"
-                                            : "bg-white/95 dark:bg-slate-700/60 text-gray-500 dark:text-slate-400 border-gray-100 dark:border-slate-600 hover:bg-white dark:hover:bg-slate-700 hover:shadow-md"
-                                            }`}
-                                    >
-                                        <span className="text-[10px] lg:text-xs font-bold uppercase tracking-wider opacity-70">{day.dayOfWeek}</span>
-                                        <span className="text-xl lg:text-2xl font-black leading-none mt-0.5">{day.date.split('/')[1]}</span>
-                                        <span className="text-[9px] lg:text-[10px] text-gray-400 dark:text-slate-500 mt-0.5">{day.date.split('/')[0]}月</span>
-                                        {selectedDayId === day.id && (
-                                            <div className="absolute -bottom-1 w-2 h-2 bg-blue-500 rounded-full" />
+                {/* Next Action - Main focus */}
+                <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white">
+                        {nextAction.icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <h2 className="text-lg font-black text-white leading-tight">
+                            {nextAction.text}
+                        </h2>
+                        {nextAction.sub && (
+                            <p className="text-sm text-white/70 truncate">{nextAction.sub}</p>
+                        )}
+                    </div>
+                </div>
+
+                {/* Stats */}
+                <div className="flex items-center gap-6 text-sm">
+                    <div className="flex items-center gap-2 text-white/90">
+                        <span className="text-xl font-black">{spotCount}</span>
+                        <span className="text-xs text-white/70">スポット</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-white/90">
+                        <span className="text-xl font-black">{moveCount}</span>
+                        <span className="text-xs text-white/70">移動</span>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    // Landscape Mode - Full horizontal scroll view with ALL event data
+    if (isLandscape && activeTab === 'timeline' && sortedEvents.length > 0) {
+        return (
+            <div className="fixed inset-0 bg-slate-100 dark:bg-slate-900 z-[200] flex flex-col">
+                {/* Minimal header */}
+                <div className="flex items-center justify-between px-4 py-2 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 shrink-0">
+                    <div className="flex items-center gap-3">
+                        <span className="px-3 py-1 bg-blue-600 text-white text-sm font-bold rounded-lg">
+                            DAY {dayIndex + 1}
+                        </span>
+                        <span className="text-gray-600 dark:text-white/70 font-bold">{selectedDay?.date}</span>
+                    </div>
+                    <button
+                        onClick={() => setIsLandscape(false)}
+                        className="text-gray-500 text-xs px-3 py-1.5 bg-gray-100 dark:bg-slate-700 rounded-full hover:bg-gray-200"
+                    >
+                        ✕ 閉じる
+                    </button>
+                </div>
+
+                {/* Horizontal scroll container */}
+                <div className="flex-1 overflow-x-auto overflow-y-hidden py-4">
+                    <div className="flex h-full gap-3 px-4" style={{ minWidth: 'max-content' }}>
+                        {sortedEvents.map((event, index) => (
+                            <div
+                                key={event.id}
+                                className="w-80 h-full bg-white dark:bg-slate-800 rounded-xl p-4 flex flex-col shrink-0 border border-gray-200 dark:border-slate-700 overflow-y-auto"
+                            >
+                                {/* Header: Time + Category + Status */}
+                                <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-100 dark:border-slate-700">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xl font-black text-blue-600">
+                                            {event.time || '--:--'}
+                                        </span>
+                                        {event.endTime && (
+                                            <span className="text-sm text-gray-400">→ {event.endTime}</span>
                                         )}
-                                    </button>
-                                ))}
+                                    </div>
+                                    <StatusBadge status={event.status} />
+                                </div>
+
+                                {/* Category Badge */}
+                                <div className="mb-2">
+                                    <span className={`px-2 py-1 rounded text-xs font-bold ${event.type === 'transport' ? 'bg-blue-100 text-blue-700' :
+                                        event.type === 'stay' ? 'bg-indigo-100 text-indigo-700' :
+                                            event.category === 'meal' ? 'bg-orange-100 text-orange-700' :
+                                                'bg-gray-100 text-gray-700'
+                                        }`}>
+                                        {event.category}
+                                    </span>
+                                </div>
+
+                                {/* Name */}
+                                <h3 className="text-base font-bold text-gray-900 dark:text-white mb-3">
+                                    {event.name}
+                                </h3>
+
+                                {/* Data Grid */}
+                                <div className="space-y-2 text-sm flex-1">
+                                    {/* From/To */}
+                                    {(event.from || event.to) && (
+                                        <div className="flex items-start gap-2">
+                                            <span className="text-gray-400 w-16 shrink-0">区間</span>
+                                            <span className="text-gray-700 dark:text-gray-300">
+                                                {event.from || '?'} → {event.to || '?'}
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {/* Booking Ref */}
+                                    {event.bookingRef && (
+                                        <div className="flex items-start gap-2">
+                                            <span className="text-gray-400 w-16 shrink-0">予約番号</span>
+                                            <span className="text-gray-700 dark:text-gray-300 font-mono text-xs bg-gray-50 dark:bg-slate-700 px-2 py-0.5 rounded">
+                                                {event.bookingRef}
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {/* Memo/Details */}
+                                    {(event.memo || event.details) && (
+                                        <div className="flex items-start gap-2">
+                                            <span className="text-gray-400 w-16 shrink-0">メモ</span>
+                                            <span className="text-gray-600 dark:text-gray-400 text-xs">
+                                                {event.memo || event.details}
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {/* Budget */}
+                                    {(event.budget || event.budgetAmount) && (
+                                        <div className="flex items-start gap-2">
+                                            <span className="text-gray-400 w-16 shrink-0">予算</span>
+                                            <span className="text-gray-700 dark:text-gray-300 font-bold">
+                                                ¥{(event.budget || event.budgetAmount).toLocaleString()}
+                                                {event.budgetPaidBy && <span className="text-xs text-gray-400 ml-1">({event.budgetPaidBy})</span>}
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Index indicator */}
+                                <div className="mt-auto pt-2 text-right">
+                                    <span className="text-xs text-gray-300 dark:text-slate-600">{index + 1}/{sortedEvents.length}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="min-h-[100dvh] bg-[#F2F4F7] dark:bg-slate-900 flex overflow-x-clip font-sans text-slate-900 selection:bg-blue-100 selection:text-blue-900">
+            <PortraitLock />
+            <ReloadPrompt />
+            {SavingOverlay}
+            {error && (
+                <div className="fixed top-20 left-4 right-4 z-[999] bg-red-100 border border-red-200 text-red-800 text-sm p-4 rounded-xl shadow-lg">
+                    ⚠️ {error}
+                </div>
+            )}
+
+            {/* Flat Immersive Edit Button - Only show on Timeline tab */}
+            {activeTab === 'timeline' && (
+                <button
+                    onClick={() => setIsEditMode(!isEditMode)}
+                    className={`fixed top-4 right-4 z-[100] bg-white dark:bg-slate-800 text-slate-500 dark:text-blue-400 p-3 rounded-full shadow-lg border border-gray-100 dark:border-slate-700 transition-all duration-300 active:scale-95 ${isEditMode ? 'ring-2 ring-blue-500 bg-blue-50' : ''} ${scrollDirection === 'down' ? '-translate-y-[200%] opacity-0' : 'translate-y-0 opacity-100'}`}
+                    aria-label="編集モード切り替え"
+                >
+                    {isEditMode ? <Save size={20} className="text-blue-600" /> : <Edit3 size={20} />}
+                </button>
+            )}
+
+            {/* Sidebar (Desktop) */}
+            <aside
+                className={`hidden lg:flex flex-col w-64 h-screen fixed left-0 top-0 border-r border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 z-40 transition-transform duration-300 ${scrollDirection === 'down' ? '-translate-x-full' : 'translate-x-0'}`}
+            >
+                <div className="p-8">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-md">
+                            <Plane className="text-white transform -rotate-45" size={16} />
+                        </div>
+                        <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Winter Trip</h1>
+                    </div>
+                </div>
+
+                <nav className="px-4 space-y-1">
+                    {[
+                        { id: 'timeline', icon: Calendar, label: 'Timeline' },
+                        { id: 'tickets', icon: Ticket, label: 'Tickets' },
+                        { id: 'map', icon: MapPin, label: 'Places' },
+                        { id: 'budget', icon: Wallet, label: 'Budget' },
+                        { id: 'settings', icon: SettingsIcon, label: 'Other' },
+                    ].map(item => (
+                        <button
+                            key={item.id}
+                            onClick={() => setActiveTab(item.id)}
+                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium text-sm ${activeTab === item.id
+                                ? 'bg-gray-100 text-slate-900 dark:bg-slate-800 dark:text-white'
+                                : 'text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800'
+                                }`}
+                        >
+                            <item.icon size={18} strokeWidth={activeTab === item.id ? 2.5 : 2} />
+                            {item.label}
+                        </button>
+                    ))}
+                </nav>
+            </aside>
+
+            {/* ========== MAIN CONTENT AREA ========== */}
+            <div className="lg:pl-64 flex-1 min-h-screen pb-24 lg:pb-0">
+                <div className="w-full h-full">
+
+                    {/* ========== HEADER (Mobile/Tablet) - Flat iOS Style ========== */}
+                    <header className={`lg:hidden fixed top-0 left-0 right-0 z-50 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 transition-transform duration-300 ${scrollDirection === 'down' ? '-translate-y-full' : 'translate-y-0'}`}>
+                        <div className="flex items-center justify-between px-4 h-14 max-w-5xl mx-auto">
+                            <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 bg-blue-600 rounded-md flex items-center justify-center shadow-sm">
+                                    <Plane className="text-white transform -rotate-45" size={12} />
+                                </div>
+                                <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 tracking-tight">
+                                    {activeTab === 'timeline' && 'Timeline'}
+                                    {activeTab === 'tickets' && 'Tickets'}
+                                    {activeTab === 'map' && 'Places'}
+                                    {activeTab === 'budget' && 'Budget'}
+                                    {activeTab === 'settings' && 'Other'}
+                                </h2>
                             </div>
                         </div>
-                    </div>
-                )}
+                    </header>
 
-                {/* ========== MAIN CONTENT ========== */}
-                <main className="flex-1 px-4 lg:px-8 pb-24 lg:pb-8 bg-[#F0F2F5] dark:bg-slate-900">
-                    <div className="max-w-6xl mx-auto w-full">
-                        <Suspense fallback={<LoadingSpinner />}>
-                            {/* Content Area */}
-                            {activeTab === 'timeline' && selectedDay && (
-                                <div className="pt-4">
+                    {/* ========== DATE TABS (Timeline only) ========== */}
+                    {activeTab === 'timeline' && (
+                        <div className={`fixed top-14 lg:top-0 left-0 lg:left-64 right-0 z-40 bg-[#F2F4F7] dark:bg-slate-900 transition-transform duration-300 ${scrollDirection === 'down' ? '-translate-y-[150%]' : 'translate-y-0'}`}>
+                            <div className="max-w-2xl mx-auto px-4 py-4 lg:pt-8">
+                                <div className="flex justify-between items-center bg-white dark:bg-slate-800 rounded-xl p-1 shadow-sm border border-gray-200 dark:border-slate-700">
+                                    {itinerary.map((day, idx) => (
+                                        <button
+                                            key={day.id}
+                                            onClick={() => setSelectedDayId(day.id)}
+                                            className={`flex-1 flex flex-col items-center justify-center py-2 rounded-lg transition-all duration-200 ${selectedDayId === day.id
+                                                ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-white shadow-sm ring-1 ring-gray-100 dark:ring-slate-600"
+                                                : "text-gray-400 dark:text-slate-500 hover:bg-gray-50 dark:hover:bg-slate-700"
+                                                }`}
+                                        >
+                                            <span className="text-[10px] font-bold uppercase mb-0.5 opacity-80">{day.dayOfWeek}</span>
+                                            <span className="text-sm font-bold leading-none">{day.date.split('/')[1]}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
-                                    {/* Summary Card */}
-                                    <div className="bg-white dark:bg-slate-700 rounded-2xl shadow-sm mb-4 border border-gray-100 dark:border-slate-600 overflow-hidden landscape-hide-summary">
-                                        {/* Header with Weather */}
-                                        <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-700 dark:to-slate-700 border-b border-gray-100 dark:border-slate-600">
-                                            <div className="flex items-center gap-2">
-                                                <span className="lg:hidden inline-flex items-center justify-center w-7 h-7 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-xs font-black">D{dayIndex + 1}</span>
-                                                <span className="hidden lg:inline text-sm text-gray-500 dark:text-slate-400 font-medium">Day {dayIndex + 1}</span>
-                                            </div>
-                                            <div className="flex items-center gap-2 bg-white/60 dark:bg-slate-600/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
-                                                {getWeatherIcon(selectedDay.weather?.condition, { size: 18 })}
-                                                <span className="text-sm font-bold text-gray-700 dark:text-slate-200">{selectedDay.weather?.temp}</span>
-                                            </div>
-                                        </div>
-                                        {/* Content */}
-                                        <div className="p-4">
-                                            <h2 className="text-lg font-bold text-gray-800 dark:text-slate-100 mb-1">{selectedDay.title}</h2>
-                                            <p className="text-sm text-gray-500 dark:text-slate-400 flex items-center gap-1.5 mb-3">
-                                                <MapPin size={14} className="text-gray-400" /> {selectedDay.location}
-                                            </p>
-                                            <p className="text-sm text-gray-600 dark:text-slate-300 leading-relaxed bg-gray-50 dark:bg-slate-600/50 p-3 rounded-xl">
-                                                {selectedDay.summary}
-                                            </p>
-                                        </div>
-                                    </div>
+                    {/* ========== CONTENT BODY ========== */}
+                    <main className={`px-4 lg:px-12 ${activeTab === 'timeline' ? 'pt-36 lg:pt-32' : 'pt-20 lg:pt-8'}`}>
+                        <div className="max-w-xl mx-auto w-full">
+                            <Suspense fallback={<LoadingSpinner />}>
 
-                                    {/* Timeline - Vertical layout with time axis for desktop */}
-                                    <div className="relative">
-                                        {/* Time axis line (desktop only) */}
-                                        <div className="hidden lg:block absolute left-[52px] top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-200 via-blue-300 to-blue-200 dark:from-blue-800 dark:via-blue-700 dark:to-blue-800"></div>
+                                {activeTab === 'timeline' && selectedDay && (
+                                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
 
-                                        <div className="space-y-4 lg:space-y-0 landscape-horizontal-scroll">
+                                        <DynamicSummary day={selectedDay} events={sortedEvents} dayIdx={dayIndex} />
+
+                                        {/* Event List */}
+                                        <div className="relative pb-12">
                                             {sortedEvents.map((event, index) => {
-                                                // Calculate duration to next event
-                                                const nextEvent = sortedEvents[index + 1];
-                                                let durationMinutes = 0;
-                                                if (nextEvent) {
-                                                    const currentEnd = event.endTime || event.time;
-                                                    durationMinutes = toMinutes(nextEvent.time) - toMinutes(currentEnd);
-                                                    if (durationMinutes < 0) durationMinutes += 24 * 60; // Handle overnight
-                                                }
-                                                const durationHours = Math.floor(durationMinutes / 60);
-                                                const durationMins = durationMinutes % 60;
+                                                const prevEvent = index > 0 ? sortedEvents[index - 1] : null;
+                                                const nextEvent = index < sortedEvents.length - 1 ? sortedEvents[index + 1] : null;
+                                                const durationToNext = getDurationMinutes(event, nextEvent);
 
                                                 return (
-                                                    <div key={event.id} className="relative landscape-card">
-                                                        {/* Insert Between Divider (Only in Edit Mode) */}
-                                                        {isEditMode && (
-                                                            <div
-                                                                className="h-6 -my-3 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer group z-10 relative lg:ml-[72px]"
-                                                                onClick={() => {
-                                                                    const prevTime = index > 0 ? sortedEvents[index - 1].time : null;
-                                                                    const nextTime = event.time;
-                                                                    const midTime = getMidTime(prevTime, nextTime);
-                                                                    setEditItem({ type: 'activity', category: 'sightseeing', status: 'planned', time: midTime, name: '' });
+                                                    <div key={event.id} className="relative">
+                                                        {/* Event Card */}
+                                                        <div
+                                                            className={`relative bg-white dark:bg-slate-800 rounded-2xl p-4 transition-all duration-200 ${isEditMode ? 'border-2 border-dashed border-gray-300 dark:border-slate-600 hover:border-blue-400 cursor-pointer' : 'border border-gray-200 dark:border-slate-700 shadow-sm'}`}
+                                                            onClick={() => {
+                                                                if (isEditMode) {
+                                                                    setEditItem(event);
                                                                     setModalOpen(true);
-                                                                }}
-                                                            >
-                                                                <div className="w-full h-0.5 bg-blue-300 transform scale-x-90 group-hover:scale-x-100 transition-transform"></div>
-                                                                <div className="absolute bg-blue-500 text-white rounded-full p-1 shadow-sm transform scale-0 group-hover:scale-100 transition-transform">
-                                                                    <Plus size={14} />
-                                                                </div>
-                                                            </div>
-                                                        )}
-
-                                                        {/* Event Row */}
-                                                        <div className="flex lg:items-start gap-4">
-                                                            {/* Time Column (desktop) */}
-                                                            <div className="hidden lg:flex flex-col items-center w-[72px] shrink-0 pt-5">
-                                                                <span className="text-sm font-bold text-gray-700 dark:text-slate-200 font-mono bg-white dark:bg-slate-800 px-2 py-1 rounded-lg shadow-sm border border-gray-100 dark:border-slate-700">
-                                                                    {event.time}
-                                                                </span>
-                                                                {/* Timeline dot */}
-                                                                <div className={`w-4 h-4 rounded-full border-4 mt-2 ${event.type === 'stay' ? 'bg-indigo-500 border-indigo-200 dark:border-indigo-800' :
-                                                                    event.category === 'flight' ? 'bg-blue-500 border-blue-200 dark:border-blue-800' :
-                                                                        event.type === 'transport' ? 'bg-green-500 border-green-200 dark:border-green-800' :
-                                                                            'bg-gray-400 border-gray-200 dark:border-gray-700'
-                                                                    }`}></div>
-                                                            </div>
-
-                                                            {/* Event Card */}
-                                                            <div
-                                                                onClick={() => {
-                                                                    if (isEditMode) {
-                                                                        setEditItem(event);
-                                                                        setModalOpen(true);
-                                                                    } else {
-                                                                        openPlaceInfo(event.name, selectedDay.location);
-                                                                    }
-                                                                }}
-                                                                onTouchStart={() => handleTouchStart(event)}
-                                                                onTouchEnd={handleTouchEnd}
-                                                                onTouchMove={handleTouchEnd}
-                                                                className={`flex-1 min-w-0 rounded-2xl p-4 shadow-sm border transition-all duration-200 relative overflow-hidden touch-manipulation cursor-pointer ${event.type === 'stay' ? 'bg-gradient-to-br from-indigo-50 to-purple-50/50 dark:from-indigo-900/30 dark:to-purple-900/20 border-indigo-100 dark:border-indigo-800' : 'bg-white dark:bg-slate-700 border-gray-100 dark:border-slate-600'} ${isEditMode ? 'hover:shadow-lg hover:border-blue-300 active:scale-[0.98]' : 'hover:shadow-md active:scale-[0.99]'}`}
-                                                            >
-                                                                {/* Icon Background Decoration */}
-                                                                <div className="absolute top-0 right-0 p-4 opacity-[0.07]">
-                                                                    {getIcon(event.category, event.type, { size: 64 })}
-                                                                </div>
-
-                                                                {/* Header Row */}
-                                                                <div className="flex items-start justify-between gap-3 relative z-10 mb-3">
-                                                                    <div className="flex items-center gap-3">
-                                                                        {/* Icon */}
-                                                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${event.type === 'stay' ? 'bg-indigo-100 dark:bg-indigo-800/60 text-indigo-600 dark:text-indigo-300' : event.category === 'flight' ? 'bg-blue-100 dark:bg-blue-800/60 text-blue-600 dark:text-blue-300' : event.category === 'meal' ? 'bg-orange-100 dark:bg-orange-800/60 text-orange-600 dark:text-orange-300' : 'bg-gray-100 dark:bg-slate-600 text-gray-600 dark:text-slate-300'}`}>
-                                                                            {getIcon(event.category, event.type, { size: 20 })}
-                                                                        </div>
-                                                                        {/* Time (Mobile) */}
-                                                                        <div className="lg:hidden">
-                                                                            <div className="flex items-center gap-1.5">
-                                                                                <span className="text-lg font-bold text-gray-800 dark:text-slate-100 tabular-nums">{event.time}</span>
-                                                                                {event.endTime && (
-                                                                                    <>
-                                                                                        <span className="text-gray-300 dark:text-slate-500">-</span>
-                                                                                        <span className="text-sm text-gray-500 dark:text-slate-400 tabular-nums">{event.endTime}</span>
-                                                                                    </>
-                                                                                )}
-                                                                            </div>
-                                                                        </div>
-                                                                        {/* Desktop: show end time indicator */}
-                                                                        {event.endTime && (
-                                                                            <span className="hidden lg:inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-slate-400 bg-gray-50 dark:bg-slate-600/50 px-2 py-0.5 rounded-full">
-                                                                                <span className="tabular-nums">→ {event.endTime}</span>
-                                                                            </span>
-                                                                        )}
+                                                                } else {
+                                                                    // Open MapModal with route from prev event or single pin
+                                                                    const query = event.type === 'transport'
+                                                                        ? event.to
+                                                                        : (event.address || event.name);
+                                                                    setMapModalQuery(query);
+                                                                    setMapModalOpen(true);
+                                                                }
+                                                            }}
+                                                            onTouchStart={() => handleTouchStart(event)}
+                                                            onTouchEnd={handleTouchEnd}
+                                                            onTouchMove={handleTouchEnd}
+                                                        >
+                                                            <div className="flex justify-between items-start mb-2">
+                                                                <div className="flex items-center gap-2">
+                                                                    {/* Time with vertical line indicator */}
+                                                                    <div className="flex items-center gap-2">
+                                                                        <div className="w-1 h-6 rounded-full bg-blue-500"></div>
+                                                                        <span className="font-mono font-bold text-base text-slate-700 dark:text-slate-200">
+                                                                            {event.time || '未定'}
+                                                                        </span>
                                                                     </div>
+
+                                                                    <div className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase flex items-center gap-1 ${event.type === 'stay' ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30' : event.type === 'transport' ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30' : 'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-300'}`}>
+                                                                        {getIcon(event.category, event.type, { size: 10 })}
+                                                                        <span>{event.category}</span>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div onClick={(e) => { e.stopPropagation(); setEditItem(event); setModalOpen(true); }} className="cursor-pointer hover:opacity-80 active:scale-95 transition-transform">
                                                                     <StatusBadge status={event.status} />
                                                                 </div>
+                                                            </div>
 
-                                                                {/* Title */}
-                                                                <h3 className="font-bold text-gray-800 dark:text-slate-100 text-base lg:text-lg leading-snug break-words">{event.name}</h3>
+                                                            <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight mb-1">
+                                                                {event.name}
+                                                            </h3>
 
-                                                                {/* Transport Route with Quick Map Link */}
-                                                                {event.type === 'transport' && event.place && event.to && (
-                                                                    <div className="mt-2 space-y-2">
-                                                                        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-300 bg-gray-50 dark:bg-slate-600/40 rounded-lg px-3 py-2">
-                                                                            <span className="font-medium">{event.place}</span>
-                                                                            <ArrowRight size={14} className="text-gray-400 shrink-0" />
-                                                                            <span className="font-medium">{event.to}</span>
-                                                                        </div>
-                                                                        {/* Quick Map Link */}
-                                                                        <a
-                                                                            href={`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(event.placeAddress || event.place)}&destination=${encodeURIComponent(event.toAddress || event.to)}&travelmode=${event.category === 'flight' ? 'transit' : 'transit'}`}
-                                                                            target="_blank"
-                                                                            rel="noopener noreferrer"
-                                                                            onClick={(e) => e.stopPropagation()}
-                                                                            className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 px-3 py-2 rounded-lg transition-colors"
-                                                                        >
-                                                                            <MapPin size={14} />
-                                                                            <span className="font-medium">このルートをGoogle Mapsで見る</span>
-                                                                            <ArrowRight size={12} className="ml-auto" />
-                                                                        </a>
-                                                                    </div>
-                                                                )}
-
-                                                                {/* Description */}
-                                                                {(event.description || event.details) && (
-                                                                    <div className="mt-2 text-sm text-gray-600 dark:text-slate-300 leading-relaxed">
-                                                                        {event.description && <p>{event.description}</p>}
-                                                                        {event.details && <p className="mt-1 text-gray-500 dark:text-slate-400">{event.details}</p>}
-                                                                    </div>
-                                                                )}
-
-                                                                {/* Booking Reference */}
-                                                                {event.bookingRef && (
-                                                                    <div
-                                                                        onClick={(e) => { e.stopPropagation(); handleCopy(event.bookingRef); }}
-                                                                        className="mt-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800/50 rounded-xl p-3 flex items-center justify-between gap-2 cursor-pointer active:bg-blue-100 dark:active:bg-blue-800/40 transition-colors group overflow-hidden"
-                                                                    >
-                                                                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                                                                            <Ticket size={16} className="text-blue-500 shrink-0" />
-                                                                            <div className="min-w-0 flex-1">
-                                                                                <span className="text-[10px] text-blue-400 dark:text-blue-300 uppercase font-bold block">予約番号</span>
-                                                                                <span className="font-mono font-bold text-blue-700 dark:text-blue-200 tracking-wider text-sm break-all">{event.bookingRef}</span>
-                                                                            </div>
-                                                                        </div>
-                                                                        <Copy size={16} className="text-blue-300 group-hover:text-blue-500 transition-colors shrink-0" />
-                                                                    </div>
-                                                                )}
-
-                                                                {/* Smart Quick Actions - Always visible for beginners */}
-                                                                <div className="mt-3 flex flex-wrap gap-2">
-                                                                    {/* Google Search with context */}
-                                                                    <a
-                                                                        href={`https://www.google.com/search?q=${encodeURIComponent(event.name + ' ' + (selectedDay?.location || '') + ' 旅行 おすすめ')}`}
-                                                                        target="_blank"
-                                                                        rel="noopener noreferrer"
-                                                                        onClick={(e) => e.stopPropagation()}
-                                                                        className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 px-2.5 py-1.5 rounded-lg transition-colors"
-                                                                    >
-                                                                        🔍 おすすめを検索
-                                                                    </a>
-
-                                                                    {/* Map Link */}
-                                                                    <a
-                                                                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.address || event.placeAddress || event.name)}`}
-                                                                        target="_blank"
-                                                                        rel="noopener noreferrer"
-                                                                        onClick={(e) => e.stopPropagation()}
-                                                                        className="flex items-center gap-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 px-2.5 py-1.5 rounded-lg transition-colors"
-                                                                    >
-                                                                        📍 マップで見る
-                                                                    </a>
-
-                                                                    {/* Edit button when not in edit mode */}
-                                                                    {!isEditMode && (
-                                                                        <button
-                                                                            onClick={(e) => { e.stopPropagation(); setEditItem(event); setModalOpen(true); }}
-                                                                            className="flex items-center gap-1.5 text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 px-2.5 py-1.5 rounded-lg transition-colors"
-                                                                        >
-                                                                            ✏️ メモを追加
-                                                                        </button>
-                                                                    )}
+                                                            {/* From/To for transport */}
+                                                            {event.type === 'transport' && (event.from || event.to) && (
+                                                                <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-slate-400 mb-2">
+                                                                    <span>{event.from || '?'}</span>
+                                                                    <ArrowRight size={12} className="shrink-0" />
+                                                                    <span>{event.to || '?'}</span>
                                                                 </div>
+                                                            )}
+
+                                                            {/* Memo display */}
+                                                            {event.details && (
+                                                                <p className="text-xs text-gray-500 dark:text-slate-400 bg-gray-50 dark:bg-slate-700/50 rounded-lg px-2 py-1.5 mb-2">
+                                                                    {event.details}
+                                                                </p>
+                                                            )}
+
+                                                            {/* Action Buttons Row */}
+                                                            <div className="flex items-center gap-2 mt-2 justify-end">
+                                                                {!isEditMode && (
+                                                                    <button
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setSelectedPlaceEvent(event);
+                                                                        }}
+                                                                        className="h-8 w-8 bg-gray-100 dark:bg-slate-700 rounded-lg flex items-center justify-center text-blue-600 dark:text-blue-400 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
+                                                                        title="詳しく調べる"
+                                                                    >
+                                                                        <Search size={16} />
+                                                                    </button>
+                                                                )}
+
+
                                                             </div>
                                                         </div>
 
-                                                        {/* Duration Indicator (between events) - Now shows on mobile too */}
-                                                        {nextEvent && durationMinutes > 0 && (
-                                                            <div className="flex items-center lg:ml-[72px] py-2 lg:py-3 px-2 lg:px-0">
-                                                                <div className={`flex-1 flex items-center gap-2 text-xs px-3 py-2 rounded-xl border ${durationMinutes >= 120
-                                                                    ? 'bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-400'
-                                                                    : durationMinutes >= 30
-                                                                        ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400'
-                                                                        : 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400'
-                                                                    }`}>
-                                                                    {/* Transport Type Icon */}
-                                                                    <span className="text-base">
-                                                                        {nextEvent.category === 'flight' ? '✈️' :
-                                                                            nextEvent.type === 'transport' ? '🚃' :
-                                                                                durationMinutes < 15 ? '🚶' : '⏱️'}
-                                                                    </span>
-
-                                                                    {/* Duration Text */}
-                                                                    <div className="flex items-center gap-1.5 flex-1">
-                                                                        <span className="font-bold">
-                                                                            {durationHours > 0 && `${durationHours}時間`}
-                                                                            {durationMins > 0 && `${durationMins}分`}
-                                                                        </span>
-                                                                        <span className="opacity-60 hidden sm:inline">後</span>
-                                                                    </div>
-
-                                                                    {/* Visual Progress Bar */}
-                                                                    <div className="hidden sm:flex w-16 h-1.5 bg-white/50 dark:bg-black/20 rounded-full overflow-hidden">
-                                                                        <div
-                                                                            className={`h-full rounded-full ${durationMinutes >= 120 ? 'bg-rose-400' :
-                                                                                durationMinutes >= 30 ? 'bg-amber-400' : 'bg-emerald-400'
-                                                                                }`}
-                                                                            style={{ width: `${Math.min(100, (durationMinutes / 180) * 100)}%` }}
-                                                                        />
-                                                                    </div>
-                                                                </div>
-                                                            </div>
+                                                        {/* Time Connector - show duration to next event */}
+                                                        {nextEvent && (
+                                                            <TimeConnector
+                                                                duration={durationToNext}
+                                                                isEditMode={isEditMode}
+                                                                onInsert={() => {
+                                                                    const midTime = getMidTime(event.endTime || event.time, nextEvent.time);
+                                                                    setEditItem({ type: 'activity', category: 'sightseeing', status: 'planned', time: midTime, name: '' });
+                                                                    setModalOpen(true);
+                                                                }}
+                                                            />
                                                         )}
                                                     </div>
                                                 );
                                             })}
 
                                             {isEditMode && (
-                                                <div className="pt-4 lg:ml-[72px]">
-                                                    {/* Final Append Button with Smart Time */}
-                                                    <button
-                                                        onClick={() => {
-                                                            const lastTime = sortedEvents.length > 0 ? sortedEvents[sortedEvents.length - 1].time : '09:00';
-                                                            const nextTime = toTimeStr(toMinutes(lastTime) + 60);
-                                                            setEditItem({ type: 'activity', category: 'sightseeing', status: 'planned', time: nextTime, name: '' });
-                                                            setModalOpen(true);
-                                                        }}
-                                                        className="w-full py-4 border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-2xl text-gray-400 dark:text-slate-500 hover:text-blue-500 hover:border-blue-300 transition flex items-center justify-center gap-2"
-                                                    >
-                                                        <Plus size={20} /> 予定を追加
-                                                    </button>
-                                                </div>
+                                                <button
+                                                    onClick={() => {
+                                                        const lastTime = sortedEvents.length > 0 ? sortedEvents[sortedEvents.length - 1].time : '09:00';
+                                                        const nextTime = toTimeStr(toMinutes(lastTime) + 60);
+                                                        setEditItem({ type: 'activity', category: 'sightseeing', status: 'planned', time: nextTime, name: '' });
+                                                        setModalOpen(true);
+                                                    }}
+                                                    className="w-full mt-6 py-4 border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-2xl text-gray-400 hover:text-blue-600 hover:border-blue-400 transition-colors flex items-center justify-center gap-2 font-bold"
+                                                >
+                                                    <Plus size={20} /> 予定を追加
+                                                </button>
                                             )}
                                         </div>
                                     </div>
+                                )}
 
+                                {activeTab === 'tickets' && <TicketList itinerary={itinerary} onForceReload={fetchData} />}
+                                {activeTab === 'map' && <MapView mapUrl={mapUrl} itinerary={itinerary} mapError={mapError} />}
+                                {activeTab === 'budget' && <BudgetView itinerary={itinerary} onForceReload={fetchData} />}
+                                {activeTab === 'packing' && <PackingList />}
+                                {activeTab === 'emergency' && <EmergencyContacts />}
+                                {activeTab === 'settings' && (
+                                    <SettingsView
+                                        itinerary={itinerary}
+                                        setItinerary={setItinerary}
+                                        setSelectedDayId={setSelectedDayId}
+                                        isDarkMode={isDarkMode}
+                                        setIsDarkMode={setIsDarkMode}
+                                        lastUpdate={lastUpdate}
+                                        setActiveTab={setActiveTab}
+                                        onDataRefresh={fetchData}
+                                    />
+                                )}
+                            </Suspense>
+                        </div>
+                    </main>
+
+                    {/* ========== BOTTOM NAV (Mobile only) ========== */}
+                    <nav className={`lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800 transition-transform duration-300 ${scrollDirection === 'down' ? 'translate-y-full' : 'translate-y-0'}`}>
+                        <div className="flex justify-around items-center h-16 px-2 safe-area-pb">
+                            {[
+                                { id: 'timeline', icon: Calendar },
+                                { id: 'tickets', icon: Ticket },
+                                { id: 'map', icon: MapPin },
+                                { id: 'budget', icon: Wallet },
+                                { id: 'settings', icon: SettingsIcon },
+                            ].map(item => (
+                                <button
+                                    key={item.id}
+                                    onClick={() => setActiveTab(item.id)}
+                                    className={`w-full h-full flex flex-col items-center justify-center transition-all duration-200 ${activeTab === item.id
+                                        ? 'text-blue-600 dark:text-blue-400'
+                                        : 'text-gray-400 dark:text-slate-500'
+                                        }`}
+                                >
+                                    <item.icon size={24} strokeWidth={activeTab === item.id ? 2.5 : 2} className="mb-1" />
+                                </button>
+                            ))}
+                        </div>
+                    </nav>
+
+                    <Suspense fallback={null}>
+                        {selectedPlaceEvent && (
+                            <PlaceDetailModal
+                                event={selectedPlaceEvent}
+                                onClose={() => setSelectedPlaceEvent(null)}
+                            />
+                        )}
+                        {routeModalOpen && routeConfig && (
+                            <RouteModal
+                                origin={routeConfig.origin}
+                                destination={routeConfig.destination}
+                                onClose={() => setRouteModalOpen(false)}
+                            />
+                        )}
+
+                        {/* Map Modal - Shows MapView centered on event location */}
+                        {mapModalOpen && mapModalQuery && (
+                            <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+                                <div className="absolute inset-0 bg-black/50" onClick={() => setMapModalOpen(false)} />
+                                <div className="relative w-full sm:max-w-lg h-[75vh] sm:h-[70vh] bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+                                    {/* Header */}
+                                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-slate-700">
+                                        <h3 className="font-bold text-gray-800 dark:text-white flex items-center gap-2 truncate">
+                                            <MapPin size={16} className="text-blue-600 shrink-0" />
+                                            <span className="truncate">{mapModalQuery}</span>
+                                        </h3>
+                                        <button
+                                            onClick={() => setMapModalOpen(false)}
+                                            className="p-2 bg-gray-100 dark:bg-slate-800 rounded-full text-gray-600 hover:bg-gray-200 shrink-0"
+                                        >
+                                            <X size={18} />
+                                        </button>
+                                    </div>
+                                    {/* Map iframe */}
+                                    <div className="flex-1">
+                                        <iframe
+                                            src={`https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${encodeURIComponent(mapModalQuery)}&zoom=15`}
+                                            className="w-full h-full border-0"
+                                            allowFullScreen
+                                            loading="lazy"
+                                        />
+                                    </div>
                                 </div>
-                            )}
+                            </div>
+                        )}
+                    </Suspense>
 
-                            {/* NEW: Ticket View */}
-                            {activeTab === 'tickets' && <TicketList itinerary={itinerary} />}
-
-                            {/* NEW: Map View */}
-                            {activeTab === 'map' && <MapView mapUrl={mapUrl} itinerary={itinerary} mapError={mapError} />}
-
-                            {/* NEW: Settings View */}
-                            {activeTab === 'settings' && <SettingsView itinerary={itinerary} setItinerary={setItinerary} setSelectedDayId={setSelectedDayId} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} lastUpdate={lastUpdate} setActiveTab={setActiveTab} onAutoFill={async () => {
-                                if (!window.confirm('旅程内の空欄（詳細など）に、Google Mapsから取得した情報を自動入力しますか？\n※すでに入力済みの箇所は上書きされません。')) return;
-                                try {
-                                    setLoading(true);
-                                    const result = await server.autoFill();
-                                    if (result && result.count !== undefined) {
-                                        alert(`${result.count}件の情報を更新しました！\nデータを再読み込みします。`);
-                                        const newData = await server.getData();
-                                        if (newData && newData.days) {
-                                            setItinerary(newData.days);
-                                            setMapUrl(newData.mapUrl);
-                                            setMapError(newData.mapError);
-                                            setLastUpdate(newData.lastUpdate);
-                                        }
-                                    }
-                                } catch (e) {
-                                    alert('自動補完に失敗しました: ' + e.message);
-                                } finally {
-                                    setLoading(false);
-                                }
-                            }} />}
-
-                            {/* NEW: Packing List View */}
-                            {activeTab === 'packing' && <PackingList />}
-
-                            {/* NEW: Emergency Contacts View */}
-                            {activeTab === 'emergency' && <EmergencyContacts />}
-                        </Suspense>
-                    </div>
-                </main>
-
-                {/* ========== BOTTOM NAV (Mobile only) ========== */}
-                <nav role="navigation" aria-label="メインナビゲーション" className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-gray-200/80 dark:border-slate-800 px-2 sm:px-6 flex justify-around items-center z-30 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2 print:hidden landscape-hide-footer">
-                    {[
-                        { id: 'timeline', icon: Calendar, label: '旅程' },
-                        { id: 'tickets', icon: Ticket, label: 'チケット' },
-                        { id: 'map', icon: MapPin, label: 'マップ' },
-                        { id: 'settings', icon: Settings, label: '設定' },
-                    ].map(item => (
-                        <button
-                            key={item.id}
-                            onClick={() => setActiveTab(item.id)}
-                            aria-label={`${item.label}タブ`}
-                            aria-current={activeTab === item.id ? 'page' : undefined}
-                            className={`relative flex flex-col items-center gap-1 px-4 py-2 min-w-[56px] min-h-[56px] transition-all duration-200 active:scale-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 rounded-xl touch-manipulation ${activeTab === item.id
-                                ? 'text-blue-600 dark:text-blue-400'
-                                : 'text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-400'
-                                }`}
-                        >
-                            <item.icon size={22} strokeWidth={activeTab === item.id ? 2.5 : 1.8} />
-                            <span className={`text-[10px] sm:text-[11px] font-bold ${activeTab === item.id ? 'text-blue-600 dark:text-blue-400' : ''}`}>{item.label}</span>
-                            {/* Active Indicator */}
-                            {activeTab === item.id && (
-                                <span className="absolute -top-0.5 w-1 h-1 bg-blue-500 rounded-full" />
-                            )}
-                        </button>
-                    ))}
-                </nav>
-
+                    <EditModal
+                        isOpen={modalOpen}
+                        onClose={() => { setModalOpen(false); setEditItem(null); }}
+                        item={editItem}
+                        onSave={handleSaveEvent}
+                        onDelete={handleDeleteEvent}
+                        previousEvent={(() => {
+                            if (!editItem || !selectedDay) return null;
+                            const idx = sortedEvents.findIndex(e => e.id === editItem.id);
+                            return idx > 0 ? sortedEvents[idx - 1] : null;
+                        })()}
+                    />
+                </div>
             </div>
-
-            {/* Edit Modal */}
-            <EditModal
-                isOpen={modalOpen}
-                onClose={() => { setModalOpen(false); setEditItem(null); }}
-                item={editItem}
-                onSave={handleSaveEvent}
-                onDelete={handleDeleteEvent}
-            />
-
-            {/* Place Info Modal */}
-            <PlaceInfoModal
-                isOpen={placeInfoOpen}
-                onClose={() => { setPlaceInfoOpen(false); setSelectedPlaceName(null); }}
-                placeName={selectedPlaceName}
-                getPlaceInfo={server.getPlaceInfo}
-            />
         </div>
     );
 }
+

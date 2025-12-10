@@ -1,237 +1,207 @@
 import React, { useMemo, useState } from 'react';
-import { MapPin, ArrowRight, Navigation, Map as MapIcon, Maximize2, Minimize2, ExternalLink, Search } from 'lucide-react';
-import { getIcon } from '../common/IconHelper';
+import { MapPin, ExternalLink, Navigation } from 'lucide-react';
 
 /**
- * Generates a Google Maps Directions URL for a given day's itinerary
+ * MapView - Simplified Layout with Multiple Pins
+ * - Uses Google Maps Embed API (more reliable than Static Maps)
+ * - Day-based filtering
+ * - When clicking a pill, shows that specific location
  */
-const getDayRouteUrl = (day) => {
-    const locations = [];
-    day.events.forEach(e => {
-        if (e.type === 'transport') {
-            if (e.place) locations.push(e.placeAddress || e.place);
-            if (e.to) locations.push(e.toAddress || e.to);
-        } else if (e.category === 'hotel' && e.name) {
-            locations.push(e.address || e.name);
-        } else if ((e.category === 'sightseeing' || e.category === 'meal') && e.name) {
-            locations.push(e.address || e.name);
-        }
-    });
-    const uniqueLocs = locations.filter((loc, i, arr) => i === 0 || loc !== arr[i - 1]);
-    if (uniqueLocs.length < 2) return null;
-    const origin = encodeURIComponent(uniqueLocs[0]);
-    const destination = encodeURIComponent(uniqueLocs[uniqueLocs.length - 1]);
-    const waypoints = uniqueLocs.slice(1, -1).slice(0, 9).map(l => encodeURIComponent(l)).join('|');
-    return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}&travelmode=transit`;
-};
-
-/**
- * Generate Google Maps Embed URL with all markers
- */
-const generateEmbedUrl = (markers, center = null) => {
-    // Use first marker as center if not specified
-    const centerQuery = center || (markers.length > 0 ? (markers[0].address || markers[0].name) : '日本');
-    // For embed, we use place mode for single location or search mode for query
-    return `https://www.google.com/maps/embed/v1/search?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${encodeURIComponent(centerQuery)}&zoom=10&language=ja`;
-};
-
 const MapView = ({ mapUrl, itinerary, mapError }) => {
-    const [isFullscreen, setIsFullscreen] = useState(false);
-    const [selectedMarker, setSelectedMarker] = useState(null);
+    const [activeDay, setActiveDay] = useState('all');
     const [mapCenter, setMapCenter] = useState(null);
 
-    const markers = useMemo(() => {
-        return itinerary.flatMap(day => {
-            const locs = [];
-            day.events.forEach(e => {
-                if (e.type === 'transport') {
-                    if (e.place) locs.push({ name: e.place, type: 'transport', address: e.placeAddress || null, dayId: day.id });
-                    if (e.to) locs.push({ name: e.to, type: 'transport', address: e.toAddress || null, dayId: day.id });
-                } else if (e.category === 'hotel') {
-                    locs.push({ name: e.name, type: 'hotel', address: e.address, dayId: day.id });
-                } else if (e.category === 'sightseeing' || e.category === 'meal') {
-                    locs.push({ name: e.name, type: e.category, address: e.address, dayId: day.id });
-                }
-            });
-            return locs;
-        }).filter((v, i, a) => a.findIndex(t => (t.name === v.name)) === i);
-    }, [itinerary]);
+    const API_KEY = 'AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8';
 
-    // Current map query - use selected marker or first hotel/attraction
+    // Filter markers based on active day
+    // Transport: use 'to' field (destination)
+    // Others (hotel/meal/sightseeing): use 'name' field
+    const markers = useMemo(() => {
+        let events = [];
+        if (activeDay === 'all') {
+            events = itinerary.flatMap((day, i) => day.events.map(e => ({ ...e, dayLabel: `Day ${i + 1}`, dayId: day.id })));
+        } else {
+            const day = itinerary.find(d => d.id === activeDay);
+            if (day) {
+                const idx = itinerary.indexOf(day);
+                events = day.events.map(e => ({ ...e, dayLabel: `Day ${idx + 1}`, dayId: day.id }));
+            }
+        }
+
+        const locs = [];
+        events.forEach(e => {
+            // Determine the location query based on event type
+            let query = null;
+            const isTransport = ['flight', 'train', 'bus'].includes(e.category);
+
+            if (isTransport) {
+                // For transport, use the destination (to)
+                query = e.to;
+            } else {
+                // For hotel/meal/sightseeing, use the name
+                query = e.name;
+            }
+
+            if (!query) return;
+
+            if (!locs.find(l => l.query === query)) {
+                locs.push({
+                    name: e.name || query,
+                    query: query,
+                    type: isTransport ? 'transport' : e.category === 'hotel' ? 'hotel' : e.category === 'meal' ? 'meal' : 'activity'
+                });
+            }
+        });
+        return locs;
+    }, [itinerary, activeDay]);
+
+
+
+    // Current map query
     const currentMapQuery = useMemo(() => {
         if (mapCenter) return mapCenter;
-        const hotel = markers.find(m => m.type === 'hotel');
-        if (hotel) return hotel.address || hotel.name;
-        return markers.length > 0 ? (markers[0].address || markers[0].name) : '沖縄';
+        if (markers.length > 0) return markers[0].query;
+        return '日本';
     }, [markers, mapCenter]);
 
-    // Generate embed URL
-    const embedUrl = `https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${encodeURIComponent(currentMapQuery)}&zoom=14&language=ja`;
+    // Use Embed API - more reliable
+    const embedUrl = `https://www.google.com/maps/embed/v1/place?key=${API_KEY}&q=${encodeURIComponent(currentMapQuery)}&zoom=13&language=ja`;
+
+    // Google Maps URL for route with all markers
+    const allMarkersUrl = useMemo(() => {
+        if (markers.length === 0) return 'https://www.google.com/maps';
+        if (markers.length === 1) {
+            return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(markers[0].query)}`;
+        }
+        const origin = encodeURIComponent(markers[0].query);
+        const destination = encodeURIComponent(markers[markers.length - 1].query);
+        const waypoints = markers.slice(1, -1).slice(0, 9).map(m => encodeURIComponent(m.query)).join('|');
+        return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}`;
+    }, [markers]);
+
+    // Emoji icon helper
+    const getEmoji = (type) => {
+        switch (type) {
+            case 'hotel': return '🏨';
+            case 'meal': return '🍽️';
+            case 'transport': return '🚉';
+            default: return '📍';
+        }
+    };
 
     return (
-        <div className={`${isFullscreen ? 'fixed inset-0 z-50 bg-black' : 'pt-4 space-y-4'}`}>
-            {/* Interactive Google Map Embed */}
-            <div className={`${isFullscreen ? 'h-full' : 'bg-white dark:bg-slate-700 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-600 overflow-hidden'}`}>
-                <div className={`relative ${isFullscreen ? 'h-full' : 'h-[50vh] lg:h-[60vh]'}`}>
-                    <iframe
-                        src={embedUrl}
-                        width="100%"
-                        height="100%"
-                        style={{ border: 0 }}
-                        allowFullScreen
-                        loading="lazy"
-                        referrerPolicy="no-referrer-when-downgrade"
-                        className="w-full h-full"
-                    />
+        <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            height: '100vh',
+            marginTop: '-80px'
+        }}>
+            {/* Map Area - Takes 2/3 of screen */}
+            <div style={{
+                flex: '2 1 0%',
+                position: 'relative',
+                minHeight: '0',
+                backgroundColor: '#f3f4f6'
+            }}>
+                <iframe
+                    src={embedUrl}
+                    width="100%"
+                    height="100%"
+                    style={{ border: 'none', display: 'block' }}
+                    allowFullScreen
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    title="Travel Map"
+                />
 
-                    {/* Map Controls */}
-                    <div className="absolute top-3 right-3 flex flex-col gap-2">
+                {/* External Link Button */}
+                <a
+                    href={allMarkersUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                        position: 'absolute',
+                        top: '90px',
+                        right: '16px',
+                        zIndex: 10,
+                        padding: '10px 14px',
+                        backgroundColor: 'white',
+                        borderRadius: '12px',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                        color: '#2563eb',
+                        border: '1px solid #e5e7eb',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        textDecoration: 'none',
+                        fontSize: '12px',
+                        fontWeight: 'bold'
+                    }}
+                >
+                    <Navigation size={14} />
+                    <span>ルート</span>
+                </a>
+            </div>
+
+            {/* Bottom Section - Takes 1/3 of screen */}
+            <div style={{
+                flex: '1 1 0%',
+                backgroundColor: 'white',
+                borderTop: '1px solid #e5e7eb',
+                padding: '16px',
+                overflowY: 'auto'
+            }}>
+                {/* Title */}
+                <div className="flex items-center gap-2 mb-3">
+                    <MapPin size={18} className="text-blue-500" />
+                    <h3 className="font-bold text-gray-800 text-sm">場所をマップで表示</h3>
+                    <span className="text-xs text-gray-400 ml-auto">{markers.length}件</span>
+                </div>
+
+                {/* Day Filter */}
+                <div className="flex gap-2 mb-4 overflow-x-auto scrollbar-hide pb-2">
+                    <button
+                        onClick={() => { setActiveDay('all'); setMapCenter(null); }}
+                        className={`flex-none px-4 py-1.5 rounded-full text-xs font-bold transition-all border ${activeDay === 'all'
+                            ? 'bg-blue-600 text-white border-blue-600'
+                            : 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-blue-50'
+                            }`}
+                    >
+                        全て
+                    </button>
+                    {itinerary.map((day, i) => (
                         <button
-                            onClick={() => setIsFullscreen(!isFullscreen)}
-                            className="bg-white dark:bg-slate-800 p-2 rounded-lg shadow-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
-                            title={isFullscreen ? '縮小' : '全画面'}
+                            key={day.id}
+                            onClick={() => { setActiveDay(day.id); setMapCenter(null); }}
+                            className={`flex-none px-4 py-1.5 rounded-full text-xs font-bold transition-all border ${activeDay === day.id
+                                ? 'bg-blue-600 text-white border-blue-600'
+                                : 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-blue-50'
+                                }`}
                         >
-                            {isFullscreen ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+                            Day {i + 1}
                         </button>
-                        <a
-                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(currentMapQuery)}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="bg-white dark:bg-slate-800 p-2 rounded-lg shadow-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
-                            title="Google Mapsで開く"
-                        >
-                            <ExternalLink size={20} />
-                        </a>
-                    </div>
+                    ))}
+                </div>
 
-                    {/* Fullscreen Close Hint */}
-                    {isFullscreen && (
-                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/70 text-white px-4 py-2 rounded-full text-sm">
-                            ESCまたは右上ボタンで閉じる
-                        </div>
+                {/* Location Pills - Clickable to center map */}
+                <div className="flex flex-wrap gap-2">
+                    {markers.length > 0 ? markers.map((m, i) => (
+                        <button
+                            key={i}
+                            onClick={() => setMapCenter(m.query)}
+                            className={`px-3 py-1.5 rounded-full text-sm transition-all border ${currentMapQuery === m.query
+                                ? 'bg-blue-500 text-white border-blue-500'
+                                : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-blue-100'
+                                }`}
+                        >
+                            <span>{getEmoji(m.type)}</span>
+                            <span className="ml-1">{m.name.length > 12 ? m.name.slice(0, 12) + '...' : m.name}</span>
+                        </button>
+                    )) : (
+                        <div className="text-gray-400 text-sm">スポットがありません</div>
                     )}
                 </div>
             </div>
-
-            {/* Location Quick Select - Only show when not fullscreen */}
-            {!isFullscreen && (
-                <div className="space-y-4">
-                    {/* Quick Jump to Location */}
-                    <div className="bg-white dark:bg-slate-700 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-slate-600">
-                        <h3 className="font-bold text-gray-800 dark:text-slate-100 mb-3 flex items-center gap-2">
-                            <MapPin size={18} className="text-blue-500" />
-                            場所をマップで表示
-                        </h3>
-                        <div className="flex flex-wrap gap-2">
-                            {markers.slice(0, 12).map((m, i) => (
-                                <button
-                                    key={i}
-                                    onClick={() => setMapCenter(m.address || m.name)}
-                                    className={`px-3 py-1.5 rounded-full text-sm transition-all ${currentMapQuery === (m.address || m.name)
-                                            ? 'bg-blue-500 text-white'
-                                            : 'bg-gray-100 dark:bg-slate-600 text-gray-700 dark:text-slate-300 hover:bg-blue-100 dark:hover:bg-blue-900/30'
-                                        }`}
-                                >
-                                    {m.type === 'hotel' ? '🏨' : m.type === 'transport' ? '🚉' : m.type === 'meal' ? '🍽️' : '📍'}
-                                    <span className="ml-1">{m.name.length > 10 ? m.name.slice(0, 10) + '...' : m.name}</span>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Day Routes */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {itinerary.map((day, i) => {
-                            const routeUrl = getDayRouteUrl(day);
-                            if (!routeUrl) return null;
-                            return (
-                                <a
-                                    key={day.id}
-                                    href={routeUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex items-center gap-3 p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors group"
-                                >
-                                    <div className="bg-blue-100 dark:bg-blue-800 p-2 rounded-lg text-blue-600 dark:text-blue-300">
-                                        <MapIcon size={18} />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="font-bold text-gray-800 dark:text-slate-200 text-sm truncate">
-                                            Day {i + 1} のルートを見る
-                                        </div>
-                                        <div className="text-[10px] text-gray-500 dark:text-slate-400 truncate">
-                                            {day.location || '移動行程を確認'}
-                                        </div>
-                                    </div>
-                                    <ArrowRight size={14} className="text-blue-400 group-hover:translate-x-1 transition-transform" />
-                                </a>
-                            );
-                        })}
-                    </div>
-
-                    {/* Location Cards with Smart Search */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {markers.map((m, i) => (
-                            <div
-                                key={i}
-                                onClick={() => setMapCenter(m.address || m.name)}
-                                className={`bg-white dark:bg-slate-700 p-4 rounded-xl shadow-sm border transition cursor-pointer ${currentMapQuery === (m.address || m.name)
-                                        ? 'border-blue-400 ring-2 ring-blue-200 dark:ring-blue-800'
-                                        : 'border-gray-100 dark:border-slate-600 hover:border-blue-200 dark:hover:border-blue-700'
-                                    }`}
-                            >
-                                <div className="flex items-start justify-between gap-3">
-                                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${m.type === 'hotel' ? 'bg-indigo-50 dark:bg-indigo-900/40 text-indigo-500' :
-                                                m.type === 'meal' ? 'bg-orange-50 dark:bg-orange-900/40 text-orange-500' :
-                                                    'bg-blue-50 dark:bg-blue-900/40 text-blue-500'
-                                            }`}>
-                                            {getIcon(m.type, null, { size: 18 })}
-                                        </div>
-                                        <div className="min-w-0 flex-1">
-                                            <div className="font-bold text-gray-700 dark:text-slate-200 truncate">{m.name}</div>
-                                            {m.address && (
-                                                <div className="text-[10px] text-gray-400 dark:text-slate-500 truncate">{m.address}</div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Quick Actions */}
-                                <div className="flex gap-2 mt-3">
-                                    <a
-                                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(m.address || m.name)}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        onClick={(e) => e.stopPropagation()}
-                                        className="flex-1 flex items-center justify-center gap-1 text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 px-2 py-1.5 rounded-lg transition-colors"
-                                    >
-                                        <MapIcon size={12} /> マップ
-                                    </a>
-                                    <a
-                                        href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(m.address || m.name)}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        onClick={(e) => e.stopPropagation()}
-                                        className="flex-1 flex items-center justify-center gap-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 px-2 py-1.5 rounded-lg transition-colors"
-                                    >
-                                        <Navigation size={12} /> ルート
-                                    </a>
-                                    <a
-                                        href={`https://www.google.com/search?q=${encodeURIComponent(m.name + ' ' + (m.address ? m.address.split(',')[0] : ''))}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        onClick={(e) => e.stopPropagation()}
-                                        className="flex-1 flex items-center justify-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 px-2 py-1.5 rounded-lg transition-colors"
-                                    >
-                                        <Search size={12} /> 検索
-                                    </a>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
         </div>
     );
 };

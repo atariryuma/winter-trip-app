@@ -670,7 +670,7 @@ export default function TravelApp() {
 
                                 {/* Sticky Date Tabs */}
                                 <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] lg:top-0 z-40 bg-[#F2F4F7]/95 dark:bg-slate-900/95 backdrop-blur-sm pt-2 pb-4 px-4 border-b border-gray-200/50 dark:border-slate-800/50 lg:border-none lg:bg-transparent lg:backdrop-blur-none">
-                                    <div className="flex justify-between items-center bg-white dark:bg-slate-800 rounded-xl p-1 shadow-sm border border-gray-200 dark:border-slate-700 max-w-2xl mx-auto">
+                                    <div className="flex justify-between items-center bg-white dark:bg-slate-800 rounded-xl p-1 shadow-sm border border-gray-200 dark:border-slate-700 max-w-5xl mx-auto">
                                         {itinerary.map((day, idx) => (
                                             <button
                                                 key={day.id}

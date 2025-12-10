@@ -621,12 +621,14 @@ export default function TravelApp() {
             <div className="lg:pl-64 flex-1 min-h-screen pb-24 lg:pb-0">
                 <div className="w-full h-full">
 
-                    {/* ========== HEADER (Mobile/Tablet) - Large Title Style ========== */}
-                    <header className={`lg:hidden fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled
-                        ? 'bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-gray-200 dark:border-slate-800'
-                        : 'bg-transparent border-transparent'
-                        }`}>
-                        <div className="flex items-center justify-between px-4 h-14 max-w-5xl mx-auto">
+                    {/* Mobile Header (Fixed) */}
+                    <header
+                        className={`lg:hidden fixed top-0 left-0 right-0 z-50 transition-all duration-300 pt-[env(safe-area-inset-top)] ${isScrolled
+                            ? 'bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-200 dark:border-slate-800 shadow-sm'
+                            : 'bg-transparent'
+                            } ${scrollDirection === 'down' && isScrolled ? '-translate-y-full' : 'translate-y-0'}`}
+                    >
+                        <div className="flex items-center justify-center h-14 relative px-4 pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]">
                             <div className={`flex items-center gap-2 transition-opacity duration-300 ${isScrolled || activeTab !== 'timeline' ? 'opacity-100' : 'opacity-0'}`}>
                                 {activeTab !== 'timeline' && (
                                     <div className="w-6 h-6 bg-blue-600 rounded-md flex items-center justify-center shadow-sm">
@@ -648,9 +650,9 @@ export default function TravelApp() {
                     <Suspense fallback={<LoadingSpinner />}>
 
                         {activeTab === 'timeline' && (
-                            <div className="pt-0 lg:pt-8 max-w-5xl mx-auto">
+                            <div className="pt-0 lg:pt-8 max-w-5xl mx-auto w-full pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
                                 {/* Large Title Area */}
-                                <div className={`pt-16 pb-2 px-4 transition-all duration-300 ${isScrolled ? 'opacity-0 scale-95 translate-y-[-10px]' : 'opacity-100 scale-100 translate-y-0'}`}>
+                                <div className={`pt-[calc(4rem+env(safe-area-inset-top))] pb-2 px-4 transition-all duration-300 ${isScrolled ? 'opacity-0 scale-95 translate-y-[-10px]' : 'opacity-100 scale-100 translate-y-0'}`}>
                                     <div className="flex items-center justify-between">
                                         <div>
                                             <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight mb-1">
@@ -667,7 +669,7 @@ export default function TravelApp() {
                                 </div>
 
                                 {/* Sticky Date Tabs */}
-                                <div className="sticky top-14 lg:top-0 z-40 bg-[#F2F4F7]/95 dark:bg-slate-900/95 backdrop-blur-sm pt-2 pb-4 px-4 border-b border-gray-200/50 dark:border-slate-800/50 lg:border-none lg:bg-transparent lg:backdrop-blur-none">
+                                <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] lg:top-0 z-40 bg-[#F2F4F7]/95 dark:bg-slate-900/95 backdrop-blur-sm pt-2 pb-4 px-4 border-b border-gray-200/50 dark:border-slate-800/50 lg:border-none lg:bg-transparent lg:backdrop-blur-none">
                                     <div className="flex justify-between items-center bg-white dark:bg-slate-800 rounded-xl p-1 shadow-sm border border-gray-200 dark:border-slate-700 max-w-2xl mx-auto">
                                         {itinerary.map((day, idx) => (
                                             <button
@@ -826,7 +828,7 @@ export default function TravelApp() {
 
                         {/* Standard Layout for Other Tabs */}
                         {activeTab !== 'timeline' && (
-                            <main className="px-4 lg:px-12 pt-20 lg:pt-8 pb-24 lg:pb-0">
+                            <main className="px-4 lg:px-12 pt-[calc(5rem+env(safe-area-inset-top))] lg:pt-8 pb-32 lg:pb-0 pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]">
                                 <div className="max-w-xl mx-auto w-full">
                                     {activeTab === 'tickets' && <TicketList itinerary={itinerary} onForceReload={fetchData} />}
                                     {activeTab === 'map' && <MapView mapUrl={mapUrl} itinerary={itinerary} mapError={mapError} />}
@@ -851,8 +853,8 @@ export default function TravelApp() {
                     </Suspense>
 
                     {/* ========== BOTTOM NAV (Mobile only) ========== */}
-                    <nav className={`lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800 transition-transform duration-300 ${scrollDirection === 'down' ? 'translate-y-full' : 'translate-y-0'}`}>
-                        <div className="flex justify-around items-center h-16 px-2 safe-area-pb">
+                    <nav className={`lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800 transition-transform duration-300 pb-[env(safe-area-inset-bottom)] ${scrollDirection === 'down' ? 'translate-y-full' : 'translate-y-0'}`}>
+                        <div className="flex justify-around items-center h-[4.5rem] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]">
                             {[
                                 { id: 'timeline', icon: Calendar },
                                 { id: 'tickets', icon: Ticket },

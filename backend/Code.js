@@ -40,9 +40,11 @@ function fillLocationDetails() {
 
 /**
  * Scan entire sheet for missing details and fill them
+ * NOTE: Uses openById instead of getActiveSpreadsheet for HTTP API compatibility
  */
 function autoFillAllMissingDetails() {
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheet = ss.getSheetByName(SHEET_NAME);
     if (!sheet) throw new Error('Sheet not found');
 
     const lastRow = sheet.getLastRow();

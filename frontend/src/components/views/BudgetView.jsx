@@ -527,15 +527,6 @@ const BudgetView = ({ itinerary, onForceReload }) => {
                         </div>
                     </div>
                 )}
-
-                {/* Quick Add Button */}
-                <button
-                    onClick={() => { setShowAddPayment(true); resetQuickAdd(); }}
-                    className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all active:scale-[0.98]"
-                >
-                    <PlusCircle size={20} />
-                    支出を追加
-                </button>
             </div>
 
             {/* Right Column - Expense List */}

@@ -605,7 +605,7 @@ export default function TravelApp() {
                     {/* Mobile Header (Fixed) */}
                     <header
                         className={`lg:hidden fixed top-0 left-0 right-0 z-sticky transition-all duration-300 pt-[env(safe-area-inset-top)] ${isScrolled
-                            ? 'bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-200 dark:border-slate-800 shadow-sm'
+                            ? 'bg-indigo-600 dark:bg-indigo-900 backdrop-blur-md shadow-sm'
                             : 'bg-transparent'
                             } ${scrollDirection === 'down' && isScrolled ? '-translate-y-full' : 'translate-y-0'}`}
                     >
@@ -616,7 +616,7 @@ export default function TravelApp() {
                                         <Plane className="text-white transform -rotate-45" size={12} />
                                     </div>
                                 )}
-                                <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 tracking-tight">
+                                <h2 className={`text-lg font-bold tracking-tight ${isScrolled ? 'text-white' : 'text-slate-800 dark:text-slate-100'}`}>
                                     {activeTab === 'timeline' ? 'TripPlanner' :
                                         activeTab === 'tickets' ? 'Tickets' :
                                             activeTab === 'map' ? 'Places' :
@@ -703,11 +703,7 @@ export default function TravelApp() {
                                                                     setEditItem(event);
                                                                     setModalOpen(true);
                                                                 } else {
-                                                                    const query = event.type === 'transport'
-                                                                        ? event.to
-                                                                        : (event.address || event.name);
-                                                                    setMapModalQuery(query);
-                                                                    setMapModalOpen(true);
+                                                                    setSelectedPlaceEvent(event);
                                                                 }
                                                             }}
                                                             onTouchStart={() => handleTouchStart(event)}
@@ -748,16 +744,16 @@ export default function TravelApp() {
                                                             )}
                                                             <div className="flex items-center gap-2 mt-2 justify-end">
                                                                 {!isEditMode && (
-                                                                    <button
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            setSelectedPlaceEvent(event);
-                                                                        }}
+                                                                    <a
+                                                                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.type === 'transport' ? event.to : (event.address || event.name))}`}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        onClick={(e) => e.stopPropagation()}
                                                                         className="h-8 w-8 bg-gray-100 dark:bg-slate-700 rounded-lg flex items-center justify-center text-indigo-600 dark:text-indigo-400 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
-                                                                        title="詳しく調べる"
+                                                                        title="地図を開く"
                                                                     >
-                                                                        <Search size={16} />
-                                                                    </button>
+                                                                        <MapPin size={16} />
+                                                                    </a>
                                                                 )}
                                                             </div>
                                                         </div>
@@ -910,8 +906,8 @@ export default function TravelApp() {
 
                         {/* Standard Layout for Other Tabs */}
                         {activeTab !== 'timeline' && (
-                            <main className="pt-[calc(4rem+env(safe-area-inset-top))] lg:pt-8 pb-32 lg:pb-0 pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
-                                <div className="max-w-full lg:max-w-7xl 2xl:max-w-screen-2xl mx-auto w-full px-4 sm:px-6 lg:px-8 2xl:px-12">
+                            <main className="pt-[calc(4rem+env(safe-area-inset-top))] lg:pt-8 pb-32 lg:pb-8 pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] overflow-x-hidden">
+                                <div className="max-w-full lg:max-w-7xl 2xl:max-w-screen-2xl mx-auto w-full px-4 sm:px-6 lg:px-8 2xl:px-12 overflow-x-hidden">
                                     {activeTab === 'tickets' && <TicketList itinerary={itinerary} onForceReload={fetchData} />}
                                     {activeTab === 'map' && <MapView mapUrl={mapUrl} itinerary={itinerary} mapError={mapError} />}
                                     {activeTab === 'budget' && <BudgetView itinerary={itinerary} onForceReload={fetchData} />}

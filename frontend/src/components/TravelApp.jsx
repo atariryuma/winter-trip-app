@@ -639,12 +639,26 @@ export default function TravelApp() {
                                                                 {/* Title */}
                                                                 <h3 className="font-bold text-gray-800 dark:text-slate-100 text-base lg:text-lg leading-snug break-words">{event.name}</h3>
 
-                                                                {/* Transport Route */}
+                                                                {/* Transport Route with Quick Map Link */}
                                                                 {event.type === 'transport' && event.place && event.to && (
-                                                                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-300 mt-2 bg-gray-50 dark:bg-slate-600/40 rounded-lg px-3 py-2">
-                                                                        <span className="font-medium">{event.place}</span>
-                                                                        <ArrowRight size={14} className="text-gray-400 shrink-0" />
-                                                                        <span className="font-medium">{event.to}</span>
+                                                                    <div className="mt-2 space-y-2">
+                                                                        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-300 bg-gray-50 dark:bg-slate-600/40 rounded-lg px-3 py-2">
+                                                                            <span className="font-medium">{event.place}</span>
+                                                                            <ArrowRight size={14} className="text-gray-400 shrink-0" />
+                                                                            <span className="font-medium">{event.to}</span>
+                                                                        </div>
+                                                                        {/* Quick Map Link */}
+                                                                        <a
+                                                                            href={`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(event.placeAddress || event.place)}&destination=${encodeURIComponent(event.toAddress || event.to)}&travelmode=${event.category === 'flight' ? 'transit' : 'transit'}`}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            onClick={(e) => e.stopPropagation()}
+                                                                            className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 px-3 py-2 rounded-lg transition-colors"
+                                                                        >
+                                                                            <MapPin size={14} />
+                                                                            <span className="font-medium">このルートをGoogle Mapsで見る</span>
+                                                                            <ArrowRight size={12} className="ml-auto" />
+                                                                        </a>
                                                                     </div>
                                                                 )}
 
@@ -675,16 +689,40 @@ export default function TravelApp() {
                                                             </div>
                                                         </div>
 
-                                                        {/* Duration Indicator (between events, desktop only) */}
+                                                        {/* Duration Indicator (between events) - Now shows on mobile too */}
                                                         {nextEvent && durationMinutes > 0 && (
-                                                            <div className="hidden lg:flex items-center ml-[72px] py-3">
-                                                                <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-slate-500 bg-gray-50 dark:bg-slate-800 px-3 py-1.5 rounded-full">
-                                                                    <span className="opacity-70">⏱</span>
-                                                                    <span>
-                                                                        {durationHours > 0 && `${durationHours}時間`}
-                                                                        {durationMins > 0 && `${durationMins}分`}
-                                                                        後
+                                                            <div className="flex items-center lg:ml-[72px] py-2 lg:py-3 px-2 lg:px-0">
+                                                                <div className={`flex-1 flex items-center gap-2 text-xs px-3 py-2 rounded-xl border ${durationMinutes >= 120
+                                                                    ? 'bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-400'
+                                                                    : durationMinutes >= 30
+                                                                        ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400'
+                                                                        : 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400'
+                                                                    }`}>
+                                                                    {/* Transport Type Icon */}
+                                                                    <span className="text-base">
+                                                                        {nextEvent.category === 'flight' ? '✈️' :
+                                                                            nextEvent.type === 'transport' ? '🚃' :
+                                                                                durationMinutes < 15 ? '🚶' : '⏱️'}
                                                                     </span>
+
+                                                                    {/* Duration Text */}
+                                                                    <div className="flex items-center gap-1.5 flex-1">
+                                                                        <span className="font-bold">
+                                                                            {durationHours > 0 && `${durationHours}時間`}
+                                                                            {durationMins > 0 && `${durationMins}分`}
+                                                                        </span>
+                                                                        <span className="opacity-60 hidden sm:inline">後</span>
+                                                                    </div>
+
+                                                                    {/* Visual Progress Bar */}
+                                                                    <div className="hidden sm:flex w-16 h-1.5 bg-white/50 dark:bg-black/20 rounded-full overflow-hidden">
+                                                                        <div
+                                                                            className={`h-full rounded-full ${durationMinutes >= 120 ? 'bg-rose-400' :
+                                                                                durationMinutes >= 30 ? 'bg-amber-400' : 'bg-emerald-400'
+                                                                                }`}
+                                                                            style={{ width: `${Math.min(100, (durationMinutes / 180) * 100)}%` }}
+                                                                        />
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         )}

@@ -159,7 +159,7 @@ const server = {
                     try { localStorage.setItem(cacheKey, JSON.stringify(json.data)); } catch { /* ignore */ } // Change to localStorage
                     resolve(json.data);
                 } else {
-                    console.log('getRouteMap failed:', json.error);
+                    console.log('getRouteMap failed:', JSON.stringify(json));
                     resolve(null);
                 }
             })

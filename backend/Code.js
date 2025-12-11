@@ -5,6 +5,22 @@ const EVENTS_SHEET = 'events';
 const PACKING_SHEET = 'packing_list';
 
 /**
+ * Helper to get spreadsheet instance with fallback
+ */
+function getSpreadsheet() {
+    if (SPREADSHEET_ID) {
+        try {
+            return SpreadsheetApp.openById(SPREADSHEET_ID);
+        } catch (e) {
+            console.warn('Failed to open by ID, trying active spreadsheet', e);
+        }
+    }
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    if (!ss) throw new Error('Spreadsheet not found. Please set SPREADSHEET_ID script property or bind script to sheet.');
+    return ss;
+}
+
+/**
  * Convert cell value to string (handles Date objects, numbers, etc.)
  * GAS Date handling:
  * - Date values: Year >= 2000 -> format as M/D
@@ -162,7 +178,7 @@ function doPost(e) {
  * Call via API: ?action=fixTimeData
  */
 function fixTimeData() {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const ss = getSpreadsheet();
     const eventsSheet = ss.getSheetByName(EVENTS_SHEET);
 
     if (!eventsSheet) {
@@ -267,7 +283,7 @@ function handleUploadEvents(e) {
             return createApiResponse('error', null, { message: 'CSV must have header and at least one row' });
         }
 
-        const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+        const ss = getSpreadsheet();
         const sheet = ss.getSheetByName(EVENTS_SHEET);
 
         if (!sheet) {
@@ -370,7 +386,7 @@ function getItineraryData() {
         if (cached) return JSON.parse(cached);
     } catch (e) { }
 
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const ss = getSpreadsheet();
     const eventsSheet = ss.getSheetByName(EVENTS_SHEET);
 
     if (!eventsSheet) {
@@ -506,7 +522,7 @@ function getItineraryData() {
  * Save itinerary data to sheets
  */
 function saveItineraryData(data) {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const ss = getSpreadsheet();
 
     const daysData = data.map(day => [
         day.date,
@@ -861,7 +877,7 @@ function handleBatchUpdateEvents(e) {
             return createApiResponse('error', null, { message: 'Invalid updates format' });
         }
 
-        const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+        const ss = getSpreadsheet();
         const eventsSheet = ss.getSheetByName(EVENTS_SHEET);
 
         if (!eventsSheet) {
@@ -940,7 +956,7 @@ function handleAddEvent(e) {
             return createApiResponse('error', null, { message: 'Date is required' });
         }
 
-        const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+        const ss = getSpreadsheet();
         const eventsSheet = ss.getSheetByName(EVENTS_SHEET);
 
         if (!eventsSheet) {
@@ -990,7 +1006,7 @@ function handleDeleteEvent(e) {
             return createApiResponse('error', null, { message: 'Date and eventId required' });
         }
 
-        const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+        const ss = getSpreadsheet();
         const eventsSheet = ss.getSheetByName(EVENTS_SHEET);
 
         if (!eventsSheet) {
@@ -1033,7 +1049,7 @@ function handleDeleteEventsByDate(e) {
             return createApiResponse('error', null, { message: 'Date is required' });
         }
 
-        const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+        const ss = getSpreadsheet();
         const eventsSheet = ss.getSheetByName(EVENTS_SHEET);
 
         if (!eventsSheet) {
@@ -1077,7 +1093,7 @@ function handleMoveEvent(e) {
             return createApiResponse('error', null, { message: 'originalDate, eventId, and newDate are required' });
         }
 
-        const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+        const ss = getSpreadsheet();
         const eventsSheet = ss.getSheetByName(EVENTS_SHEET);
 
         if (!eventsSheet) {
@@ -1141,7 +1157,7 @@ function handleUpdateEvent(e) {
 }
 
 function updateEventField(date, eventName, field, value) {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const ss = getSpreadsheet();
     const eventsSheet = ss.getSheetByName(EVENTS_SHEET);
 
     if (!eventsSheet) {
@@ -1320,7 +1336,7 @@ function handleGetRouteMap(e) {
 // --- Sheet Cache Helpers ---
 
 function getRouteCacheSheet() {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const ss = getSpreadsheet();
     let sheet = ss.getSheetByName('_RouteCache');
     if (!sheet) {
         sheet = ss.insertSheet('_RouteCache');
@@ -1396,7 +1412,7 @@ function handleBatchUpdatePackingItems(e) {
             return createApiResponse('error', null, { message: 'Invalid items format' });
         }
 
-        const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+        const ss = getSpreadsheet();
         let sheet = ss.getSheetByName(PACKING_SHEET);
 
         if (!sheet) {
@@ -1466,7 +1482,7 @@ function handleBatchUpdatePackingItems(e) {
 }
 
 function getPackingList() {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const ss = getSpreadsheet();
     let sheet = ss.getSheetByName(PACKING_SHEET);
 
     if (!sheet) {

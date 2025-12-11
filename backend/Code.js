@@ -84,6 +84,10 @@ function doGet(e) {
                 return handleAddEvent(e);
             case 'deleteEvent':
                 return handleDeleteEvent(e);
+            case 'deleteEventsByDate':
+                return handleDeleteEventsByDate(e);
+            case 'moveEvent':
+                return handleMoveEvent(e);
             case 'updateDay':
                 return handleUpdateDay(e);
             default:
@@ -353,7 +357,7 @@ function parseCSV(csvString) {
 // ============================================================================
 
 /**
- * Get itinerary data from days/events sheets
+ * Get itinerary data - derives days from events only (no days sheet required)
  */
 function getItineraryData() {
     const cache = CacheService.getScriptCache();
@@ -364,18 +368,11 @@ function getItineraryData() {
     } catch (e) { }
 
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const daysSheet = ss.getSheetByName(DAYS_SHEET);
     const eventsSheet = ss.getSheetByName(EVENTS_SHEET);
 
-    if (!daysSheet || !eventsSheet) {
-        throw new Error('Required sheets (days/events) not found');
+    if (!eventsSheet) {
+        throw new Error('Events sheet not found');
     }
-
-    // Read days
-    const daysLastRow = daysSheet.getLastRow();
-    const daysData = daysLastRow > 1
-        ? daysSheet.getRange(2, 1, daysLastRow - 1, 5).getValues()
-        : [];
 
     // Read events
     const eventsLastRow = eventsSheet.getLastRow();
@@ -383,30 +380,42 @@ function getItineraryData() {
         ? eventsSheet.getRange(2, 1, eventsLastRow - 1, 12).getValues()
         : [];
 
-    // Build days map
-    const daysMap = {};
-    daysData.forEach(([date, dayOfWeek, title, summary, theme]) => {
-        if (!date) return;
-        daysMap[toString(date)] = {
-            id: `day-${toString(date).replace('/', '-')}`,
-            date: toString(date),
-            dayOfWeek: toString(dayOfWeek),
-            title: toString(title),
-            summary: toString(summary),
-            theme: theme || 'default',
-            weather: null,
-            events: []
-        };
-    });
+    // Helper: Get day of week from date string (M/D format)
+    const getDayOfWeek = (dateStr) => {
+        const [month, day] = dateStr.split('/').map(Number);
+        const now = new Date();
+        const year = now.getFullYear();
+        // Determine year: if month is past current month, use next year
+        const targetYear = (month < now.getMonth() + 1) ? year + 1 : year;
+        const date = new Date(targetYear, month - 1, day);
+        const days = ['日', '月', '火', '水', '木', '金', '土'];
+        return days[date.getDay()];
+    };
 
+    // Build days map from events (derive days dynamically)
+    const daysMap = {};
     const mapLocations = [];
 
-    // Process events
+    // Process events and create days on-the-fly
     eventsData.forEach((row, idx) => {
         const [date, type, category, name, time, endTime, from, to, status, bookingRef, memo, budget] = row;
         const dateStr = toString(date);
 
-        if (!dateStr || !daysMap[dateStr]) return;
+        if (!dateStr) return;
+
+        // Create day if not exists
+        if (!daysMap[dateStr]) {
+            daysMap[dateStr] = {
+                id: `day-${dateStr.replace('/', '-')}`,
+                date: dateStr,
+                dayOfWeek: getDayOfWeek(dateStr),
+                title: '',
+                summary: '',
+                theme: 'default',
+                weather: null,
+                events: []
+            };
+        }
 
         let budgetAmount = '', budgetPaidBy = '';
         if (budget && toString(budget).includes('/')) {
@@ -442,9 +451,17 @@ function getItineraryData() {
         daysMap[dateStr].events.push(event);
     });
 
-    // Sort events by time
+    // Sort events by time within each day
     Object.values(daysMap).forEach(day => {
         day.events.sort((a, b) => (a.time || '23:59').localeCompare(b.time || '23:59'));
+    });
+
+    // Sort days by date
+    const sortedDays = Object.values(daysMap).sort((a, b) => {
+        const [aMonth, aDay] = a.date.split('/').map(Number);
+        const [bMonth, bDay] = b.date.split('/').map(Number);
+        if (aMonth !== bMonth) return aMonth - bMonth;
+        return aDay - bDay;
     });
 
     // Generate map
@@ -459,14 +476,13 @@ function getItineraryData() {
     }
 
     const result = {
-        days: Object.values(daysMap),
+        days: sortedDays,
         mapUrl,
         mapError,
         lastUpdate: PropertiesService.getScriptProperties().getProperty('lastUpdate') || null
     };
 
     try {
-        // Increased cache TTL from 30min to 1 hour for better performance
         cache.put('itinerary_json', JSON.stringify(result), 3600);
     } catch (e) { }
 
@@ -947,6 +963,106 @@ function handleDeleteEvent(e) {
                 CacheService.getScriptCache().remove('itinerary_json');
 
                 return createApiResponse('success', { message: 'Event deleted' });
+            }
+        }
+
+        return createApiResponse('error', null, { message: 'Event not found' });
+    } catch (error) {
+        return createApiResponse('error', null, { message: error.toString() });
+    }
+}
+
+/**
+ * Delete all events for a specific date (day deletion)
+ */
+function handleDeleteEventsByDate(e) {
+    try {
+        const date = e.parameter.date;
+
+        if (!date) {
+            return createApiResponse('error', null, { message: 'Date is required' });
+        }
+
+        const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+        const eventsSheet = ss.getSheetByName(EVENTS_SHEET);
+
+        if (!eventsSheet) {
+            return createApiResponse('error', null, { message: 'Events sheet not found' });
+        }
+
+        const lastRow = eventsSheet.getLastRow();
+        if (lastRow < 2) {
+            return createApiResponse('success', { message: 'No events to delete', deletedCount: 0 });
+        }
+
+        // Find all rows to delete (iterate backwards to avoid index shifting)
+        const data = eventsSheet.getRange(2, 1, lastRow - 1, 1).getValues();
+        let deletedCount = 0;
+
+        for (let i = data.length - 1; i >= 0; i--) {
+            if (toString(data[i][0]) === date) {
+                eventsSheet.deleteRow(i + 2);
+                deletedCount++;
+            }
+        }
+
+        // Invalidate cache
+        CacheService.getScriptCache().remove('itinerary_json');
+
+        return createApiResponse('success', { message: `Deleted ${deletedCount} events`, deletedCount });
+    } catch (error) {
+        return createApiResponse('error', null, { message: error.toString() });
+    }
+}
+
+/**
+ * Move an event to a different date and/or time
+ */
+function handleMoveEvent(e) {
+    try {
+        const eventData = JSON.parse(e.parameter.eventData || e.postData?.contents);
+        const { originalDate, eventId, newDate, newStartTime, newEndTime } = eventData;
+
+        if (!originalDate || !eventId || !newDate) {
+            return createApiResponse('error', null, { message: 'originalDate, eventId, and newDate are required' });
+        }
+
+        const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+        const eventsSheet = ss.getSheetByName(EVENTS_SHEET);
+
+        if (!eventsSheet) {
+            return createApiResponse('error', null, { message: 'Events sheet not found' });
+        }
+
+        const lastRow = eventsSheet.getLastRow();
+        if (lastRow < 2) {
+            return createApiResponse('error', null, { message: 'No data' });
+        }
+
+        // Find the event to update (columns: date, startTime, endTime, name)
+        const data = eventsSheet.getRange(2, 1, lastRow - 1, 4).getValues();
+
+        for (let i = 0; i < data.length; i++) {
+            if (toString(data[i][0]) === originalDate && toString(data[i][3]) === eventId) {
+                const rowIndex = i + 2;
+
+                // Update date (column 1)
+                eventsSheet.getRange(rowIndex, 1).setValue(newDate);
+
+                // Update start time if provided (column 2)
+                if (newStartTime !== undefined && newStartTime !== null) {
+                    eventsSheet.getRange(rowIndex, 2).setValue(newStartTime);
+                }
+
+                // Update end time if provided (column 3)
+                if (newEndTime !== undefined && newEndTime !== null) {
+                    eventsSheet.getRange(rowIndex, 3).setValue(newEndTime);
+                }
+
+                // Invalidate cache
+                CacheService.getScriptCache().remove('itinerary_json');
+
+                return createApiResponse('success', { message: 'Event moved successfully' });
             }
         }
 

@@ -100,7 +100,7 @@ const SimpleTicketCard = ({ event, isBooked, onSearchClick }) => {
     );
 };
 
-// Search Modal Component
+// Search Modal Component - iOS Bottom Sheet Style
 const SearchModal = ({ event, onClose }) => {
     const [isMaximized, setIsMaximized] = useState(false);
 
@@ -114,31 +114,44 @@ const SearchModal = ({ event, onClose }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-modal flex items-end sm:items-center justify-center p-0 sm:p-4">
-            <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-            <div className={`relative w-full bg-white dark:bg-slate-900 shadow-2xl overflow-hidden flex flex-col transition-all duration-300 ${isMaximized ? 'h-[100dvh] rounded-none' : 'h-[80vh] sm:h-[75vh] rounded-t-3xl sm:rounded-2xl sm:max-w-lg'
-                }`}>
+        <div className="fixed inset-0 z-overlay flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4" onClick={onClose}>
+            <div
+                className={`bg-white dark:bg-slate-800 w-full shadow-2xl flex flex-col transition-all duration-300 ${isMaximized
+                        ? 'h-[100dvh] rounded-none'
+                        : 'max-h-[90vh] h-[85vh] sm:h-[75vh] rounded-t-3xl sm:rounded-3xl sm:max-w-lg'
+                    }`}
+                onClick={e => e.stopPropagation()}
+            >
+                {/* Grabber (mobile only) */}
+                {!isMaximized && (
+                    <div className="flex justify-center pt-3 pb-1 sm:hidden shrink-0">
+                        <div className="w-9 h-1 bg-gray-300 dark:bg-slate-600 rounded-full" />
+                    </div>
+                )}
+
                 {/* Header */}
-                <div className={`shrink-0 border-b border-gray-200 dark:border-slate-700 ${isMaximized ? 'px-3 py-2' : 'px-4 py-3'}`}>
-                    <div className="flex items-center justify-between gap-3">
-                        <h3 className={`font-bold text-gray-800 dark:text-white truncate ${isMaximized ? 'text-sm' : 'text-base'}`}>
-                            {event.name} の予約
-                        </h3>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                            <button
-                                onClick={() => setIsMaximized(!isMaximized)}
-                                className="p-1.5 bg-gray-100 dark:bg-slate-800 rounded-full text-gray-600 hover:bg-gray-200"
-                            >
-                                {isMaximized ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-                            </button>
-                            <button onClick={onClose} className="p-1.5 bg-gray-100 dark:bg-slate-800 rounded-full text-gray-600 hover:bg-gray-200">
-                                <X size={16} />
-                            </button>
-                        </div>
+                <div className={`shrink-0 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between gap-3 ${isMaximized ? 'px-3 py-2' : 'px-4 py-3'}`}>
+                    <h3 className={`font-bold text-gray-800 dark:text-white truncate ${isMaximized ? 'text-sm' : 'text-base'}`}>
+                        {event.name} の予約
+                    </h3>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                            onClick={() => setIsMaximized(!isMaximized)}
+                            className="p-2 bg-gray-100 dark:bg-slate-700 rounded-xl text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
+                        >
+                            {isMaximized ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                        </button>
+                        <button
+                            onClick={onClose}
+                            className="p-2 bg-gray-100 dark:bg-slate-700 rounded-xl text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
+                        >
+                            <X size={16} />
+                        </button>
                     </div>
                 </div>
+
                 {/* Search iframe */}
-                <div className="flex-1" onTouchStart={handleTouch} onMouseDown={handleTouch}>
+                <div className="flex-1 min-h-0" onTouchStart={handleTouch} onMouseDown={handleTouch}>
                     <iframe
                         src={searchUrl}
                         title="Google Search"

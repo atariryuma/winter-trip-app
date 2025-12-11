@@ -56,7 +56,7 @@ const SettingsView = ({ itinerary, isDarkMode, setIsDarkMode, lastUpdate, onData
     };
 
     return (
-        <div className="space-y-4 pb-24">
+        <div className="space-y-4 pb-8">
             {/* Large Title */}
             <div className="pb-2">
                 <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Settings</h1>
@@ -88,52 +88,52 @@ const SettingsView = ({ itinerary, isDarkMode, setIsDarkMode, lastUpdate, onData
                 </div>
 
                 <div>
-                        {/* CSV Export */}
-                        <button onClick={handleExportCSV} className="w-full px-4 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-slate-700 active:bg-gray-100 dark:active:bg-slate-600 transition-colors touch-manipulation min-h-[56px]">
-                            <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-xl bg-green-50 dark:bg-green-900/30 flex items-center justify-center">
-                                    <Download size={18} className="text-green-500" />
-                                </div>
-                                <div className="text-left">
-                                    <span className="text-gray-700 dark:text-slate-200 font-medium block">CSV Export</span>
-                                    <span className="text-xs text-gray-400 dark:text-slate-500">Download itinerary data</span>
-                                </div>
+                    {/* CSV Export */}
+                    <button onClick={handleExportCSV} className="w-full px-4 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-slate-700 active:bg-gray-100 dark:active:bg-slate-600 transition-colors touch-manipulation min-h-[56px]">
+                        <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-green-50 dark:bg-green-900/30 flex items-center justify-center">
+                                <Download size={18} className="text-green-500" />
                             </div>
-                            <ChevronRight size={18} className="text-gray-300 dark:text-slate-500" />
-                        </button>
-
-                        {/* CSV Import */}
-                        <label className={`w-full px-4 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors touch-manipulation min-h-[56px] border-t border-gray-50 dark:border-slate-700 cursor-pointer ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
-                            <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center">
-                                    {uploading ? (
-                                        <Loader2 size={18} className="text-indigo-500 animate-spin" />
-                                    ) : (
-                                        <Upload size={18} className="text-indigo-500" />
-                                    )}
-                                </div>
-                                <div className="text-left">
-                                    <span className="text-gray-700 dark:text-slate-200 font-medium block">CSV Import</span>
-                                    <span className="text-xs text-gray-400 dark:text-slate-500">Upload itinerary data</span>
-                                </div>
-                            </div>
-                            <input type="file" accept=".csv" onChange={handleImportCSV} className="hidden" disabled={uploading} />
-                            <FileText size={18} className="text-gray-300 dark:text-slate-500" />
-                        </label>
-                        {uploadStatus && (
-                            <div className={`px-4 py-2 flex items-center gap-2 text-sm ${uploadStatus.success ? 'bg-green-50 dark:bg-green-900/20 text-green-600' : 'bg-red-50 dark:bg-red-900/20 text-red-600'}`}>
-                                {uploadStatus.success ? <CheckCircle size={14} /> : <XCircle size={14} />}
-                                {uploadStatus.message}
-                            </div>
-                        )}
-
-                        {/* Warning */}
-                        <div className="px-4 py-3 bg-amber-50 dark:bg-amber-900/20 border-t border-amber-100 dark:border-amber-800/30">
-                            <div className="flex items-start gap-2 text-amber-700 dark:text-amber-400 text-xs">
-                                <AlertTriangle size={14} className="shrink-0 mt-0.5" />
-                                <span>Importing CSV will overwrite existing data</span>
+                            <div className="text-left">
+                                <span className="text-gray-700 dark:text-slate-200 font-medium block">CSV Export</span>
+                                <span className="text-xs text-gray-400 dark:text-slate-500">Download itinerary data</span>
                             </div>
                         </div>
+                        <ChevronRight size={18} className="text-gray-300 dark:text-slate-500" />
+                    </button>
+
+                    {/* CSV Import */}
+                    <label className={`w-full px-4 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors touch-manipulation min-h-[56px] border-t border-gray-50 dark:border-slate-700 cursor-pointer ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                        <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center">
+                                {uploading ? (
+                                    <Loader2 size={18} className="text-indigo-500 animate-spin" />
+                                ) : (
+                                    <Upload size={18} className="text-indigo-500" />
+                                )}
+                            </div>
+                            <div className="text-left">
+                                <span className="text-gray-700 dark:text-slate-200 font-medium block">CSV Import</span>
+                                <span className="text-xs text-gray-400 dark:text-slate-500">Upload itinerary data</span>
+                            </div>
+                        </div>
+                        <input type="file" accept=".csv" onChange={handleImportCSV} className="hidden" disabled={uploading} />
+                        <FileText size={18} className="text-gray-300 dark:text-slate-500" />
+                    </label>
+                    {uploadStatus && (
+                        <div className={`px-4 py-2 flex items-center gap-2 text-sm ${uploadStatus.success ? 'bg-green-50 dark:bg-green-900/20 text-green-600' : 'bg-red-50 dark:bg-red-900/20 text-red-600'}`}>
+                            {uploadStatus.success ? <CheckCircle size={14} /> : <XCircle size={14} />}
+                            {uploadStatus.message}
+                        </div>
+                    )}
+
+                    {/* Warning */}
+                    <div className="px-4 py-3 bg-amber-50 dark:bg-amber-900/20 border-t border-amber-100 dark:border-amber-800/30">
+                        <div className="flex items-start gap-2 text-amber-700 dark:text-amber-400 text-xs">
+                            <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+                            <span>Importing CSV will overwrite existing data</span>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Last Update - Always visible */}

@@ -4,7 +4,7 @@ import {
     Calendar, Map, Settings as SettingsIcon,
     Plane, Train, Bus, Hotel, MapPin, Utensils, Ticket,
     Plus, ArrowRight, Wallet, CheckCircle, Search,
-    Copy, X, Edit3, Save, Navigation, Package, ChevronRight
+    Copy, X, Edit3, Save, Navigation, Package, ChevronRight, Trash2
 } from 'lucide-react';
 import { initialItinerary } from '../data/initialData';
 import { generateId, toMinutes, toTimeStr, getMidTime } from '../utils';
@@ -233,27 +233,61 @@ export default function TravelApp() {
         // Save previous state for rollback
         const previousItinerary = [...itinerary];
 
-        // Optimistically update UI immediately
+        // Check if this is a move operation (date changed)
+        const isMoving = newItem.newDate && newItem.newDate !== newItem.originalDate;
         let targetDay, isEdit = !!editItem;
-        setItinerary(prev => {
-            return prev.map(day => {
-                if (day.id === selectedDayId) {
-                    targetDay = day;
-                    let newEvents = isEdit
-                        ? day.events.map(e => e.id === newItem.id ? newItem : e)
-                        : [...day.events, { ...newItem, id: generateId(), type: getCategoryType(newItem.category) }];
-                    return { ...day, events: newEvents };
-                }
-                return day;
+
+        if (isMoving) {
+            // Moving event to a different day
+            setItinerary(prev => {
+                return prev.map(day => {
+                    // Remove from original day
+                    if (day.date === newItem.originalDate) {
+                        return { ...day, events: day.events.filter(e => e.id !== newItem.id) };
+                    }
+                    // Add to new day
+                    if (day.date === newItem.newDate) {
+                        targetDay = day;
+                        // Remove move-related properties before adding
+                        const cleanItem = { ...newItem };
+                        delete cleanItem.newDate;
+                        delete cleanItem.originalDate;
+                        return { ...day, events: [...day.events, cleanItem] };
+                    }
+                    return day;
+                });
             });
-        });
+        } else {
+            // Normal edit or add
+            setItinerary(prev => {
+                return prev.map(day => {
+                    if (day.id === selectedDayId) {
+                        targetDay = day;
+                        let newEvents = isEdit
+                            ? day.events.map(e => e.id === newItem.id ? newItem : e)
+                            : [...day.events, { ...newItem, id: generateId(), type: getCategoryType(newItem.category) }];
+                        return { ...day, events: newEvents };
+                    }
+                    return day;
+                });
+            });
+        }
         setModalOpen(false);
         setEditItem(null);
 
         // Background save using optimized API
         try {
             setSaving(true);
-            if (isEdit) {
+            if (isMoving) {
+                // Call moveEvent API
+                await server.moveEvent({
+                    originalDate: newItem.originalDate,
+                    eventId: newItem.name,
+                    newDate: newItem.newDate,
+                    newStartTime: newItem.time,
+                    newEndTime: newItem.endTime
+                });
+            } else if (isEdit) {
                 // Update existing event using batch API (much faster than full save)
                 await server.batchUpdateEvents([{
                     date: targetDay.date,
@@ -310,6 +344,36 @@ export default function TravelApp() {
             } finally {
                 setSaving(false);
             }
+        }
+    };
+
+    const handleDeleteDay = async (date, dayIdx) => {
+        if (!window.confirm(`Day ${dayIdx + 1} (${date}) のすべての予定を削除しますか？`)) return;
+        if (!window.confirm(`本当に削除しますか？\n${date}のすべてのイベントが削除されます。\nこの操作は取り消せません。`)) return;
+
+        // Save previous state for rollback
+        const previousItinerary = [...itinerary];
+
+        // Optimistically remove the day from UI
+        setItinerary(prev => prev.filter(day => day.date !== date));
+
+        // Select the first remaining day or null
+        const remainingDays = itinerary.filter(day => day.date !== date);
+        if (remainingDays.length > 0) {
+            setSelectedDayId(remainingDays[0].id);
+        }
+
+        // Background delete using API
+        try {
+            setSaving(true);
+            await server.deleteEventsByDate(date);
+        } catch (err) {
+            console.error('Delete day error:', err);
+            // Rollback UI on error
+            setItinerary(previousItinerary);
+            alert('日程の削除に失敗しました。変更を元に戻しました。');
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -390,7 +454,7 @@ export default function TravelApp() {
         );
     }
 
-    const DynamicSummary = ({ day, events, dayIdx, onEditPlanned }) => {
+    const DynamicSummary = ({ day, events, dayIdx, onEditPlanned, onDeleteDay }) => {
         if (!day || !events) return null;
 
         // Calculate from Events data only
@@ -468,8 +532,8 @@ export default function TravelApp() {
                             {day.date}
                         </span>
                     </div>
-                    {/* Status indicator */}
-                    <div className="flex items-center gap-1">
+                    {/* Status indicator & Delete button */}
+                    <div className="flex items-center gap-2">
                         {confirmedCount > 0 && (
                             <span className="px-2 py-0.5 rounded-full bg-green-400/20 text-green-100 text-[10px] font-bold flex items-center gap-1">
                                 <CheckCircle size={10} /> {confirmedCount}
@@ -479,6 +543,16 @@ export default function TravelApp() {
                             <span className="px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-100 text-[10px] font-bold">
                                 計画中 {plannedCount}
                             </span>
+                        )}
+                        {/* Delete Day Button */}
+                        {onDeleteDay && (
+                            <button
+                                onClick={() => onDeleteDay(day.date, dayIdx)}
+                                className="p-1.5 rounded-lg bg-red-500/30 hover:bg-red-500/50 text-red-100 transition-colors"
+                                title="この日を削除"
+                            >
+                                <Trash2 size={14} />
+                            </button>
                         )}
                     </div>
                 </div>
@@ -507,6 +581,37 @@ export default function TravelApp() {
                         <ChevronRight size={20} className="text-white/60" />
                     )}
                 </div>
+
+                {/* Day Route Display */}
+                {(() => {
+                    const locations = events
+                        .filter(e => e.type !== 'transport' && (e.to || e.address || e.name))
+                        .map(e => e.to || e.address || e.name)
+                        .filter((v, i, arr) => arr.indexOf(v) === i); // unique locations
+
+                    if (locations.length >= 2) {
+                        return (
+                            <div className="mb-3 py-2 px-3 bg-white/10 rounded-xl">
+                                <div className="flex items-center gap-1.5 text-xs text-white/90 flex-wrap">
+                                    {locations.slice(0, 5).map((loc, i) => (
+                                        <React.Fragment key={i}>
+                                            <span className="font-medium truncate max-w-[100px]" title={loc}>
+                                                {loc.length > 12 ? loc.slice(0, 10) + '...' : loc}
+                                            </span>
+                                            {i < Math.min(locations.length - 1, 4) && (
+                                                <span className="text-white/50">→</span>
+                                            )}
+                                        </React.Fragment>
+                                    ))}
+                                    {locations.length > 5 && (
+                                        <span className="text-white/50">+{locations.length - 5}</span>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    }
+                    return null;
+                })()}
 
                 {/* Stats + Route Button */}
                 <div className="flex items-center justify-between">
@@ -694,6 +799,7 @@ export default function TravelApp() {
                                                 events={sortedEvents}
                                                 dayIdx={dayIndex}
                                                 onEditPlanned={(event) => { setEditItem(event); setModalOpen(true); }}
+                                                onDeleteDay={handleDeleteDay}
                                             />
 
                                             {/* Event List */}
@@ -1038,6 +1144,11 @@ export default function TravelApp() {
                             const idx = sortedEvents.findIndex(e => e.id === editItem.id);
                             return idx > 0 ? sortedEvents[idx - 1] : null;
                         })()}
+                        currentDate={selectedDay?.date}
+                        availableDates={itinerary.map(day => ({
+                            value: day.date,
+                            label: `${day.date} (${day.dayOfWeek})`
+                        }))}
                     />
                 </div>
             </div >

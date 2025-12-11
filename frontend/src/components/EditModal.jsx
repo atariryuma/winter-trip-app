@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Trash2, Save, MapPin, Navigation } from 'lucide-react';
+import { X, Trash2, Save, MapPin, Navigation, Calendar } from 'lucide-react';
 
 /**
  * EditModal with From/To fields for transport events
  * - From: Auto-filled with previous event's location (read-only display)
  * - To: Google Places Autocomplete suggestions
+ * - Date picker for moving events to different days
  */
-const EditModal = ({ isOpen, onClose, item, onSave, onDelete, previousEvent }) => {
+const EditModal = ({ isOpen, onClose, item, onSave, onDelete, previousEvent, availableDates = [], currentDate }) => {
     const [formData, setFormData] = useState({});
     const [toSuggestions, setToSuggestions] = useState([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
+    const [selectedDate, setSelectedDate] = useState(currentDate || '');
     const toInputRef = useRef(null);
     const suggestionsTimeoutRef = useRef(null);
 
@@ -19,9 +21,10 @@ const EditModal = ({ isOpen, onClose, item, onSave, onDelete, previousEvent }) =
         } else {
             setFormData({ type: 'activity', category: 'sightseeing', status: 'planned', time: '10:00', name: '' });
         }
+        setSelectedDate(currentDate || '');
         setToSuggestions([]);
         setShowSuggestions(false);
-    }, [item, isOpen]);
+    }, [item, isOpen, currentDate]);
 
     // Check if this is a transport category
     const isTransport = ['flight', 'train', 'bus'].includes(formData.category);
@@ -124,6 +127,32 @@ const EditModal = ({ isOpen, onClose, item, onSave, onDelete, previousEvent }) =
                         </div>
                     </div>
 
+                    {/* Date Picker - Only for editing existing events when multiple dates available */}
+                    {item && availableDates.length > 1 && (
+                        <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-4 border border-emerald-100 dark:border-emerald-800">
+                            <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 text-sm font-bold mb-3">
+                                <Calendar size={16} />
+                                <span>日程を変更</span>
+                            </div>
+                            <select
+                                value={selectedDate}
+                                onChange={e => setSelectedDate(e.target.value)}
+                                className="w-full p-3 bg-white dark:bg-slate-700 rounded-xl border border-gray-200 dark:border-slate-600 text-gray-800 dark:text-slate-100 text-sm font-medium focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all touch-manipulation"
+                            >
+                                {availableDates.map((date, i) => (
+                                    <option key={i} value={date.value}>
+                                        {date.label}
+                                    </option>
+                                ))}
+                            </select>
+                            {selectedDate !== currentDate && (
+                                <p className="mt-2 text-xs text-emerald-600 dark:text-emerald-400">
+                                    ※ この予定は選択した日に移動されます
+                                </p>
+                            )}
+                        </div>
+                    )}
+
                     {/* From/To Section - Only for Transport */}
                     {isTransport && (
                         <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-4 space-y-3 border border-indigo-100 dark:border-indigo-800">
@@ -191,8 +220,8 @@ const EditModal = ({ isOpen, onClose, item, onSave, onDelete, previousEvent }) =
                         </div>
                     )}
 
-                    {/* Time */}
-                    <div className="grid grid-cols-2 gap-3">
+                    {/* Time - Stack on very narrow screens */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                             <label className="text-[11px] font-bold text-gray-500 dark:text-slate-400 uppercase mb-2 block">開始時刻</label>
                             <input
@@ -244,6 +273,11 @@ const EditModal = ({ isOpen, onClose, item, onSave, onDelete, previousEvent }) =
                             const dataToSave = { ...formData };
                             if (isTransport && fromLocation) {
                                 dataToSave.place = fromLocation;
+                            }
+                            // Include new date if event is being moved
+                            if (selectedDate && selectedDate !== currentDate) {
+                                dataToSave.newDate = selectedDate;
+                                dataToSave.originalDate = currentDate;
                             }
                             onSave(dataToSave);
                         }}

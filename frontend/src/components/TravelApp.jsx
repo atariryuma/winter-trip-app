@@ -657,7 +657,7 @@ export default function TravelApp() {
             <ReloadPrompt />
             {SavingOverlay}
             {error && (
-                <div className="fixed top-20 left-4 right-4 z-notification bg-red-100 border border-red-200 text-red-800 text-sm p-4 rounded-xl shadow-lg">
+                <div className="fixed top-20 left-4 right-4 z-overlay bg-red-100 border border-red-200 text-red-800 text-sm p-4 rounded-xl shadow-lg">
                     ⚠️ {error}
                 </div>
             )}

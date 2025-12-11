@@ -217,7 +217,7 @@ const EditModal = ({ isOpen, onClose, item, onSave, onDelete, previousEvent, ava
                                         onChange={e => handleInputWithSuggestions('from', e.target.value)}
                                         onFocus={() => { fetchSuggestions(formData.from); setActiveSuggestionField('from'); setShowSuggestions(true); }}
                                         onBlur={closeSuggestions}
-                                        className="flex-1 p-3 bg-white dark:bg-slate-700 rounded-xl text-gray-800 dark:text-slate-100 text-sm font-medium"
+                                        className="flex-1 min-w-0 p-3 bg-white dark:bg-slate-700 rounded-xl text-gray-800 dark:text-slate-100 text-sm font-medium"
                                         placeholder="出発地を入力..."
                                     />
                                     <button
@@ -249,7 +249,7 @@ const EditModal = ({ isOpen, onClose, item, onSave, onDelete, previousEvent, ava
                                         onChange={e => handleInputWithSuggestions('to', e.target.value)}
                                         onFocus={() => { fetchSuggestions(formData.to); setActiveSuggestionField('to'); setShowSuggestions(true); }}
                                         onBlur={closeSuggestions}
-                                        className="flex-1 p-3 bg-white dark:bg-slate-700 rounded-xl text-gray-800 dark:text-slate-100 font-bold text-base"
+                                        className="flex-1 min-w-0 p-3 bg-white dark:bg-slate-700 rounded-xl text-gray-800 dark:text-slate-100 font-bold text-base"
                                         placeholder="到着地を入力..."
                                     />
                                     <button
@@ -300,7 +300,7 @@ const EditModal = ({ isOpen, onClose, item, onSave, onDelete, previousEvent, ava
                                         onChange={e => handleInputWithSuggestions('name', e.target.value)}
                                         onFocus={() => { fetchSuggestions(formData.name); setActiveSuggestionField('name'); setShowSuggestions(true); }}
                                         onBlur={closeSuggestions}
-                                        className="w-full p-3 bg-gray-50 dark:bg-slate-700 rounded-xl text-gray-800 dark:text-slate-100 font-bold text-base pr-10"
+                                        className="w-full p-3 bg-gray-50 dark:bg-slate-700 rounded-xl text-gray-800 dark:text-slate-100 font-bold text-base pr-10 min-w-0"
                                         placeholder="場所や店名を入力..."
                                     />
                                     <Search size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -437,7 +437,7 @@ const SuggestionDropdown = ({ showSuggestions, activeSuggestionField, suggestion
                         onMouseDown={() => selectSuggestion(s)}
                     >
                         <MapPin size={14} className="text-indigo-500 shrink-0" />
-                        <span>{description}</span>
+                        <span className="truncate min-w-0 flex-1">{description}</span>
                     </button>
                 );
             })}

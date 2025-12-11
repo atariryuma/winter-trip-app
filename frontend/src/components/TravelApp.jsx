@@ -167,9 +167,10 @@ export default function TravelApp() {
         }
     }, [isDarkMode]);
 
-    const fetchData = React.useCallback(async () => {
+    const fetchData = React.useCallback(async (showLoading = true) => {
         try {
-            setLoading(true);
+            // Only show full loading screen for initial load, not for background refresh
+            if (showLoading) setLoading(true);
             const data = await server.getData();
             let daysData = [];
             if (Array.isArray(data)) {
@@ -180,7 +181,11 @@ export default function TravelApp() {
 
             if (daysData && daysData.length > 0) {
                 setItinerary(daysData);
-                setSelectedDayId(daysData[0].id);
+                setSelectedDayId(prev => {
+                    // Keep same day selected if it still exists, otherwise select first
+                    if (daysData.some(d => d.id === prev)) return prev;
+                    return daysData[0].id;
+                });
                 setError(null);
                 if (data.lastUpdate) {
                     setLastUpdate(data.lastUpdate);
@@ -191,13 +196,16 @@ export default function TravelApp() {
             }
         } catch (err) {
             console.error('Fetch error:', err);
-            setItinerary(initialItinerary);
-            setSelectedDayId(initialItinerary[0].id);
+            // Only set fallback on initial load, not when refreshing existing data
+            if (!itinerary || itinerary.length === 0) {
+                setItinerary(initialItinerary);
+                setSelectedDayId(initialItinerary[0].id);
+            }
             setError(`読込エラー: ${err.message}`);
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [itinerary]);
 
     useEffect(() => {
         if (auth) fetchData();
@@ -618,7 +626,7 @@ export default function TravelApp() {
                     <Suspense fallback={<LoadingSpinner />}>
 
                         {activeTab === 'timeline' && (
-                            <PullToRefresh onRefresh={fetchData} disabled={isEditMode}>
+                            <PullToRefresh onRefresh={() => fetchData(false)} disabled={isEditMode}>
                                 <div className="pt-0 lg:pt-6 max-w-full mx-auto w-full pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
 
                                     {/* ===== MOBILE VIEW (Single Day with Tabs) ===== */}
@@ -917,7 +925,7 @@ export default function TravelApp() {
 
                         {/* Standard Layout for Other Tabs */}
                         {activeTab !== 'timeline' && activeTab !== 'settings' && (
-                            <PullToRefresh onRefresh={fetchData}>
+                            <PullToRefresh onRefresh={() => fetchData(false)}>
                                 <main className="pt-[calc(4rem+env(safe-area-inset-top))] lg:pt-8 pb-32 lg:pb-8 pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] overflow-x-hidden">
                                     <div className="max-w-full lg:max-w-7xl 2xl:max-w-screen-2xl mx-auto w-full px-4 sm:px-6 lg:px-8 2xl:px-12 overflow-x-hidden">
                                         {activeTab === 'tickets' && <TicketList itinerary={itinerary} onForceReload={fetchData} />}

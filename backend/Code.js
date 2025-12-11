@@ -88,8 +88,6 @@ function doGet(e) {
                 return handleDeleteEventsByDate(e);
             case 'moveEvent':
                 return handleMoveEvent(e);
-            case 'updateDay':
-                return handleUpdateDay(e);
             default:
                 const FRONTEND_URL = 'https://atariryuma.github.io/winter-trip-app/';
                 return HtmlService.createHtmlOutput(`
@@ -118,8 +116,6 @@ function doPost(e) {
                 return handleBatchUpdateEvents(e);
             case 'addEvent':
                 return handleAddEvent(e);
-            case 'updateDay':
-                return handleUpdateDay(e);
             case 'batchUpdatePackingItems':
                 return handleBatchUpdatePackingItems(e);
             case 'uploadEvents':
@@ -456,10 +452,20 @@ function getItineraryData() {
         day.events.sort((a, b) => (a.time || '23:59').localeCompare(b.time || '23:59'));
     });
 
-    // Sort days by date
+    // Sort days by date (consider year boundary: Dec before Jan)
     const sortedDays = Object.values(daysMap).sort((a, b) => {
         const [aMonth, aDay] = a.date.split('/').map(Number);
         const [bMonth, bDay] = b.date.split('/').map(Number);
+
+        // Handle year boundary: December (10-12) should come before January (1-3)
+        // Assume trips don't span more than a few months
+        const aIsLateYear = aMonth >= 10; // Oct-Dec
+        const bIsLateYear = bMonth >= 10;
+
+        if (aIsLateYear && !bIsLateYear) return -1; // a is Dec, b is Jan → a first
+        if (!aIsLateYear && bIsLateYear) return 1;  // a is Jan, b is Dec → b first
+
+        // Same year period, sort by month then day
         if (aMonth !== bMonth) return aMonth - bMonth;
         return aDay - bDay;
     });
@@ -1067,72 +1073,6 @@ function handleMoveEvent(e) {
         }
 
         return createApiResponse('error', null, { message: 'Event not found' });
-    } catch (error) {
-        return createApiResponse('error', null, { message: error.toString() });
-    }
-}
-
-/**
- * Update a single day's metadata (title, summary, theme)
- */
-function handleUpdateDay(e) {
-    try {
-        const dayData = JSON.parse(e.parameter.dayData || e.postData?.contents);
-        const { date } = dayData;
-
-        if (!date) {
-            return createApiResponse('error', null, { message: 'Date is required' });
-        }
-
-        const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-        const daysSheet = ss.getSheetByName(DAYS_SHEET);
-
-        if (!daysSheet) {
-            return createApiResponse('error', null, { message: 'Days sheet not found' });
-        }
-
-        const lastRow = daysSheet.getLastRow();
-        if (lastRow < 2) {
-            // No data, create new row
-            const rowData = [
-                date,
-                dayData.dayOfWeek || '',
-                dayData.title || '',
-                dayData.summary || '',
-                dayData.theme || 'default'
-            ];
-            daysSheet.appendRow(rowData);
-        } else {
-            // Find and update existing row
-            const dates = daysSheet.getRange(2, 1, lastRow - 1, 1).getValues().flat();
-            const rowIndex = dates.findIndex(d => toString(d) === date);
-
-            if (rowIndex !== -1) {
-                const rowData = [
-                    date,
-                    dayData.dayOfWeek || '',
-                    dayData.title || '',
-                    dayData.summary || '',
-                    dayData.theme || 'default'
-                ];
-                daysSheet.getRange(rowIndex + 2, 1, 1, 5).setValues([rowData]);
-            } else {
-                // Date not found, append new
-                const rowData = [
-                    date,
-                    dayData.dayOfWeek || '',
-                    dayData.title || '',
-                    dayData.summary || '',
-                    dayData.theme || 'default'
-                ];
-                daysSheet.appendRow(rowData);
-            }
-        }
-
-        // Invalidate cache
-        CacheService.getScriptCache().remove('itinerary_json');
-
-        return createApiResponse('success', { message: 'Day updated' });
     } catch (error) {
         return createApiResponse('error', null, { message: error.toString() });
     }

@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
     Clock, Copy, Search, CheckCircle,
     Plane, Train, Bus, Hotel, MapPin, Utensils, Ticket,
@@ -113,12 +114,12 @@ const SearchModal = ({ event, onClose }) => {
         if (!isMaximized) setIsMaximized(true);
     };
 
-    return (
+    return createPortal(
         <div className="fixed inset-0 z-overlay flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4" onClick={onClose}>
             <div
                 className={`bg-white dark:bg-slate-800 w-full shadow-2xl flex flex-col transition-all duration-300 ${isMaximized
-                        ? 'h-[100dvh] rounded-none'
-                        : 'max-h-[90vh] h-[85vh] sm:h-[75vh] rounded-t-3xl sm:rounded-3xl sm:max-w-lg'
+                    ? 'h-[100dvh] rounded-none'
+                    : 'max-h-[90vh] h-[85vh] sm:h-[75vh] rounded-t-3xl sm:rounded-3xl sm:max-w-lg'
                     }`}
                 onClick={e => e.stopPropagation()}
             >
@@ -160,7 +161,8 @@ const SearchModal = ({ event, onClose }) => {
                     />
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 

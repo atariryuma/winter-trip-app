@@ -29,7 +29,7 @@ const SettingsView = ({ itinerary, isDarkMode, setIsDarkMode, lastUpdate, onData
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `旅程_${new Date().toISOString().split('T')[0]}.csv`;
+        a.download = `Trip_Itinerary_${new Date().toISOString().split('T')[0]}.csv`;
         a.click();
         URL.revokeObjectURL(url);
     };

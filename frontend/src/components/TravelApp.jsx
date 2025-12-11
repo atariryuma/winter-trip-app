@@ -43,11 +43,11 @@ const getDurationMinutes = (currentEvent, nextEvent) => {
 const formatDuration = (minutes) => {
     if (minutes === null || minutes === undefined) return null;
     if (minutes < 0) return null; // Overlap
-    if (minutes === 0) return '直後';
-    if (minutes < 60) return `${minutes}分`;
+    if (minutes === 0) return 'Next';
+    if (minutes < 60) return `${minutes}m`;
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
-    return mins > 0 ? `${hours}時間${mins}分` : `${hours}時間`;
+    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
 };
 
 // TimeConnector component - shows line between cards with duration and insert button
@@ -197,15 +197,18 @@ export default function TravelApp() {
         } catch (err) {
             console.error('Fetch error:', err);
             // Only set fallback on initial load, not when refreshing existing data
-            if (!itinerary || itinerary.length === 0) {
-                setItinerary(initialItinerary);
-                setSelectedDayId(initialItinerary[0].id);
-            }
-            setError(`読込エラー: ${err.message}`);
+            setItinerary(prev => {
+                if (!prev || prev.length === 0) {
+                    setSelectedDayId(initialItinerary[0].id);
+                    return initialItinerary;
+                }
+                return prev;
+            });
+            setError(`Load error: ${err.message}`);
         } finally {
             setLoading(false);
         }
-    }, [itinerary]);
+    }, []); // Remove itinerary dependency to prevent infinite loop
 
     useEffect(() => {
         if (auth) fetchData();
@@ -223,7 +226,7 @@ export default function TravelApp() {
             await server.saveData(newItinerary);
         } catch (err) {
             console.error('Save error:', err);
-            alert('保存に失敗しました。ネット接続を確認してください。');
+            alert('Failed to save. Please check your connection.');
         } finally {
             setSaving(false);
         }
@@ -291,7 +294,7 @@ export default function TravelApp() {
                 // Update existing event using batch API (much faster than full save)
                 await server.batchUpdateEvents([{
                     date: targetDay.date,
-                    eventId: newItem.name,
+                    eventId: targetDay.events.find(e => e.id === newItem.id)?.name || newItem.name, // Use original name if available
                     eventData: newItem
                 }]);
             } else {
@@ -392,32 +395,46 @@ export default function TravelApp() {
         const newDate = new Date(lastDate);
         newDate.setDate(newDate.getDate() + 1);
 
-        // Get day of week in Japanese
+        // Get day of week
         const daysOfWeek = ['日', '月', '火', '水', '木', '金', '土'];
         const dayOfWeek = daysOfWeek[newDate.getDay()];
+
+        const dateStr = `${newDate.getMonth() + 1}/${newDate.getDate()}`;
+
+        // Create placeholder event for the new day
+        const placeholderEvent = {
+            id: generateId(),
+            type: 'activity',
+            category: 'sightseeing',
+            name: 'New Event',
+            time: '09:00',
+            endTime: '',
+            status: 'planned',
+            details: ''
+        };
 
         // Create new day object
         const newDay = {
             id: generateId(),
-            date: `${newDate.getMonth() + 1}/${newDate.getDate()}`,
+            date: dateStr,
             dayOfWeek,
             title: '',
             summary: '',
             theme: 'default',
-            events: []
+            events: [placeholderEvent]
         };
 
         // Optimistically update UI immediately
         setItinerary(prev => [...prev, newDay]);
         setSelectedDayId(newDay.id);
 
-        // Background save using optimized API
+        // Background save - add placeholder event to create the day
         try {
             setSaving(true);
-            await server.updateDay(newDay);
+            await server.addEvent({ ...placeholderEvent, date: dateStr });
         } catch (err) {
             console.error('Save error:', err);
-            alert('保存に失敗しました。ネット接続を確認してください。');
+            alert('Failed to save. Please check your connection.');
         } finally {
             setSaving(false);
         }
@@ -437,7 +454,7 @@ export default function TravelApp() {
     }
 
     const SavingOverlay = saving ? (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-black/80 text-white px-6 py-3 rounded-full shadow-xl z-notification flex items-center gap-3 animate-pulse">
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-black/80 text-white px-6 py-3 rounded-full shadow-xl z-notification flex items-center gap-3 animate-pulse pointer-events-none">
             <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
             <span className="font-bold text-sm">スプレッドシートに保存中...</span>
         </div>

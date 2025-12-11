@@ -1,4 +1,4 @@
-const API_URL = 'https://script.google.com/macros/s/AKfycbyVmdxEnX8UCokHiRjda-jJ7SAexeRywQs7Cz_f80x9W0MHHiNwDAV0AVeNMrMVlVnPLw/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbwYNaHti6yINS8HWQzINoleQEzkyYggMP5yyR4QTnMzWfJxmKm8Dr7fkmSuz60bU1QIYg/exec';
 
 const server = {
     // Get itinerary data
@@ -197,23 +197,6 @@ const server = {
             .then(json => {
                 if (json.status === 'success') resolve(json.data);
                 else reject(new Error(json.error?.message || 'Failed to delete event'));
-            })
-            .catch(reject);
-    }),
-
-    // Update a single day's metadata
-    updateDay: (dayData) => new Promise((resolve, reject) => {
-        const params = new URLSearchParams();
-        params.append('action', 'updateDay');
-        params.append('dayData', JSON.stringify(dayData));
-        fetch(API_URL, {
-            method: 'POST',
-            body: params
-        })
-            .then(res => res.json())
-            .then(json => {
-                if (json.status === 'success') resolve(json.data);
-                else reject(new Error(json.error?.message || 'Failed to update day'));
             })
             .catch(reject);
     }),

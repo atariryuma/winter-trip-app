@@ -764,20 +764,6 @@ export default function TravelApp() {
                                                                 </p>
                                                             )}
                                                             <div className="flex items-center gap-2 mt-2 justify-end">
-                                                                {/* Edit button for non-confirmed status */}
-                                                                {!isEditMode && event.status !== 'confirmed' && event.status !== 'booked' && (
-                                                                    <button
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            setEditItem(event);
-                                                                            setModalOpen(true);
-                                                                        }}
-                                                                        className="h-8 w-8 bg-amber-50 dark:bg-amber-900/20 rounded-lg flex items-center justify-center text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors"
-                                                                        title="編集"
-                                                                    >
-                                                                        <Edit3 size={16} />
-                                                                    </button>
-                                                                )}
                                                                 {!isEditMode && (
                                                                     <a
                                                                         href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.type === 'transport' ? event.to : (event.address || event.name))}`}

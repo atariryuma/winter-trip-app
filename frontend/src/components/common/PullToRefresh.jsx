@@ -109,10 +109,10 @@ export default function PullToRefresh({
                     <RefreshCw
                         size={20}
                         className={`text-indigo-600 dark:text-indigo-400 transition-transform duration-300 ${isRefreshing
-                                ? 'animate-spin'
-                                : shouldTrigger
-                                    ? 'rotate-180'
-                                    : ''
+                            ? 'animate-spin'
+                            : shouldTrigger
+                                ? 'rotate-180'
+                                : ''
                             }`}
                         style={{
                             transform: isRefreshing
@@ -133,14 +133,6 @@ export default function PullToRefresh({
             >
                 {children}
             </div>
-
-            {/* Refreshing overlay - subtle */}
-            {isRefreshing && (
-                <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-white dark:bg-slate-800 rounded-full shadow-lg border border-gray-200 dark:border-slate-700 flex items-center gap-2">
-                    <RefreshCw size={16} className="animate-spin text-indigo-600" />
-                    <span className="text-sm font-medium text-gray-600 dark:text-slate-300">更新中...</span>
-                </div>
-            )}
         </div>
     );
 }

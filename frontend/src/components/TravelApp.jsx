@@ -97,7 +97,6 @@ export default function TravelApp() {
     const [error, setError] = useState(null);
     const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('darkMode') === 'true');
     const [lastUpdate, setLastUpdate] = useState(() => localStorage.getItem('lastUpdate') || null);
-    const [isLandscape, setIsLandscape] = useState(false);
     const [mapModalOpen, setMapModalOpen] = useState(false);
     const [mapModalQuery, setMapModalQuery] = useState(null);
 
@@ -121,21 +120,6 @@ export default function TravelApp() {
         window.addEventListener("scroll", updateScrollDirection);
         return () => window.removeEventListener("scroll", updateScrollDirection);
     }, [scrollDirection]);
-
-    // Landscape mode detection
-    useEffect(() => {
-        const checkOrientation = () => {
-            const isLandscapeMode = window.innerWidth > window.innerHeight && window.innerWidth < 1024;
-            setIsLandscape(isLandscapeMode);
-        };
-        window.addEventListener('resize', checkOrientation);
-        window.addEventListener('orientationchange', checkOrientation);
-        checkOrientation();
-        return () => {
-            window.removeEventListener('resize', checkOrientation);
-            window.removeEventListener('orientationchange', checkOrientation);
-        };
-    }, []);
 
     const handleTouchStart = (eventData) => {
         longPressTimer.current = setTimeout(() => {
@@ -554,118 +538,7 @@ export default function TravelApp() {
         );
     };
 
-    // Landscape Mode - Full horizontal scroll view with ALL event data
-    if (isLandscape && activeTab === 'timeline' && sortedEvents.length > 0) {
-        return (
-            <div className="fixed inset-0 bg-slate-100 dark:bg-slate-900 z-max flex flex-col">
-                {/* Minimal header */}
-                <div className="flex items-center justify-between px-4 py-2 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 shrink-0">
-                    <div className="flex items-center gap-3">
-                        <span className="px-3 py-1 bg-indigo-600 text-white text-sm font-bold rounded-lg">
-                            DAY {dayIndex + 1}
-                        </span>
-                        <span className="text-gray-600 dark:text-white/70 font-bold">{selectedDay?.date}</span>
-                    </div>
-                    <button
-                        onClick={() => setIsLandscape(false)}
-                        className="text-gray-500 text-xs px-3 py-1.5 bg-gray-100 dark:bg-slate-700 rounded-full hover:bg-gray-200"
-                    >
-                        ✕ 閉じる
-                    </button>
-                </div>
-
-                {/* Horizontal scroll container */}
-                <div className="flex-1 overflow-x-auto overflow-y-hidden py-4">
-                    <div className="flex h-full gap-3 px-4" style={{ minWidth: 'max-content' }}>
-                        {sortedEvents.map((event, index) => (
-                            <div
-                                key={event.id}
-                                className="w-80 h-full bg-white dark:bg-slate-800 rounded-xl p-4 flex flex-col shrink-0 border border-gray-200 dark:border-slate-700 overflow-y-auto"
-                            >
-                                {/* Header: Time + Category + Status */}
-                                <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-100 dark:border-slate-700">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-xl font-black text-indigo-600">
-                                            {event.time || '--:--'}
-                                        </span>
-                                        {event.endTime && (
-                                            <span className="text-sm text-gray-400">→ {event.endTime}</span>
-                                        )}
-                                    </div>
-                                    <StatusBadge status={event.status} />
-                                </div>
-
-                                {/* Category Badge */}
-                                <div className="mb-2">
-                                    <span className={`px-2 py-1 rounded text-xs font-bold ${event.type === 'transport' ? 'bg-indigo-100 text-indigo-700' :
-                                        event.type === 'stay' ? 'bg-indigo-100 text-indigo-700' :
-                                            event.category === 'meal' ? 'bg-orange-100 text-orange-700' :
-                                                'bg-gray-100 text-gray-700'
-                                        }`}>
-                                        {event.category}
-                                    </span>
-                                </div>
-
-                                {/* Name */}
-                                <h3 className="text-base font-bold text-gray-900 dark:text-white mb-3">
-                                    {event.name}
-                                </h3>
-
-                                {/* Data Grid */}
-                                <div className="space-y-2 text-sm flex-1">
-                                    {/* From/To */}
-                                    {(event.from || event.to) && (
-                                        <div className="flex items-start gap-2">
-                                            <span className="text-gray-400 w-16 shrink-0">区間</span>
-                                            <span className="text-gray-700 dark:text-gray-300">
-                                                {event.from || '?'} → {event.to || '?'}
-                                            </span>
-                                        </div>
-                                    )}
-
-                                    {/* Booking Ref */}
-                                    {event.bookingRef && (
-                                        <div className="flex items-start gap-2">
-                                            <span className="text-gray-400 w-16 shrink-0">予約番号</span>
-                                            <span className="text-gray-700 dark:text-gray-300 font-mono text-xs bg-gray-50 dark:bg-slate-700 px-2 py-0.5 rounded">
-                                                {event.bookingRef}
-                                            </span>
-                                        </div>
-                                    )}
-
-                                    {/* Memo/Details */}
-                                    {(event.memo || event.details) && (
-                                        <div className="flex items-start gap-2">
-                                            <span className="text-gray-400 w-16 shrink-0">メモ</span>
-                                            <span className="text-gray-600 dark:text-gray-400 text-xs">
-                                                {event.memo || event.details}
-                                            </span>
-                                        </div>
-                                    )}
-
-                                    {/* Budget */}
-                                    {(event.budget || event.budgetAmount) && (
-                                        <div className="flex items-start gap-2">
-                                            <span className="text-gray-400 w-16 shrink-0">予算</span>
-                                            <span className="text-gray-700 dark:text-gray-300 font-bold">
-                                                ¥{(event.budget || event.budgetAmount).toLocaleString()}
-                                                {event.budgetPaidBy && <span className="text-xs text-gray-400 ml-1">({event.budgetPaidBy})</span>}
-                                            </span>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Index indicator */}
-                                <div className="mt-auto pt-2 text-right">
-                                    <span className="text-xs text-gray-300 dark:text-slate-600">{index + 1}/{sortedEvents.length}</span>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-        );
-    }
+    // Note: Landscape mode is handled via CSS (landscape-hide-header/footer classes)
 
     return (
         <div className="w-full min-h-[100dvh] bg-gray-100 dark:bg-slate-900 flex overflow-x-clip font-sans text-slate-900 selection:bg-indigo-100 selection:text-indigo-900">
@@ -718,9 +591,9 @@ export default function TravelApp() {
             <div className="lg:pl-64 flex-1 min-h-screen pb-24 lg:pb-0">
                 <div className="w-full h-full">
 
-                    {/* Mobile Header (Fixed) */}
+                    {/* Mobile Header (Fixed) - Hidden in landscape */}
                     <header
-                        className={`lg:hidden fixed top-0 left-0 right-0 z-sticky transition-all duration-300 pt-[env(safe-area-inset-top)] ${isScrolled
+                        className={`lg:hidden landscape-hide-header fixed top-0 left-0 right-0 z-sticky transition-all duration-300 pt-[env(safe-area-inset-top)] ${isScrolled
                             ? 'bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-200 dark:border-slate-800 shadow-sm'
                             : 'bg-transparent'
                             } ${scrollDirection === 'down' && isScrolled ? '-translate-y-full' : 'translate-y-0'}`}
@@ -1073,8 +946,8 @@ export default function TravelApp() {
                         )}
                     </Suspense>
 
-                    {/* ========== BOTTOM NAV (Mobile only) ========== */}
-                    <nav className={`lg:hidden fixed bottom-0 left-0 right-0 z-fixed bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800 transition-transform duration-300 pb-[env(safe-area-inset-bottom)] ${scrollDirection === 'down' ? 'translate-y-full' : 'translate-y-0'}`}>
+                    {/* ========== BOTTOM NAV (Mobile only) - Hidden in landscape ========== */}
+                    <nav className={`lg:hidden landscape-hide-footer fixed bottom-0 left-0 right-0 z-fixed bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800 transition-transform duration-300 pb-[env(safe-area-inset-bottom)] ${scrollDirection === 'down' ? 'translate-y-full' : 'translate-y-0'}`}>
                         <div className="flex justify-around items-center h-[4.5rem] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]">
                             {[
                                 { id: 'timeline', icon: Calendar },

@@ -184,6 +184,7 @@ body {
    COMPONENT UTILITY CLASSES
    ========================================================================== */
 @layer components {
+
   /* 再利用可能なカードベース */
   .card-base {
     @apply bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl shadow-sm;
@@ -224,7 +225,7 @@ body {
 
 /* ==========================================================================
    LANDSCAPE MODE STYLES (Mobile Only)
-   Targets mobile landscape: orientation landscape + small height
+   Simple: hide header/footer to maximize content area
    ========================================================================== */
 @media (orientation: landscape) and (max-height: 500px) {
 
@@ -244,51 +245,6 @@ body {
     padding-top: 0 !important;
     padding-bottom: 0 !important;
   }
-
-  /* Horizontal scroll container for cards */
-  .landscape-horizontal-scroll {
-    display: flex !important;
-    flex-direction: row !important;
-    flex-wrap: nowrap !important;
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
-    scroll-snap-type: x mandatory;
-    -webkit-overflow-scrolling: touch;
-    gap: 1rem;
-    padding: 1rem;
-    height: 100dvh;
-    align-items: center;
-  }
-
-  /* Individual cards in landscape scroll */
-  .landscape-card {
-    flex: 0 0 85vw;
-    min-width: 85vw;
-    max-width: 85vw;
-    height: calc(100dvh - 2rem);
-    max-height: calc(100dvh - 2rem);
-    scroll-snap-align: center;
-    overflow-y: auto;
-  }
-
-  /* First card padding to show "peeking" hint */
-  .landscape-horizontal-scroll::before {
-    content: '';
-    flex: 0 0 7.5vw;
-  }
-
-  /* Last card padding for symmetry */
-  .landscape-horizontal-scroll::after {
-    content: '';
-    flex: 0 0 7.5vw;
-  }
-
-  /* Hide summary card in landscape to maximize event card space */
-  .landscape-hide-summary {
-    display: none !important;
-  }
-
-  /* Removed unused .landscape-day-tabs styles with hardcoded z-index */
 }
 
 /* ==========================================================================
@@ -329,25 +285,4 @@ body {
   height: 60%;
   background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.1));
   pointer-events: none;
-}
-
-/* ==========================================================================
-   ORIENTATION CHANGE ANIMATION
-   ========================================================================== */
-@keyframes landscape-fade-in {
-  from {
-    opacity: 0;
-    transform: scale(0.98);
-  }
-
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@media (orientation: landscape) and (max-height: 500px) {
-  .landscape-card {
-    animation: landscape-fade-in 0.3s ease-out;
-  }
 }

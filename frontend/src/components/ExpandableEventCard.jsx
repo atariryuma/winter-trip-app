@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowRight, MapPin, Navigation, Copy, Check, ChevronDown, Trash2 } from 'lucide-react';
+import { ArrowRight, MapPin, Navigation, Copy, Check, Trash2 } from 'lucide-react';
 import server from '../api/gas';
 import { getIcon } from './common/IconHelper';
 import StatusBadge from './common/StatusBadge';
@@ -41,12 +41,19 @@ const ExpandableEventCard = ({
         }
     }, [isExpanded]);
 
-    // Calculate content height for smooth animation
+    // Calculate content height for smooth animation - use large initial value for immediate expand
     useEffect(() => {
         if (contentRef.current && isExpanded) {
-            setContentHeight(contentRef.current.scrollHeight);
+            // Recalculate after content loads
+            const newHeight = contentRef.current.scrollHeight;
+            if (newHeight > contentHeight) {
+                setContentHeight(newHeight);
+            }
+        } else if (isExpanded && contentHeight === 0) {
+            // Set initial height immediately for fast expand
+            setContentHeight(400);
         }
-    }, [isExpanded, placeInfo, staticMapImage]);
+    }, [isExpanded, placeInfo, staticMapImage, contentHeight]);
 
     // Calculate query string outside useEffect for optimization
     const placeQuery = event
@@ -156,13 +163,6 @@ const ExpandableEventCard = ({
                         >
                             <StatusBadge status={event.status} />
                         </div>
-                        {!isEditMode && (
-                            <ChevronDown
-                                size={16}
-                                className={`text-gray-400 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]
-                                    ${isExpanded ? 'rotate-180' : ''}`}
-                            />
-                        )}
                         {/* Delete Button in Edit Mode */}
                         {isEditMode && (
                             <button

@@ -24,7 +24,22 @@ const ExpandableEventCard = ({
     const [loadingMap, setLoadingMap] = useState(false);
     const [copied, setCopied] = useState(false);
     const contentRef = useRef(null);
+    const cardRef = useRef(null);
     const [contentHeight, setContentHeight] = useState(0);
+
+    // Scroll to center when expanded
+    useEffect(() => {
+        if (isExpanded && cardRef.current) {
+            // Small delay to ensure the expansion animation has started and layout is calculating
+            setTimeout(() => {
+                cardRef.current.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center',
+                    inline: 'nearest'
+                });
+            }, 300);
+        }
+    }, [isExpanded]);
 
     // Calculate content height for smooth animation
     useEffect(() => {
@@ -91,6 +106,7 @@ const ExpandableEventCard = ({
 
     return (
         <div
+            ref={cardRef}
             className={`relative overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]
                 rounded-2xl bg-white dark:bg-slate-800 shadow-sm border border-gray-200 dark:border-slate-700
                 ${isExpanded ? 'shadow-md' : ''}

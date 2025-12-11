@@ -11,7 +11,6 @@ import { generateId, toMinutes, toTimeStr, getMidTime } from '../utils';
 import { getIcon } from './common/IconHelper';
 import StatusBadge from './common/StatusBadge';
 import LoadingSpinner from './common/LoadingSpinner';
-import PortraitLock from './common/PortraitLock';
 import ReloadPrompt from './common/ReloadPrompt';
 import PullToRefresh from './common/PullToRefresh';
 import EditModal from './EditModal';
@@ -542,7 +541,6 @@ export default function TravelApp() {
 
     return (
         <div className="w-full min-h-[100dvh] bg-gray-100 dark:bg-slate-900 flex overflow-x-clip font-sans text-slate-900 selection:bg-indigo-100 selection:text-indigo-900">
-            <PortraitLock />
             <ReloadPrompt />
             {SavingOverlay}
             {error && (

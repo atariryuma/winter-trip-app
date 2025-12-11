@@ -764,10 +764,19 @@ function getPlaceInfo(query) {
     const cache = CacheService.getScriptCache();
     const cacheKey = 'place_v3_' + Utilities.base64Encode(Utilities.newBlob(query).getBytes());
 
+    // 1. Try Script Cache (Memory - Fast)
     try {
         const cached = cache.get(cacheKey);
         if (cached) return JSON.parse(cached);
     } catch (e) { }
+
+    // 2. Try Sheet Cache (Persistent)
+    const sheetCached = getPlaceFromSheetCache(query);
+    if (sheetCached) {
+        // Warm up script cache
+        try { cache.put(cacheKey, JSON.stringify(sheetCached), 43200); } catch (e) { }
+        return sheetCached;
+    }
 
     const API_KEY = PropertiesService.getScriptProperties().getProperty('GOOGLE_MAPS_API_KEY');
 
@@ -854,10 +863,15 @@ function getPlaceInfo(query) {
         placeInfo.found = false;
     }
 
+    // Save to caches
     try {
-        // Increased cache TTL from 6 hours to 12 hours for place data
         cache.put(cacheKey, JSON.stringify(placeInfo), 43200);
     } catch (e) { }
+
+    // Save to persistent sheet cache
+    if (placeInfo.found) {
+        try { saveToPlaceSheetCache(query, placeInfo); } catch (e) { }
+    }
 
     return placeInfo;
 }
@@ -1207,11 +1221,21 @@ function handleGetStaticMap(e) {
     const cache = CacheService.getScriptCache();
     const cacheKey = 'staticmap_' + Utilities.base64Encode(Utilities.newBlob(location).getBytes());
 
+    // 1. Try Script Cache (Memory - Fast)
     try {
         const cached = cache.get(cacheKey);
         if (cached) return createApiResponse('success', { image: cached });
     } catch (e) { }
 
+    // 2. Try Sheet Cache (Persistent)
+    const sheetCached = getMapFromSheetCache(location);
+    if (sheetCached) {
+        // Warm up script cache
+        try { cache.put(cacheKey, sheetCached, 86400); } catch (e) { }
+        return createApiResponse('success', { image: sheetCached });
+    }
+
+    // 3. Generate new map
     try {
         const map = Maps.newStaticMap()
             .setSize(400, 200)
@@ -1231,10 +1255,9 @@ function handleGetStaticMap(e) {
         const blob = map.getBlob();
         const base64Image = 'data:image/png;base64,' + Utilities.base64Encode(blob.getBytes());
 
-        // Cache for 24 hours
-        try {
-            cache.put(cacheKey, base64Image, 86400);
-        } catch (e) { }
+        // Save to all caches
+        try { cache.put(cacheKey, base64Image, 86400); } catch (e) { }
+        try { saveToMapSheetCache(location, base64Image); } catch (e) { }
 
         return createApiResponse('success', { image: base64Image });
     } catch (err) {
@@ -1384,6 +1407,80 @@ function saveToSheetCache(origin, destination, data) {
     }
     // Append new
     sheet.appendRow([origin, destination, data.duration, data.distance, data.polyline, new Date()]);
+}
+
+// --- Place Cache Helpers (Persistent) ---
+
+function getPlaceCacheSheet() {
+    const ss = getSpreadsheet();
+    let sheet = ss.getSheetByName('_PlaceCache');
+    if (!sheet) {
+        sheet = ss.insertSheet('_PlaceCache');
+        sheet.appendRow(['Query', 'Data', 'UpdatedAt']);
+        sheet.setFrozenRows(1);
+        sheet.hideSheet();
+    }
+    return sheet;
+}
+
+function getPlaceFromSheetCache(query) {
+    const sheet = getPlaceCacheSheet();
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+        if (data[i][0] === query) {
+            try { return JSON.parse(data[i][1]); } catch { return null; }
+        }
+    }
+    return null;
+}
+
+function saveToPlaceSheetCache(query, placeData) {
+    const sheet = getPlaceCacheSheet();
+    const rows = sheet.getDataRange().getValues();
+    for (let i = 1; i < rows.length; i++) {
+        if (rows[i][0] === query) {
+            sheet.getRange(i + 1, 2, 1, 2).setValues([[JSON.stringify(placeData), new Date()]]);
+            return;
+        }
+    }
+    sheet.appendRow([query, JSON.stringify(placeData), new Date()]);
+}
+
+// --- Static Map Cache Helpers (Persistent) ---
+
+function getMapCacheSheet() {
+    const ss = getSpreadsheet();
+    let sheet = ss.getSheetByName('_MapCache');
+    if (!sheet) {
+        sheet = ss.insertSheet('_MapCache');
+        sheet.appendRow(['Location', 'Image', 'UpdatedAt']);
+        sheet.setFrozenRows(1);
+        sheet.hideSheet();
+    }
+    return sheet;
+}
+
+function getMapFromSheetCache(location) {
+    const sheet = getMapCacheSheet();
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+        if (data[i][0] === location) {
+            return data[i][1] || null;
+        }
+    }
+    return null;
+}
+
+function saveToMapSheetCache(location, imageBase64) {
+    const sheet = getMapCacheSheet();
+    const rows = sheet.getDataRange().getValues();
+    for (let i = 1; i < rows.length; i++) {
+        if (rows[i][0] === location) {
+            sheet.getRange(i + 1, 2, 1, 2).setValues([[imageBase64, new Date()]]);
+            return;
+        }
+    }
+    sheet.appendRow([location, imageBase64, new Date()]);
 }
 
 // Legacy function (kept for compatibility)

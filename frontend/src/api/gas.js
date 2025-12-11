@@ -68,7 +68,7 @@ const server = {
         }
 
         const cacheKey = `place_${btoa(unescape(encodeURIComponent(query)))}`;
-        const cached = sessionStorage.getItem(cacheKey);
+        const cached = localStorage.getItem(cacheKey);
         if (cached) {
             try { resolve(JSON.parse(cached)); return; } catch { /* ignore */ }
         }
@@ -78,7 +78,7 @@ const server = {
             .then(json => {
                 if (json.status === 'error') throw new Error(json.error?.message);
                 const data = json.data;
-                try { sessionStorage.setItem(cacheKey, JSON.stringify(data)); } catch { /* ignore */ }
+                try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch { /* ignore */ }
                 resolve(data);
             })
             .catch(e => reject(new Error(e.message)));
@@ -194,7 +194,7 @@ const server = {
         }
 
         const cacheKey = `weather_${date}_${btoa(unescape(encodeURIComponent(location)))}`;
-        const cached = sessionStorage.getItem(cacheKey);
+        const cached = localStorage.getItem(cacheKey);
         if (cached) {
             try { resolve(JSON.parse(cached)); return; } catch { /* ignore */ }
         }
@@ -203,7 +203,7 @@ const server = {
             .then(res => res.json())
             .then(json => {
                 if (json.status === 'success' && json.data) {
-                    try { sessionStorage.setItem(cacheKey, JSON.stringify(json.data)); } catch { /* ignore */ }
+                    try { localStorage.setItem(cacheKey, JSON.stringify(json.data)); } catch { /* ignore */ }
                     resolve(json.data);
                 } else {
                     resolve({ error: json.error?.message || 'Failed to get weather' });

@@ -43,17 +43,21 @@ const ExpandableEventCard = ({
 
     // Calculate content height for smooth animation - use large initial value for immediate expand
     useEffect(() => {
-        if (contentRef.current && isExpanded) {
-            // Recalculate after content loads
-            const newHeight = contentRef.current.scrollHeight;
-            if (newHeight > contentHeight) {
-                setContentHeight(newHeight);
-            }
-        } else if (isExpanded && contentHeight === 0) {
+        if (isExpanded) {
             // Set initial height immediately for fast expand
-            setContentHeight(400);
+            if (contentHeight === 0) {
+                setContentHeight(400);
+            }
+            // Then update with actual height when content is available
+            if (contentRef.current) {
+                const newHeight = contentRef.current.scrollHeight;
+                if (newHeight > 400) {
+                    setContentHeight(newHeight);
+                }
+            }
         }
-    }, [isExpanded, placeInfo, staticMapImage, contentHeight]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isExpanded, placeInfo, staticMapImage]);
 
     // Calculate query string outside useEffect for optimization
     const placeQuery = event

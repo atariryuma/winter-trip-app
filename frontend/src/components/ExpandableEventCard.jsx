@@ -163,7 +163,7 @@ const ExpandableEventCard = ({
                 </div>
 
                 {/* Event Name */}
-                <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight mb-1">
+                <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight mb-1 break-words">
                     {event.name}
                 </h3>
 
@@ -220,14 +220,14 @@ const ExpandableEventCard = ({
                     {placeInfo?.formattedAddress && (
                         <div className="flex items-start gap-2 text-xs text-gray-500 dark:text-slate-400">
                             <MapPin size={12} className="mt-0.5 shrink-0" />
-                            <span>{placeInfo.formattedAddress}</span>
+                            <span className="break-words break-all">{placeInfo.formattedAddress}</span>
                         </div>
                     )}
 
                     {/* Details/Memo */}
                     {event.details && (
                         <div className="bg-gray-50 dark:bg-slate-700/50 rounded-lg p-2.5">
-                            <p className="text-xs text-gray-600 dark:text-slate-300">{event.details}</p>
+                            <p className="text-xs text-gray-600 dark:text-slate-300 break-words whitespace-pre-wrap">{event.details}</p>
                         </div>
                     )}
 

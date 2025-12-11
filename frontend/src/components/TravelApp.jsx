@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef, useMemo, Suspense, lazy } from 'react';
-import EventDetailModal from './EventDetailModal';
+import React, { useState, useEffect, useMemo, Suspense, lazy } from 'react';
+import ExpandableEventCard from './ExpandableEventCard';
+import DepartureIndicator from './DepartureIndicator';
 import {
     Calendar, Map, Settings as SettingsIcon,
     Plane, Train, Bus, Hotel, MapPin, Utensils, Ticket,
@@ -82,7 +83,7 @@ const TimeConnector = ({ duration, isEditMode, onInsert }) => {
 };
 
 // DynamicSummary Component - Moved outside to prevent re-renders on parent updates
-const DynamicSummary = ({ day, events, dayIdx, onEditPlanned, onDeleteDay, isEditMode }) => {
+const DynamicSummary = ({ day, events, dayIdx, previousDayHotel, onEditPlanned, onDeleteDay, isEditMode }) => {
     if (!day || !events) return null;
 
     // Calculate from Events data only
@@ -214,27 +215,46 @@ const DynamicSummary = ({ day, events, dayIdx, onEditPlanned, onDeleteDay, isEdi
 
             {/* Day Route Display */}
             {(() => {
-                const locations = events
-                    .filter(e => e.type !== 'transport' && (e.to || e.address || e.name))
-                    .map(e => e.to || e.address || e.name)
-                    .filter((v, i, arr) => arr.indexOf(v) === i); // unique locations
+                // Build route locations list
+                const allLocations = [];
+
+                // Add previous day hotel as starting point for Day 2+
+                if (previousDayHotel) {
+                    const hotelName = previousDayHotel.name || previousDayHotel.to;
+                    if (hotelName) allLocations.push(hotelName);
+                }
+
+                events.forEach(e => {
+                    if (e.type === 'transport') {
+                        if (e.from) allLocations.push(e.from);
+                        if (e.to) allLocations.push(e.to);
+                    } else {
+                        const loc = e.to || e.name;
+                        if (loc) allLocations.push(loc);
+                    }
+                });
+
+                // Remove consecutive duplicates
+                const locations = allLocations.filter((loc, i, arr) =>
+                    i === 0 || loc !== arr[i - 1]
+                );
 
                 if (locations.length >= 2) {
                     return (
                         <div className="mb-3 py-2 px-3 bg-white/10 rounded-xl">
                             <div className="flex items-center gap-1.5 text-xs text-white/90 flex-wrap">
-                                {locations.slice(0, 5).map((loc, i) => (
+                                {locations.slice(0, 6).map((loc, i) => (
                                     <React.Fragment key={i}>
-                                        <span className="font-medium truncate max-w-[100px]" title={loc}>
-                                            {loc.length > 12 ? loc.slice(0, 10) + '...' : loc}
+                                        <span className="font-medium truncate max-w-[80px]" title={loc}>
+                                            {loc.length > 10 ? loc.slice(0, 8) + '...' : loc}
                                         </span>
-                                        {i < Math.min(locations.length - 1, 4) && (
+                                        {i < Math.min(locations.length - 1, 5) && (
                                             <span className="text-white/50">→</span>
                                         )}
                                     </React.Fragment>
                                 ))}
-                                {locations.length > 5 && (
-                                    <span className="text-white/50">+{locations.length - 5}</span>
+                                {locations.length > 6 && (
+                                    <span className="text-white/50">+{locations.length - 6}</span>
                                 )}
                             </div>
                         </div>
@@ -258,9 +278,29 @@ const DynamicSummary = ({ day, events, dayIdx, onEditPlanned, onDeleteDay, isEdi
                 {/* Route Button */}
                 <a
                     href={(() => {
-                        const locations = events
-                            .filter(e => e.type !== 'transport' && (e.address || e.name))
-                            .map(e => e.address || e.name);
+                        // Build locations list including previous day hotel
+                        const allLocations = [];
+
+                        // Add previous day hotel as starting point
+                        if (previousDayHotel) {
+                            const hotelName = previousDayHotel.name || previousDayHotel.to;
+                            if (hotelName) allLocations.push(hotelName);
+                        }
+
+                        events.forEach(e => {
+                            if (e.type === 'transport') {
+                                if (e.from) allLocations.push(e.from);
+                                if (e.to) allLocations.push(e.to);
+                            } else {
+                                const loc = e.to || e.name;
+                                if (loc) allLocations.push(loc);
+                            }
+                        });
+
+                        // Remove consecutive duplicates
+                        const locations = allLocations.filter((loc, i, arr) =>
+                            i === 0 || loc !== arr[i - 1]
+                        );
                         if (locations.length === 0) return 'https://www.google.com/maps';
                         if (locations.length === 1) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(locations[0])}`;
                         const origin = encodeURIComponent(locations[0]);
@@ -285,7 +325,7 @@ export default function TravelApp() {
     const [selectedDayId, setSelectedDayId] = useState(null);
     const [activeTab, setActiveTab] = useState('timeline');
     const [isEditMode, setIsEditMode] = useState(false);
-    const [selectedPlaceEvent, setSelectedPlaceEvent] = useState(null);
+    const [expandedEventId, setExpandedEventId] = useState(null);
     const [scrollDirection, setScrollDirection] = useState('up');
     const [isScrolled, setIsScrolled] = useState(false);
     const [auth, setAuth] = useState(false);
@@ -299,7 +339,7 @@ export default function TravelApp() {
     const [mapModalOpen, setMapModalOpen] = useState(false);
     const [mapModalQuery, setMapModalQuery] = useState(null);
 
-    const longPressTimer = useRef(null);
+
 
     // Scroll detection for immersive mode
     useEffect(() => {
@@ -320,16 +360,7 @@ export default function TravelApp() {
         return () => window.removeEventListener("scroll", updateScrollDirection);
     }, [scrollDirection]);
 
-    const handleTouchStart = (eventData) => {
-        longPressTimer.current = setTimeout(() => {
-            setEditItem(eventData);
-            setModalOpen(true);
-            navigator.vibrate?.(50);
-        }, 500);
-    };
-    const handleTouchEnd = () => {
-        if (longPressTimer.current) clearTimeout(longPressTimer.current);
-    };
+
 
     const selectedDay = useMemo(() => itinerary.find(d => d.id === selectedDayId), [itinerary, selectedDayId]);
     const sortedEvents = useMemo(() => {
@@ -345,7 +376,7 @@ export default function TravelApp() {
     const yearRange = useMemo(() => {
         if (itinerary.length === 0) return '';
         const parseDate = (dateStr) => {
-            const [month, day] = dateStr.split('/').map(Number);
+            const [month] = dateStr.split('/').map(Number);
             const baseYear = new Date().getFullYear();
             return month >= 10 ? baseYear : baseYear + 1;
         };
@@ -414,7 +445,7 @@ export default function TravelApp() {
         if (auth) {
             fetchData();
         }
-    }, [auth]); // Only depend on auth, not fetchData
+    }, [auth, fetchData]); // Only depend on auth, not fetchData
 
     useEffect(() => {
         if (itinerary.length > 0) {
@@ -813,6 +844,7 @@ export default function TravelApp() {
                                                 day={selectedDay}
                                                 events={sortedEvents}
                                                 dayIdx={dayIndex}
+                                                previousDayHotel={dayIndex > 0 ? itinerary[dayIndex - 1]?.events.filter(e => e.category === 'hotel' || e.category === 'stay').pop() : null}
                                                 onEditPlanned={(event) => { setEditItem(event); setModalOpen(true); }}
                                                 onDeleteDay={handleDeleteDay}
                                                 isEditMode={isEditMode}
@@ -822,45 +854,16 @@ export default function TravelApp() {
                                             {(() => {
                                                 if (dayIndex <= 0) return null;
                                                 const prevDay = itinerary[dayIndex - 1];
-                                                if (!prevDay) return null;
-                                                const prevHotel = prevDay.events.filter(e => e.category === 'hotel').pop();
+                                                if (!prevDay || !prevDay.events) return null;
+                                                const prevHotel = prevDay.events.filter(e => e.type === 'stay' || e.category === 'hotel').pop();
                                                 if (!prevHotel) return null;
                                                 const firstEvent = sortedEvents[0];
-                                                // Calculate duration from hotel checkout to first event
-                                                const hotelCheckout = prevHotel.endTime || prevHotel.checkOut || '10:00'; // default checkout
-                                                const durationToFirst = firstEvent ? getDurationMinutes({ time: hotelCheckout, endTime: hotelCheckout }, firstEvent) : null;
+                                                if (!firstEvent) return null;
                                                 return (
-                                                    <>
-                                                        <div className="flex items-center gap-3 p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800">
-                                                            <div className="w-8 h-8 bg-indigo-100 dark:bg-indigo-800/50 rounded-lg flex items-center justify-center">
-                                                                <Hotel size={16} className="text-indigo-600 dark:text-indigo-400" />
-                                                            </div>
-                                                            <div className="flex-1 min-w-0">
-                                                                <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase">出発地</p>
-                                                                <p className="font-bold text-gray-800 dark:text-white truncate">{prevHotel.name}</p>
-                                                            </div>
-                                                            <a
-                                                                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(prevHotel.name)}`}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                onClick={(e) => e.stopPropagation()}
-                                                                className="p-2 bg-indigo-100 dark:bg-indigo-800/50 rounded-lg text-indigo-600 dark:text-indigo-400"
-                                                            >
-                                                                <MapPin size={16} />
-                                                            </a>
-                                                        </div>
-                                                        {/* Time connector to first event */}
-                                                        {firstEvent && (
-                                                            <TimeConnector
-                                                                duration={durationToFirst}
-                                                                isEditMode={isEditMode}
-                                                                onInsert={() => {
-                                                                    setEditItem(null);
-                                                                    setModalOpen(true);
-                                                                }}
-                                                            />
-                                                        )}
-                                                    </>
+                                                    <DepartureIndicator
+                                                        prevHotel={prevHotel}
+                                                        firstEvent={firstEvent}
+                                                    />
                                                 );
                                             })()}
 
@@ -876,7 +879,7 @@ export default function TravelApp() {
                                                         }
                                                         if (dayIndex > 0) {
                                                             const prevDay = itinerary[dayIndex - 1];
-                                                            const prevHotel = prevDay?.events.filter(e => e.category === 'hotel').pop();
+                                                            const prevHotel = prevDay?.events.filter(e => e.category === 'hotel' || e.category === 'stay').pop();
                                                             return prevHotel?.name || null;
                                                         }
                                                         return null;
@@ -887,92 +890,22 @@ export default function TravelApp() {
 
                                                     return (
                                                         <div key={event.id} className="relative">
-                                                            {/* Event Card */}
-                                                            <div
-                                                                className={`relative bg-white dark:bg-slate-800 rounded-2xl p-4 transition-all duration-300 ease-out ${isEditMode ? 'scale-[0.95] shadow-sm' : 'scale-100 shadow-sm border border-gray-200 dark:border-slate-700'}`}
-                                                                onClick={() => {
-                                                                    if (isEditMode) {
-                                                                        setEditItem(event);
-                                                                        setModalOpen(true);
-                                                                    } else {
-                                                                        setSelectedPlaceEvent(event);
-                                                                    }
+                                                            {/* Expandable Event Card */}
+                                                            <ExpandableEventCard
+                                                                event={event}
+                                                                isExpanded={expandedEventId === event.id}
+                                                                onToggle={() => setExpandedEventId(
+                                                                    expandedEventId === event.id ? null : event.id
+                                                                )}
+                                                                isEditMode={isEditMode}
+                                                                onEdit={(e) => {
+                                                                    setEditItem(e);
+                                                                    setModalOpen(true);
                                                                 }}
-                                                                onTouchStart={() => handleTouchStart(event)}
-                                                                onTouchEnd={handleTouchEnd}
-                                                                onTouchMove={handleTouchEnd}
-                                                            >
-
-
-                                                                <div className="flex justify-between items-start mb-2">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <div className="flex items-center gap-2">
-                                                                            <div className="w-1 h-6 rounded-full bg-indigo-500"></div>
-                                                                            <span className="font-mono font-bold text-base text-slate-700 dark:text-slate-200">
-                                                                                {event.time || '未定'}
-                                                                            </span>
-                                                                        </div>
-                                                                        <div className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase flex items-center gap-1 ${event.type === 'stay' ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30' : event.type === 'transport' ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30' : 'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-300'}`}>
-                                                                            {getIcon(event.category, event.type, { size: 10 })}
-                                                                            <span>{event.category}</span>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            if (event.status !== 'confirmed' && event.status !== 'booked') {
-                                                                                setEditItem(event);
-                                                                                setModalOpen(true);
-                                                                            }
-                                                                        }}
-                                                                        className={`${event.status !== 'confirmed' && event.status !== 'booked' ? 'cursor-pointer hover:opacity-80 active:scale-95' : ''} transition-transform flex items-center gap-2`}
-                                                                    >
-                                                                        <StatusBadge status={event.status} />
-
-                                                                        {/* Delete Event Button - Animated Reveal (Same as Summary) */}
-                                                                        <div className={`overflow-hidden transition-all duration-500 ease-out flex justify-end ${isEditMode ? 'w-8 opacity-100 scale-100' : 'w-0 opacity-0 scale-90 pointer-events-none'}`}>
-                                                                            <button
-                                                                                onClick={(e) => {
-                                                                                    e.stopPropagation();
-                                                                                    handleDeleteEvent(event.id);
-                                                                                }}
-                                                                                className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-colors whitespace-nowrap"
-                                                                                title="この予定を削除"
-                                                                            >
-                                                                                <Trash2 size={14} />
-                                                                            </button>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                                <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight mb-1">
-                                                                    {event.name}
-                                                                </h3>
-                                                                {event.type === 'transport' && (event.from || event.to) && (
-                                                                    <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-slate-400 mb-2">
-                                                                        <span>{event.from || '?'}</span>
-                                                                        <ArrowRight size={12} className="shrink-0" />
-                                                                        <span>{event.to || '?'}</span>
-                                                                    </div>
-                                                                )}
-                                                                {event.details && (
-                                                                    <p className="text-xs text-gray-500 dark:text-slate-400 bg-gray-50 dark:bg-slate-700/50 rounded-lg px-2 py-1.5 mb-2">
-                                                                        {event.details}
-                                                                    </p>
-                                                                )}
-                                                                <div className={`flex items-center gap-2 mt-2 justify-end transition-all duration-300 ${isEditMode ? 'opacity-0 pointer-events-none h-0 overflow-hidden' : 'opacity-100 h-8'}`}>
-                                                                    {/* Map Button */}
-                                                                    <a
-                                                                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.type === 'transport' ? event.to : (event.address || event.name))}`}
-                                                                        target="_blank"
-                                                                        rel="noopener noreferrer"
-                                                                        onClick={(e) => e.stopPropagation()}
-                                                                        className="h-8 w-8 bg-gray-100 dark:bg-slate-700 rounded-lg flex items-center justify-center text-indigo-600 dark:text-indigo-400 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
-                                                                        title="地図を開く"
-                                                                    >
-                                                                        <MapPin size={16} />
-                                                                    </a>
-                                                                </div>
-                                                            </div>
+                                                                onDelete={() => handleDeleteEvent(event.id)}
+                                                                routeOrigin={routeOrigin}
+                                                                previousDayHotel={dayIndex > 0 ? itinerary[dayIndex - 1]?.events.filter(e => e.category === 'hotel' || e.category === 'stay').pop() : null}
+                                                            />
                                                             {nextEvent && (
                                                                 <TimeConnector
                                                                     duration={durationToNext}
@@ -1060,7 +993,7 @@ export default function TravelApp() {
 
                                                         {/* Scrollable Events */}
                                                         <div className="flex-1 overflow-y-auto p-3 space-y-2">
-                                                            {daySortedEvents.map((event, index) => (
+                                                            {daySortedEvents.map((event) => (
                                                                 <div
                                                                     key={event.id}
                                                                     onClick={() => {
@@ -1080,7 +1013,7 @@ export default function TravelApp() {
                                                                 >
                                                                     <div className="flex items-center gap-2 mb-1">
                                                                         <span className="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400">
-                                                                            {event.time || '--:--'}
+                                                                            {event.time || '--:--'}{event.endTime ? ` → ${event.endTime}` : ''}
                                                                         </span>
                                                                         <StatusBadge status={event.status} />
                                                                     </div>
@@ -1186,28 +1119,6 @@ export default function TravelApp() {
                     )}
 
                     <Suspense fallback={null}>
-                        {selectedPlaceEvent && (
-                            <EventDetailModal
-                                event={selectedPlaceEvent}
-                                onClose={() => setSelectedPlaceEvent(null)}
-                                onEdit={(event) => {
-                                    setEditItem(event);
-                                    setModalOpen(true);
-                                }}
-                                previousEvent={(() => {
-                                    if (!selectedPlaceEvent || !selectedDay) return null;
-                                    const idx = sortedEvents.findIndex(e => e.id === selectedPlaceEvent.id);
-                                    return idx > 0 ? sortedEvents[idx - 1] : null;
-                                })()}
-                                previousDayHotel={(() => {
-                                    if (!selectedPlaceEvent || dayIndex <= 0) return null;
-                                    const prevDay = itinerary[dayIndex - 1];
-                                    if (!prevDay) return null;
-                                    return prevDay.events.filter(e => e.category === 'hotel').pop() || null;
-                                })()}
-                            />
-                        )}
-
                         {/* Map Modal - Shows MapView centered on event location */}
                         {mapModalOpen && mapModalQuery && (
                             <div className="fixed inset-0 z-modal flex items-end sm:items-center justify-center p-0 sm:p-4">

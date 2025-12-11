@@ -39,6 +39,7 @@ const EditModal = ({ isOpen, onClose, item, onSave, onDelete, previousEvent, ava
                 ? item.name
                 : '';
 
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setFormData({
                 ...item,
                 from: item.from || autoFrom,
@@ -81,7 +82,7 @@ const EditModal = ({ isOpen, onClose, item, onSave, onDelete, previousEvent, ava
                 ).slice(0, 5);
                 setSuggestions(filtered.map(p => ({ description: p, placeId: null })));
             }
-        } catch (err) {
+        } catch {
             // Fallback to local suggestions on error
             const filtered = commonPlaces.filter(p =>
                 p.toLowerCase().includes(query.toLowerCase())
@@ -132,29 +133,6 @@ const EditModal = ({ isOpen, onClose, item, onSave, onDelete, previousEvent, ava
     };
 
     if (!isOpen) return null;
-
-    // Suggestions dropdown component
-    const SuggestionDropdown = ({ forField }) => {
-        if (!showSuggestions || activeSuggestionField !== forField || suggestions.length === 0) return null;
-        return (
-            <div className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-700 rounded-xl shadow-lg border border-gray-200 dark:border-slate-600 max-h-48 overflow-y-auto">
-                {suggestions.map((s, i) => {
-                    const description = typeof s === 'string' ? s : s.description;
-                    return (
-                        <button
-                            key={i}
-                            type="button"
-                            className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-slate-600 text-sm text-gray-700 dark:text-slate-200 flex items-center gap-2 border-b border-gray-100 dark:border-slate-600 last:border-0"
-                            onMouseDown={() => selectSuggestion(s)}
-                        >
-                            <MapPin size={14} className="text-indigo-500 shrink-0" />
-                            <span>{description}</span>
-                        </button>
-                    );
-                })}
-            </div>
-        );
-    };
 
     return (
         <div className="fixed inset-0 z-modal flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4" onClick={onClose}>
@@ -252,7 +230,13 @@ const EditModal = ({ isOpen, onClose, item, onSave, onDelete, previousEvent, ava
                                         <Map size={18} />
                                     </button>
                                 </div>
-                                <SuggestionDropdown forField="from" />
+                                <SuggestionDropdown
+                                    showSuggestions={showSuggestions}
+                                    activeSuggestionField={activeSuggestionField}
+                                    suggestions={suggestions}
+                                    forField="from"
+                                    selectSuggestion={selectSuggestion}
+                                />
                             </div>
 
                             {/* To */}
@@ -278,7 +262,13 @@ const EditModal = ({ isOpen, onClose, item, onSave, onDelete, previousEvent, ava
                                         <Map size={18} />
                                     </button>
                                 </div>
-                                <SuggestionDropdown forField="to" />
+                                <SuggestionDropdown
+                                    showSuggestions={showSuggestions}
+                                    activeSuggestionField={activeSuggestionField}
+                                    suggestions={suggestions}
+                                    forField="to"
+                                    selectSuggestion={selectSuggestion}
+                                />
                             </div>
 
                             {/* Custom Display Name (Optional) */}
@@ -325,7 +315,13 @@ const EditModal = ({ isOpen, onClose, item, onSave, onDelete, previousEvent, ava
                                     <Map size={18} />
                                 </button>
                             </div>
-                            <SuggestionDropdown forField="name" />
+                            <SuggestionDropdown
+                                showSuggestions={showSuggestions}
+                                activeSuggestionField={activeSuggestionField}
+                                suggestions={suggestions}
+                                forField="name"
+                                selectSuggestion={selectSuggestion}
+                            />
                         </div>
                     )}
 
@@ -422,6 +418,29 @@ const EditModal = ({ isOpen, onClose, item, onSave, onDelete, previousEvent, ava
                     </button>
                 </div>
             </div>
+        </div>
+    );
+};
+
+// Extracted SuggestionDropdown component
+const SuggestionDropdown = ({ showSuggestions, activeSuggestionField, suggestions, forField, selectSuggestion }) => {
+    if (!showSuggestions || activeSuggestionField !== forField || suggestions.length === 0) return null;
+    return (
+        <div className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-700 rounded-xl shadow-lg border border-gray-200 dark:border-slate-600 max-h-48 overflow-y-auto">
+            {suggestions.map((s, i) => {
+                const description = typeof s === 'string' ? s : s.description;
+                return (
+                    <button
+                        key={i}
+                        type="button"
+                        className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-slate-600 text-sm text-gray-700 dark:text-slate-200 flex items-center gap-2 border-b border-gray-100 dark:border-slate-600 last:border-0"
+                        onMouseDown={() => selectSuggestion(s)}
+                    >
+                        <MapPin size={14} className="text-indigo-500 shrink-0" />
+                        <span>{description}</span>
+                    </button>
+                );
+            })}
         </div>
     );
 };

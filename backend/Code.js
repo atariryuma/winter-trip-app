@@ -1,4 +1,5 @@
-const SPREADSHEET_ID = '1eoZtWfOECvkp_L3919yWYnZtlMPlTaq0cohV56SrE7I';
+// Read from Script Properties for environment-specific configuration
+const SPREADSHEET_ID = PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID');
 const DAYS_SHEET = 'days';
 const EVENTS_SHEET = 'events';
 const PACKING_SHEET = 'packing_list';
@@ -90,6 +91,10 @@ function doGet(e) {
                 return handleDeleteEventsByDate(e);
             case 'moveEvent':
                 return handleMoveEvent(e);
+            case 'getStaticMap':
+                return handleGetStaticMap(e);
+            case 'getRouteMap':
+                return handleGetRouteMap(e);
             default:
                 const FRONTEND_URL = 'https://atariryuma.github.io/winter-trip-app/';
                 return HtmlService.createHtmlOutput(`
@@ -1173,6 +1178,199 @@ function updateEventField(date, eventName, field, value) {
 // MAP GENERATION
 // ============================================================================
 
+/**
+ * Get static map image for a single location
+ * Returns base64 encoded PNG image
+ */
+function handleGetStaticMap(e) {
+    const location = e.parameter.location;
+    if (!location) {
+        return createApiResponse('error', null, { message: 'Location is required' });
+    }
+
+    const cache = CacheService.getScriptCache();
+    const cacheKey = 'staticmap_' + Utilities.base64Encode(Utilities.newBlob(location).getBytes());
+
+    try {
+        const cached = cache.get(cacheKey);
+        if (cached) return createApiResponse('success', { image: cached });
+    } catch (e) { }
+
+    try {
+        const map = Maps.newStaticMap()
+            .setSize(400, 200)
+            .setLanguage('ja')
+            .setMapType(Maps.StaticMap.Type.ROADMAP)
+            .setZoom(15)
+            .addMarker(location);
+
+        // Try to center on the location using geocoding
+        const geocoder = Maps.newGeocoder().setLanguage('ja').setRegion('jp');
+        const geoResult = geocoder.geocode(location);
+        if (geoResult.status === 'OK' && geoResult.results.length > 0) {
+            const loc = geoResult.results[0].geometry.location;
+            map.setCenter(loc.lat, loc.lng);
+        }
+
+        const blob = map.getBlob();
+        const base64Image = 'data:image/png;base64,' + Utilities.base64Encode(blob.getBytes());
+
+        // Cache for 24 hours
+        try {
+            cache.put(cacheKey, base64Image, 86400);
+        } catch (e) { }
+
+        return createApiResponse('success', { image: base64Image });
+    } catch (err) {
+        return createApiResponse('error', null, { message: err.toString() });
+    }
+}
+
+/**
+ * Get route map image between two locations
+ * Returns base64 encoded PNG image with route line
+ */
+function handleGetRouteMap(e) {
+    const origin = e.parameter.origin;
+    const destination = e.parameter.destination;
+
+    if (!origin || !destination) {
+        return createApiResponse('error', null, { message: 'Origin and destination are required' });
+    }
+
+    const scriptCache = CacheService.getScriptCache();
+    const cacheKey = 'routemap_v2_' + Utilities.base64Encode(
+        Utilities.newBlob(origin + '|' + destination).getBytes()
+    );
+
+    // 1. Try Script Cache (Memory - Fast)
+    try {
+        const cached = scriptCache.get(cacheKey);
+        if (cached) return createApiResponse('success', JSON.parse(cached));
+    } catch (e) { }
+
+    // 2. Try Sheet Cache (Persistent - Server)
+    let routeData = getRouteFromSheetCache(origin, destination);
+
+    // 3. If not in sheet, Call Maps API
+    if (!routeData) {
+        try {
+            const directions = Maps.newDirectionFinder()
+                .setOrigin(origin)
+                .setDestination(destination)
+                .setMode(Maps.DirectionFinder.Mode.TRANSIT)
+                .setLanguage('ja')
+                .setRegion('jp')
+                .getDirections();
+
+            if (!directions.routes || directions.routes.length === 0) {
+                return createApiResponse('error', null, { message: 'No route found' });
+            }
+
+            const route = directions.routes[0];
+            const leg = route.legs[0];
+
+            routeData = {
+                duration: leg.duration?.text || null,
+                distance: leg.distance?.text || null,
+                polyline: route.overview_polyline?.points || null
+            };
+
+            // Save to Sheet Cache
+            saveToSheetCache(origin, destination, routeData);
+
+        } catch (err) {
+            return createApiResponse('error', null, { message: err.toString() });
+        }
+    }
+
+    // 4. Generate Map Image (using cached or fresh polyline)
+    // Minimizes Directions API calls, uses Static Maps (cheaper/free)
+    const map = Maps.newStaticMap()
+        .setSize(400, 200)
+        .setLanguage('ja')
+        .setMapType(Maps.StaticMap.Type.ROADMAP);
+
+    if (routeData.polyline) {
+        map.addPath(routeData.polyline);
+    }
+
+    map.setMarkerStyle(Maps.StaticMap.MarkerSize.SMALL, Maps.StaticMap.Color.GREEN, 'A');
+    map.addMarker(origin);
+    map.setMarkerStyle(Maps.StaticMap.MarkerSize.SMALL, Maps.StaticMap.Color.RED, 'B');
+    map.addMarker(destination);
+
+    const blob = map.getBlob();
+    const base64Image = 'data:image/png;base64,' + Utilities.base64Encode(blob.getBytes());
+
+    const result = {
+        image: base64Image,
+        duration: routeData.duration,
+        distance: routeData.distance
+    };
+
+    // Save to Script Cache
+    try {
+        scriptCache.put(cacheKey, JSON.stringify(result), 21600); // 6 hours
+    } catch (e) { }
+
+    return createApiResponse('success', result);
+}
+
+// --- Sheet Cache Helpers ---
+
+function getRouteCacheSheet() {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    let sheet = ss.getSheetByName('_RouteCache');
+    if (!sheet) {
+        sheet = ss.insertSheet('_RouteCache');
+        sheet.appendRow(['Origin', 'Destination', 'Duration', 'Distance', 'Polyline', 'UpdatedAt']);
+        sheet.setFrozenRows(1);
+        // Hide the sheet to avoid clutter
+        sheet.hideSheet();
+    }
+    return sheet;
+}
+
+function getRouteFromSheetCache(origin, destination) {
+    const sheet = getRouteCacheSheet();
+    const data = sheet.getDataRange().getValues();
+
+    // Start from row 1 (skip header)
+    for (let i = 1; i < data.length; i++) {
+        const row = data[i];
+        if (row[0] === origin && row[1] === destination) {
+            return {
+                duration: row[2],
+                distance: row[3],
+                polyline: row[4]
+            };
+        }
+    }
+    return null;
+}
+
+function saveToSheetCache(origin, destination, data) {
+    const sheet = getRouteCacheSheet();
+    // Check if already exists to update instead of duplicate
+    const rows = sheet.getDataRange().getValues();
+    for (let i = 1; i < rows.length; i++) {
+        if (rows[i][0] === origin && rows[i][1] === destination) {
+            // Update existing
+            sheet.getRange(i + 1, 3, 1, 4).setValues([[
+                data.duration,
+                data.distance,
+                data.polyline,
+                new Date()
+            ]]);
+            return;
+        }
+    }
+    // Append new
+    sheet.appendRow([origin, destination, data.duration, data.distance, data.polyline, new Date()]);
+}
+
+// Legacy function (kept for compatibility)
 function generateStaticMapUrl(locations) {
     if (!locations || locations.length === 0) return null;
 

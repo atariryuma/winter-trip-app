@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, MapPin, Navigation, Star, Edit3, Clock, ArrowRight, Phone, Globe, Copy, Check } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { X, MapPin, Navigation, Star, Edit3, Clock, ArrowRight, Phone, Globe, Copy, Check, Map } from 'lucide-react';
 import server from '../api/gas';
 
 /**
@@ -11,27 +11,65 @@ import server from '../api/gas';
  * 3. Actionable options (Map, Route, Call as primary actions)
  * 4. Progressive disclosure (details below fold)
  * 5. Mobile-first (large tap targets, responsive)
+ * 6. Inline map images for quick visual reference
  */
 const EventDetailModal = ({ event, onClose, onEdit, previousEvent, previousDayHotel }) => {
     const [placeInfo, setPlaceInfo] = useState(null);
     const [loading, setLoading] = useState(true);
     const [copied, setCopied] = useState(false);
+    const [staticMapImage, setStaticMapImage] = useState(null);
+    const [routeMapData, setRouteMapData] = useState(null);
+    const [loadingMaps, setLoadingMaps] = useState(false);
 
     const categoryIcons = {
         'flight': '✈️', 'train': '🚄', 'bus': '🚌',
         'hotel': '🏨', 'meal': '🍽️', 'sightseeing': '📍',
     };
 
+    // Get route origin and destination based on event type - memoized for optimization
+    const { routeOrigin, routeDestination, placeQuery } = useMemo(() => {
+        // For transport events (flight, train, bus), use the event's own from/to
+        if (event?.type === 'transport') {
+            return {
+                routeOrigin: event.from || null,
+                routeDestination: event.to || null,
+                placeQuery: event.to || event.name || event.from
+            };
+        }
+
+        // For non-transport events, route from previous location to this event
+        let origin = null;
+        if (previousEvent) {
+            // Previous event's end location
+            origin = previousEvent.to || previousEvent.name;
+        } else if (previousDayHotel) {
+            // Day 2+: start from previous day's hotel
+            origin = previousDayHotel.name || previousDayHotel.to;
+        }
+
+        // Destination is where this event takes place
+        const destination = event?.to || event?.name || null;
+
+        return {
+            routeOrigin: origin,
+            routeDestination: destination,
+            placeQuery: destination
+        };
+    }, [event?.type, event?.from, event?.to, event?.name, previousEvent?.to, previousEvent?.name, previousDayHotel?.name, previousDayHotel?.to]);
+
+    // Fetch place info - only when placeQuery changes
     useEffect(() => {
+        if (!placeQuery) {
+            setPlaceInfo(null);
+            setLoading(false);
+            return;
+        }
+
         const fetchPlaceInfo = async () => {
-            if (!event) return;
             setLoading(true);
             try {
-                const query = event.to || event.name || event.from;
-                if (query) {
-                    const info = await server.getPlaceInfo(query);
-                    setPlaceInfo(info);
-                }
+                const info = await server.getPlaceInfo(placeQuery);
+                setPlaceInfo(info);
             } catch (err) {
                 console.error('Failed to fetch place info:', err);
             } finally {
@@ -39,21 +77,48 @@ const EventDetailModal = ({ event, onClose, onEdit, previousEvent, previousDayHo
             }
         };
         fetchPlaceInfo();
-    }, [event]);
+    }, [placeQuery]);
+
+    // Fetch map images when placeInfo is loaded - only when location strings change
+    useEffect(() => {
+        if (loading) return; // Wait for place info to finish loading
+
+        const mapLocation = placeInfo?.formattedAddress || routeDestination;
+
+        if (!mapLocation) {
+            setStaticMapImage(null);
+            setRouteMapData(null);
+            setLoadingMaps(false);
+            return;
+        }
+
+        const fetchMaps = async () => {
+            setLoadingMaps(true);
+            try {
+                // Fetch static map for destination
+                const mapImage = await server.getStaticMap(mapLocation);
+                setStaticMapImage(mapImage);
+
+                // Fetch route map if we have origin
+                if (routeOrigin && routeDestination) {
+                    const routeData = await server.getRouteMap(routeOrigin, routeDestination);
+                    setRouteMapData(routeData);
+                }
+            } catch (err) {
+                console.error('Failed to fetch maps:', err);
+            } finally {
+                setLoadingMaps(false);
+            }
+        };
+
+        fetchMaps();
+    }, [placeInfo?.formattedAddress, loading, routeOrigin, routeDestination]);
 
     if (!event) return null;
 
-    const getRouteOrigin = () => {
-        if (previousEvent) return previousEvent.to || previousEvent.address || previousEvent.name;
-        if (previousDayHotel) return previousDayHotel.name || previousDayHotel.to;
-        return null;
-    };
-
-    const routeOrigin = getRouteOrigin();
-    const routeDestination = event.from || event.address || event.name;
     const mapsUrl = placeInfo?.mapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.name)}`;
     const directionsUrl = routeOrigin
-        ? `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(routeOrigin)}&destination=${encodeURIComponent(routeDestination)}&travelmode=transit`
+        ? `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(routeOrigin)}&destination=${encodeURIComponent(routeDestination)}`
         : null;
 
     const icon = categoryIcons[event.category] || '📌';
@@ -123,6 +188,60 @@ const EventDetailModal = ({ event, onClose, onEdit, previousEvent, previousDayHo
                                 className="w-full h-32 object-cover rounded-xl"
                                 onError={(e) => e.target.style.display = 'none'}
                             />
+                        </div>
+                    )}
+
+                    {/* === MAP IMAGES SECTION === */}
+                    {(staticMapImage || routeMapData?.image || loadingMaps) && (
+                        <div className="px-4 pb-3 space-y-2">
+                            {/* Loading state */}
+                            {loadingMaps && !staticMapImage && !routeMapData && (
+                                <div className="w-full h-24 bg-gray-100 dark:bg-slate-800 rounded-xl flex items-center justify-center">
+                                    <div className="flex items-center gap-2 text-gray-400">
+                                        <Map size={18} className="animate-pulse" />
+                                        <span className="text-sm">地図を読み込み中...</span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Route Map (prioritized if available) */}
+                            {routeMapData?.image && (
+                                <div className="relative">
+                                    <a href={directionsUrl} target="_blank" rel="noopener noreferrer">
+                                        <img
+                                            src={routeMapData.image}
+                                            alt="ルート"
+                                            className="w-full h-32 object-cover rounded-xl border border-gray-200 dark:border-slate-700"
+                                            onError={(e) => e.target.style.display = 'none'}
+                                        />
+                                        {/* Route info overlay */}
+                                        <div className="absolute bottom-2 left-2 right-2 flex gap-2">
+                                            {routeMapData.duration && (
+                                                <span className="px-2 py-1 bg-black/70 text-white text-xs font-bold rounded-lg">
+                                                    {routeMapData.duration}
+                                                </span>
+                                            )}
+                                            {routeMapData.distance && (
+                                                <span className="px-2 py-1 bg-black/50 text-white/90 text-xs rounded-lg">
+                                                    {routeMapData.distance}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </a>
+                                </div>
+                            )}
+
+                            {/* Static Map (shown if no route map, or no photo) */}
+                            {staticMapImage && !routeMapData?.image && !placeInfo?.photoUrl && (
+                                <a href={mapsUrl} target="_blank" rel="noopener noreferrer">
+                                    <img
+                                        src={staticMapImage}
+                                        alt="地図"
+                                        className="w-full h-32 object-cover rounded-xl border border-gray-200 dark:border-slate-700"
+                                        onError={(e) => e.target.style.display = 'none'}
+                                    />
+                                </a>
+                            )}
                         </div>
                     )}
 
@@ -254,3 +373,4 @@ const EventDetailModal = ({ event, onClose, onEdit, previousEvent, previousDayHo
 };
 
 export default EventDetailModal;
+

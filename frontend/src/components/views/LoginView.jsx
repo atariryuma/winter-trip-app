@@ -21,7 +21,7 @@ export default function LoginView({ onLogin, validatePasscode, yearRange = "2025
             } else {
                 throw new Error('Invalid passcode');
             }
-        } catch (err) {
+        } catch {
             setError(true);
             setShake(true);
             setTimeout(() => setShake(false), 500);

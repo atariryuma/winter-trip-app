@@ -1,9 +1,24 @@
-const API_URL = 'https://script.google.com/macros/s/AKfycbwYNaHti6yINS8HWQzINoleQEzkyYggMP5yyR4QTnMzWfJxmKm8Dr7fkmSuz60bU1QIYg/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbzdHh9NfxwTXrtDa41A_2DIhyA32o5OMVg0WxpCNBLYqyF_afPcTqsnSO5cN5t2SKtrPg/exec';
+
+const fetchWithRetry = async (url, options = {}, retries = 3, backoff = 1000) => {
+    try {
+        const res = await fetch(url, options);
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        return res;
+    } catch (err) {
+        if (retries > 0) {
+            console.warn(`Fetch failed, retrying (${retries} left)...`, err);
+            await new Promise(r => setTimeout(r, backoff));
+            return fetchWithRetry(url, options, retries - 1, backoff * 2);
+        }
+        throw err;
+    }
+};
 
 const server = {
     // Get itinerary data
     getData: () => new Promise((resolve, reject) => {
-        fetch(`${API_URL}?action=getData`)
+        fetchWithRetry(`${API_URL}?action=getData`)
             .then(res => res.json())
             .then(json => {
                 if (json.status === 'error') throw new Error(json.error?.message || 'Server Error');
@@ -16,7 +31,7 @@ const server = {
     saveData: (data) => new Promise((resolve, reject) => {
         const params = new URLSearchParams();
         params.append('data', JSON.stringify(data));
-        fetch(API_URL, {
+        fetchWithRetry(API_URL, {
             method: 'POST',
             mode: 'no-cors',
             body: params
@@ -28,7 +43,7 @@ const server = {
     // Update single event field
     updateEventField: (date, name, field, value) => new Promise((resolve, reject) => {
         const params = new URLSearchParams({ action: 'updateEvent', date, name, field, value });
-        fetch(`${API_URL}?${params.toString()}`)
+        fetchWithRetry(`${API_URL}?${params.toString()}`)
             .then(res => res.json())
             .then(json => {
                 if (json.status === 'success') resolve(json.data);
@@ -39,7 +54,7 @@ const server = {
 
     // Validate passcode
     validatePasscode: (code) => new Promise((resolve) => {
-        fetch(`${API_URL}?action=validatePasscode&code=${encodeURIComponent(code)}`)
+        fetchWithRetry(`${API_URL}?action=validatePasscode&code=${encodeURIComponent(code)}`)
             .then(res => res.json())
             .then(json => resolve(json.status === 'success' && json.data.valid === true))
             .catch(() => resolve(false));
@@ -55,15 +70,15 @@ const server = {
         const cacheKey = `place_${btoa(unescape(encodeURIComponent(query)))}`;
         const cached = sessionStorage.getItem(cacheKey);
         if (cached) {
-            try { resolve(JSON.parse(cached)); return; } catch (e) { }
+            try { resolve(JSON.parse(cached)); return; } catch { /* ignore */ }
         }
 
-        fetch(`${API_URL}?action=getPlaceInfo&query=${encodeURIComponent(query)}`)
+        fetchWithRetry(`${API_URL}?action=getPlaceInfo&query=${encodeURIComponent(query)}`)
             .then(res => res.json())
             .then(json => {
                 if (json.status === 'error') throw new Error(json.error?.message);
                 const data = json.data;
-                try { sessionStorage.setItem(cacheKey, JSON.stringify(data)); } catch (e) { }
+                try { sessionStorage.setItem(cacheKey, JSON.stringify(data)); } catch { /* ignore */ }
                 resolve(data);
             })
             .catch(e => reject(new Error(e.message)));
@@ -77,16 +92,16 @@ const server = {
         }
 
         const cacheKey = `autocomplete_${btoa(unescape(encodeURIComponent(input)))}`;
-        const cached = sessionStorage.getItem(cacheKey);
+        const cached = localStorage.getItem(cacheKey);
         if (cached) {
-            try { resolve(JSON.parse(cached)); return; } catch (e) { }
+            try { resolve(JSON.parse(cached)); return; } catch { /* ignore */ }
         }
 
-        fetch(`${API_URL}?action=getPlaceAutocomplete&input=${encodeURIComponent(input)}`)
+        fetchWithRetry(`${API_URL}?action=getPlaceAutocomplete&input=${encodeURIComponent(input)}`)
             .then(res => res.json())
             .then(json => {
                 if (json.status === 'success' && json.data) {
-                    try { sessionStorage.setItem(cacheKey, JSON.stringify(json.data)); } catch (e) { }
+                    try { localStorage.setItem(cacheKey, JSON.stringify(json.data)); } catch { /* ignore */ }
                     resolve(json.data);
                 } else {
                     resolve({ predictions: [] });
@@ -95,14 +110,71 @@ const server = {
             .catch(() => resolve({ predictions: [] }));
     }),
 
+    // Get static map image for a location
+    getStaticMap: (location) => new Promise((resolve) => {
+        if (!location?.trim()) {
+            resolve(null);
+            return;
+        }
 
+        const cacheKey = `staticmap_${btoa(unescape(encodeURIComponent(location)))}`;
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+            try { resolve(JSON.parse(cached)); return; } catch { /* ignore */ }
+        }
+
+        fetchWithRetry(`${API_URL}?action=getStaticMap&location=${encodeURIComponent(location)}`)
+            .then(res => res.json())
+            .then(json => {
+                if (json.status === 'success' && json.data?.image) {
+                    try { localStorage.setItem(cacheKey, JSON.stringify(json.data.image)); } catch { /* ignore */ }
+                    resolve(json.data.image);
+                } else {
+                    resolve(null);
+                }
+            })
+            .catch(() => resolve(null));
+    }),
+
+    // Get route map image between two locations
+    getRouteMap: (origin, destination) => new Promise((resolve) => {
+        if (!origin?.trim() || !destination?.trim()) {
+            console.log('getRouteMap: No origin or destination');
+            resolve(null);
+            return;
+        }
+
+        const cacheKey = `routemap_${btoa(unescape(encodeURIComponent(origin + '|' + destination)))}`;
+        const cached = localStorage.getItem(cacheKey); // Change to localStorage
+        if (cached) {
+            try { resolve(JSON.parse(cached)); return; } catch { /* ignore */ }
+        }
+
+        console.log('getRouteMap: Fetching', origin, '->', destination);
+        fetchWithRetry(`${API_URL}?action=getRouteMap&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`)
+            .then(res => res.json())
+            .then(json => {
+                console.log('getRouteMap response:', json);
+                if (json.status === 'success' && json.data) {
+                    try { localStorage.setItem(cacheKey, JSON.stringify(json.data)); } catch { /* ignore */ } // Change to localStorage
+                    resolve(json.data);
+                } else {
+                    console.log('getRouteMap failed:', json.error);
+                    resolve(null);
+                }
+            })
+            .catch(err => {
+                console.error('getRouteMap fetch error:', err);
+                resolve(null);
+            });
+    }),
 
     // Upload Events CSV
     uploadEvents: (csvData) => new Promise((resolve, reject) => {
         const params = new URLSearchParams();
         params.append('action', 'uploadEvents');
         params.append('data', csvData);
-        fetch(API_URL, {
+        fetchWithRetry(API_URL, {
             method: 'POST',
             body: params
         })
@@ -124,14 +196,14 @@ const server = {
         const cacheKey = `weather_${date}_${btoa(unescape(encodeURIComponent(location)))}`;
         const cached = sessionStorage.getItem(cacheKey);
         if (cached) {
-            try { resolve(JSON.parse(cached)); return; } catch (e) { }
+            try { resolve(JSON.parse(cached)); return; } catch { /* ignore */ }
         }
 
-        fetch(`${API_URL}?action=getWeather&date=${encodeURIComponent(date)}&location=${encodeURIComponent(location)}`)
+        fetchWithRetry(`${API_URL}?action=getWeather&date=${encodeURIComponent(date)}&location=${encodeURIComponent(location)}`)
             .then(res => res.json())
             .then(json => {
                 if (json.status === 'success' && json.data) {
-                    try { sessionStorage.setItem(cacheKey, JSON.stringify(json.data)); } catch (e) { }
+                    try { sessionStorage.setItem(cacheKey, JSON.stringify(json.data)); } catch { /* ignore */ }
                     resolve(json.data);
                 } else {
                     resolve({ error: json.error?.message || 'Failed to get weather' });
@@ -142,7 +214,7 @@ const server = {
 
     // Packing list operations
     getPackingList: () => new Promise((resolve) => {
-        fetch(`${API_URL}?action=getPackingList`)
+        fetchWithRetry(`${API_URL}?action=getPackingList`)
             .then(res => res.json())
             .then(json => resolve(json.status === 'success' ? json.data : []))
             .catch(() => resolve([]));
@@ -158,7 +230,7 @@ const server = {
             assignee: item.assignee || '',
             isChecked: item.isChecked
         });
-        fetch(`${API_URL}?${params.toString()}`)
+        fetchWithRetry(`${API_URL}?${params.toString()}`)
             .then(res => res.json())
             .then(json => {
                 if (json.status === 'success') resolve(json.data);
@@ -168,7 +240,7 @@ const server = {
     }),
 
     deletePackingItem: (id) => new Promise((resolve, reject) => {
-        fetch(`${API_URL}?action=deletePackingItem&id=${encodeURIComponent(id)}`)
+        fetchWithRetry(`${API_URL}?action=deletePackingItem&id=${encodeURIComponent(id)}`)
             .then(res => res.json())
             .then(json => {
                 if (json.status === 'success') resolve({ success: true });
@@ -186,7 +258,7 @@ const server = {
         const params = new URLSearchParams();
         params.append('action', 'batchUpdateEvents');
         params.append('updates', JSON.stringify(updates));
-        fetch(API_URL, {
+        fetchWithRetry(API_URL, {
             method: 'POST',
             body: params
         })
@@ -203,7 +275,7 @@ const server = {
         const params = new URLSearchParams();
         params.append('action', 'addEvent');
         params.append('eventData', JSON.stringify(eventData));
-        fetch(API_URL, {
+        fetchWithRetry(API_URL, {
             method: 'POST',
             body: params
         })
@@ -218,7 +290,7 @@ const server = {
     // Delete a specific event
     deleteEvent: (date, eventId) => new Promise((resolve, reject) => {
         const params = new URLSearchParams({ action: 'deleteEvent', date, eventId });
-        fetch(`${API_URL}?${params.toString()}`)
+        fetchWithRetry(`${API_URL}?${params.toString()}`)
             .then(res => res.json())
             .then(json => {
                 if (json.status === 'success') resolve(json.data);
@@ -232,7 +304,7 @@ const server = {
         const params = new URLSearchParams();
         params.append('action', 'batchUpdatePackingItems');
         params.append('items', JSON.stringify(items));
-        fetch(API_URL, {
+        fetchWithRetry(API_URL, {
             method: 'POST',
             body: params
         })

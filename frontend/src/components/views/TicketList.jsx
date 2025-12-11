@@ -40,7 +40,7 @@ const getCategoryIcon = (category, type) => {
 // Simple Ticket Card
 const SimpleTicketCard = ({ event, isBooked, onSearchClick }) => {
     const [copied, setCopied] = useState(false);
-    const IconComponent = getCategoryIcon(event.category, event.type);
+    const CategoryIcon = getCategoryIcon(event.category, event.type);
     const daysUntil = getDaysUntil(event.date);
     const isPast = daysUntil < 0;
 
@@ -80,7 +80,7 @@ const SimpleTicketCard = ({ event, isBooked, onSearchClick }) => {
                     </div>
                     <h3 className="font-bold text-gray-800 dark:text-white text-base break-words">{event.name}</h3>
                     <div className="flex items-center gap-1.5 mt-1 text-sm text-gray-500 dark:text-slate-400">
-                        <IconComponent size={14} />
+                        {React.createElement(CategoryIcon, { size: 14 })}
                         <span className="break-words">{event.details || event.category}</span>
                     </div>
 

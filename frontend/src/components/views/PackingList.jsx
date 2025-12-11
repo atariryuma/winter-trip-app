@@ -190,7 +190,7 @@ export default function PackingList() {
             const expenses = JSON.parse(localStorage.getItem('expenses') || '[]');
             const filtered = expenses.filter(e => e.id !== `shop-${id}`);
             localStorage.setItem('expenses', JSON.stringify(filtered));
-        } catch (err) { /* ignore localStorage errors */ }
+        } catch { /* ignore localStorage errors */ }
     };
 
     // Packing stats

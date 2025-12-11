@@ -24,7 +24,7 @@ export const getMidTime = (t1, t2) => {
 
 export const parseDate = (dateStr) => {
     // Format: "12/28" or "1/1"
-    const [month, day] = dateStr.split('/').map(Number);
+    const [month] = dateStr.split('/').map(Number);
     // Assume year based on month: 10-12 = current year end, 1-9 = next year start
     // Ideally this logic should be more robust or take a base year
     const now = new Date();

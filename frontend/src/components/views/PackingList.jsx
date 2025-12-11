@@ -176,7 +176,7 @@ export default function PackingList() {
             const expenses = JSON.parse(localStorage.getItem('expenses') || '[]');
             const filtered = expenses.filter(e => e.id !== `shop-${id}`);
             localStorage.setItem('expenses', JSON.stringify(filtered));
-        } catch { }
+        } catch (err) { /* ignore localStorage errors */ }
     };
 
     // Packing stats
@@ -230,8 +230,8 @@ export default function PackingList() {
                     <button
                         onClick={() => setActiveTab('packing')}
                         className={`flex-1 py-3 text-center font-bold text-sm transition-colors ${activeTab === 'packing'
-                                ? 'text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600'
-                                : 'text-gray-400 dark:text-slate-500'
+                            ? 'text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600'
+                            : 'text-gray-400 dark:text-slate-500'
                             }`}
                     >
                         <Package size={16} className="inline mr-1.5 -mt-0.5" />
@@ -240,8 +240,8 @@ export default function PackingList() {
                     <button
                         onClick={() => setActiveTab('shopping')}
                         className={`flex-1 py-3 text-center font-bold text-sm transition-colors ${activeTab === 'shopping'
-                                ? 'text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600'
-                                : 'text-gray-400 dark:text-slate-500'
+                            ? 'text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600'
+                            : 'text-gray-400 dark:text-slate-500'
                             }`}
                     >
                         <ShoppingBag size={16} className="inline mr-1.5 -mt-0.5" />

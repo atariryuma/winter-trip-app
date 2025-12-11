@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Trash2, Save, MapPin } from 'lucide-react';
+import { X, Trash2, Save, MapPin, Navigation } from 'lucide-react';
 
 /**
  * EditModal with From/To fields for transport events
@@ -36,34 +36,24 @@ const EditModal = ({ isOpen, onClose, item, onSave, onDelete, previousEvent }) =
             return;
         }
 
-        try {
-            // Using Places Autocomplete via CORS proxy or directly if allowed
-            // For production, use Google Places Autocomplete Service
-            // Here we'll use a simple approach with the Places API
-            const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&key=${API_KEY}&language=ja&components=country:jp`;
+        // Note: Direct Google Places API call would fail due to CORS.
+        // Using fallback with common Japanese locations
+        const commonPlaces = [
+            '中部国際空港 (セントレア)',
+            '名古屋駅',
+            '那覇空港',
+            '東京駅',
+            '新宿駅',
+            '京都駅',
+            '大阪駅',
+            '博多駅',
+            '札幌駅',
+            '高山駅',
+            '下呂駅',
+            '飛騨古川駅'
+        ].filter(p => p.toLowerCase().includes(query.toLowerCase()));
 
-            // Note: Direct call will fail due to CORS. In production, use a serverless proxy.
-            // For now, we'll provide a fallback with common Japanese locations
-            const commonPlaces = [
-                '中部国際空港 (セントレア)',
-                '名古屋駅',
-                '那覇空港',
-                '東京駅',
-                '新宿駅',
-                '京都駅',
-                '大阪駅',
-                '博多駅',
-                '札幌駅',
-                '高山駅',
-                '下呂駅',
-                '飛騨古川駅'
-            ].filter(p => p.toLowerCase().includes(query.toLowerCase()));
-
-            setToSuggestions(commonPlaces.slice(0, 5));
-        } catch (error) {
-            console.error('Failed to fetch suggestions:', error);
-            setToSuggestions([]);
-        }
+        setToSuggestions(commonPlaces.slice(0, 5));
     };
 
     // Handle "to" input change with debounce

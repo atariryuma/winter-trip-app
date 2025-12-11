@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { DollarSign, Target, Wallet, PlusCircle, X, Check, AlertCircle, User } from 'lucide-react';
 import server from '../../api/gas';
 
@@ -74,8 +74,8 @@ const BudgetView = ({ itinerary, onForceReload }) => {
         );
     }, [itinerary]);
 
-    // Events without payment (for quick add)
-    const unpaidEvents = useMemo(() => allEvents.filter(e => !e.hasPaid), [allEvents]);
+    // Events without payment (for quick add) - used in modal
+    const _unpaidEvents = useMemo(() => allEvents.filter(e => !e.hasPaid), [allEvents]);
 
     // Collect all expenses from events
     const expenses = useMemo(() => {

@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { initialItinerary } from '../data/initialData';
 import { generateId, toMinutes, toTimeStr, getMidTime } from '../utils';
-import { getIcon, getWeatherIcon } from './common/IconHelper';
+import { getIcon } from './common/IconHelper';
 import StatusBadge from './common/StatusBadge';
 import LoadingSpinner from './common/LoadingSpinner';
 import PortraitLock from './common/PortraitLock';
@@ -84,8 +84,6 @@ export default function TravelApp() {
     const [itinerary, setItinerary] = useState([]);
     const [selectedDayId, setSelectedDayId] = useState(null);
     const [activeTab, setActiveTab] = useState('timeline');
-    const [mapUrl, setMapUrl] = useState(null);
-    const [mapError, setMapError] = useState(null);
     const [isEditMode, setIsEditMode] = useState(false);
     const [selectedPlaceEvent, setSelectedPlaceEvent] = useState(null);
     const [scrollDirection, setScrollDirection] = useState('up');

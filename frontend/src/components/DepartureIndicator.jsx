@@ -90,12 +90,11 @@ const DepartureIndicator = ({ prevHotel, firstEvent }) => {
     return (
         <div className="flex items-center py-2 pl-6">
             <div className="w-0.5 h-8 bg-gray-200 dark:bg-slate-700 relative">
-                <div className="absolute left-3 top-1/2 -translate-y-1/2 whitespace-nowrap">
-                    <div className={`inline-flex items-center gap-2 text-sm font-bold px-3 py-1.5 rounded-full border shadow-sm ${
-                        isWarning
-                            ? 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 border-red-100 dark:border-red-800'
-                            : 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 border-indigo-100 dark:border-indigo-800'
-                    }`}>
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 max-w-[calc(100vw-5rem)]">
+                    <div className={`inline-flex items-center gap-2 text-sm font-bold px-3 py-1.5 rounded-full border shadow-sm max-w-full ${isWarning
+                        ? 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 border-red-100 dark:border-red-800'
+                        : 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 border-indigo-100 dark:border-indigo-800'
+                        }`}>
                         {loading ? (
                             <span className="text-xs opacity-70">計算中...</span>
                         ) : recommendedTime && (
@@ -104,7 +103,7 @@ const DepartureIndicator = ({ prevHotel, firstEvent }) => {
                                 {recommendedTime}
                             </span>
                         )}
-                        <span>{prevHotel.name} 出発</span>
+                        <span className="truncate min-w-0">{prevHotel.name} 出発</span>
                     </div>
                 </div>
             </div>

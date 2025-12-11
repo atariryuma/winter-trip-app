@@ -1058,7 +1058,7 @@ export default function TravelApp() {
                         {activeTab !== 'timeline' && activeTab !== 'settings' && (
                             <PullToRefresh onRefresh={() => fetchData(false)}>
                                 <main className="pt-[calc(4rem+env(safe-area-inset-top))] lg:pt-8 pb-32 lg:pb-8 pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] overflow-x-hidden">
-                                    <div className="max-w-full lg:max-w-7xl 2xl:max-w-screen-2xl mx-auto w-full px-4 sm:px-6 lg:px-8 2xl:px-12 overflow-x-hidden">
+                                    <div className="max-w-full lg:max-w-7xl 2xl:max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 2xl:px-12 overflow-x-hidden">
                                         {activeTab === 'tickets' && <TicketList itinerary={itinerary} onForceReload={fetchData} />}
                                         {activeTab === 'budget' && <BudgetView itinerary={itinerary} onForceReload={fetchData} />}
                                         {activeTab === 'packing' && <PackingList />}
@@ -1085,7 +1085,7 @@ export default function TravelApp() {
 
                     {/* ========== BOTTOM NAV (Mobile only) - Hidden in landscape ========== */}
                     <nav className={`lg:hidden landscape-hide-footer fixed bottom-0 left-0 right-0 z-fixed bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800 transition-transform duration-300 pb-[env(safe-area-inset-bottom)] ${scrollDirection === 'down' ? 'translate-y-full' : 'translate-y-0'}`}>
-                        <div className="flex justify-around items-center h-[5.5rem] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))] pb-2">
+                        <div className="flex justify-around items-center h-16 pt-1 pb-1 pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]">
                             {[
                                 { id: 'timeline', icon: Calendar },
                                 { id: 'packing', icon: Package },

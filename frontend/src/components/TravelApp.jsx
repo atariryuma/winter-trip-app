@@ -192,8 +192,6 @@ export default function TravelApp() {
                 daysData = data;
             } else if (data && data.days) {
                 daysData = data.days;
-                if (data.mapUrl) setMapUrl(data.mapUrl);
-                if (data.mapError) setMapError(data.mapError);
             }
 
             if (daysData && daysData.length > 0) {
@@ -699,11 +697,6 @@ export default function TravelApp() {
 
                                     {/* Mobile Events List */}
                                     <div className="px-4 sm:px-6 space-y-6 pb-24">
-                                        {mapError && (
-                                            <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm p-4 rounded-xl flex items-center gap-2">
-                                                <span>⚠️ マップの読み込みに失敗しました</span>
-                                            </div>
-                                        )}
                                         <DynamicSummary day={selectedDay} events={sortedEvents} dayIdx={dayIndex} />
 
                                         {/* Event List */}

@@ -210,7 +210,7 @@ const ExpandableEventCard = ({
                     transform: isExpanded ? 'translateY(0)' : 'translateY(-10px)'
                 }}
             >
-                <div className="px-4 pb-4 space-y-3">
+                <div className="px-4 pb-4 space-y-3 overflow-hidden">
                     {/* Map Image */}
                     {loadingMap ? (
                         <div className="h-28 bg-gray-100 dark:bg-slate-700 rounded-xl animate-pulse flex items-center justify-center">

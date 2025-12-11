@@ -108,13 +108,21 @@ function doPost(e) {
     try {
         const action = e.parameter?.action;
 
-        // Handle CSV uploads
-
-        if (action === 'uploadEvents') {
-            return handleUploadEvents(e);
+        // Route incremental update APIs
+        switch (action) {
+            case 'batchUpdateEvents':
+                return handleBatchUpdateEvents(e);
+            case 'addEvent':
+                return handleAddEvent(e);
+            case 'updateDay':
+                return handleUpdateDay(e);
+            case 'batchUpdatePackingItems':
+                return handleBatchUpdatePackingItems(e);
+            case 'uploadEvents':
+                return handleUploadEvents(e);
         }
 
-        // Default: save itinerary data
+        // Default: save itinerary data (full save)
         let jsonString;
         if (e.parameter?.data) {
             jsonString = e.parameter.data;
@@ -777,7 +785,8 @@ function autoFillAllMissingDetails() {
 // ============================================================================
 
 /**
- * Batch update multiple events - much faster than full rewrite
+ * Batch update multiple events - true batch processing (single write)
+ * GAS Best Practice: Read all → Modify in memory → Write all once
  */
 function handleBatchUpdateEvents(e) {
     try {
@@ -798,28 +807,29 @@ function handleBatchUpdateEvents(e) {
             return createApiResponse('error', null, { message: 'No data to update' });
         }
 
-        // Get all event data once (batch read)
+        // 1. Batch read: Get all data once
         const allData = eventsSheet.getRange(2, 1, lastRow - 1, 12).getValues();
         let updateCount = 0;
+        let modified = false;
 
-        // Process each update
+        // 2. Modify in memory
         updates.forEach(update => {
             const { date, eventId, eventData } = update;
 
             // Find the row index
-            const rowIndex = allData.findIndex((row, idx) => {
+            const rowIndex = allData.findIndex((row) => {
                 const rowDate = toString(row[0]);
                 const rowName = toString(row[3]);
                 return rowDate === date && (eventId ? rowName === eventId : true);
             });
 
             if (rowIndex !== -1) {
-                // Update the event data
+                // Update the event data in memory
                 const budget = eventData.budgetAmount
                     ? `${eventData.budgetAmount}/${eventData.budgetPaidBy || ''}`
                     : '';
 
-                const rowData = [
+                allData[rowIndex] = [
                     date,
                     eventData.type || allData[rowIndex][1],
                     eventData.category || allData[rowIndex][2],
@@ -833,12 +843,15 @@ function handleBatchUpdateEvents(e) {
                     eventData.details !== undefined ? eventData.details : allData[rowIndex][10],
                     budget || allData[rowIndex][11]
                 ];
-
-                // Write single row (much faster than full sheet rewrite)
-                eventsSheet.getRange(rowIndex + 2, 1, 1, 12).setValues([rowData]);
                 updateCount++;
+                modified = true;
             }
         });
+
+        // 3. Batch write: Write all data back in a single call
+        if (modified) {
+            eventsSheet.getRange(2, 1, allData.length, 12).setValues(allData);
+        }
 
         // Invalidate cache
         CacheService.getScriptCache().remove('itinerary_json');
@@ -1080,7 +1093,8 @@ function generateStaticMapUrl(locations) {
 // ============================================================================
 
 /**
- * Batch update multiple packing items - much faster than individual updates
+ * Batch update multiple packing items - true batch processing (single write)
+ * GAS Best Practice: Read all → Modify in memory → Write all once
  */
 function handleBatchUpdatePackingItems(e) {
     try {
@@ -1100,15 +1114,17 @@ function handleBatchUpdatePackingItems(e) {
         const lastRow = sheet.getLastRow();
         const now = new Date();
 
-        // Get all existing IDs if there are rows
-        const existingIds = lastRow >= 2
-            ? sheet.getRange(2, 1, lastRow - 1, 1).getValues().flat()
+        // 1. Batch read: Get all existing data
+        let allData = lastRow >= 2
+            ? sheet.getRange(2, 1, lastRow - 1, 7).getValues()
             : [];
 
-        const rowsToUpdate = [];
+        const existingIds = allData.map(row => row[0]);
         const rowsToAppend = [];
+        let updateCount = 0;
+        let modified = false;
 
-        // Process each item
+        // 2. Modify in memory
         items.forEach(item => {
             const rowData = [
                 item.id || Utilities.getUuid(),
@@ -1123,8 +1139,10 @@ function handleBatchUpdatePackingItems(e) {
             if (item.id) {
                 const rowIndex = existingIds.indexOf(item.id);
                 if (rowIndex !== -1) {
-                    // Update existing row
-                    rowsToUpdate.push({ index: rowIndex + 2, data: rowData });
+                    // Update in memory
+                    allData[rowIndex] = rowData;
+                    updateCount++;
+                    modified = true;
                 } else {
                     // New item
                     rowsToAppend.push(rowData);
@@ -1135,18 +1153,18 @@ function handleBatchUpdatePackingItems(e) {
             }
         });
 
-        // Batch update existing rows
-        rowsToUpdate.forEach(({ index, data }) => {
-            sheet.getRange(index, 1, 1, 7).setValues([data]);
-        });
+        // 3. Batch write: Write all existing data back in single call
+        if (modified && allData.length > 0) {
+            sheet.getRange(2, 1, allData.length, 7).setValues(allData);
+        }
 
-        // Batch append new rows
+        // 4. Batch append: Append all new rows in single call
         if (rowsToAppend.length > 0) {
             sheet.getRange(sheet.getLastRow() + 1, 1, rowsToAppend.length, 7).setValues(rowsToAppend);
         }
 
         return createApiResponse('success', {
-            updated: rowsToUpdate.length,
+            updated: updateCount,
             added: rowsToAppend.length
         });
     } catch (error) {

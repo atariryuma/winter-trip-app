@@ -238,6 +238,9 @@ export default function TravelApp() {
     };
 
     const handleSaveEvent = async (newItem) => {
+        // Save previous state for rollback
+        const previousItinerary = [...itinerary];
+
         // Optimistically update UI immediately
         let targetDay, isEdit = !!editItem;
         setItinerary(prev => {
@@ -271,7 +274,9 @@ export default function TravelApp() {
             }
         } catch (err) {
             console.error('Save error:', err);
-            alert('保存に失敗しました。ネット接続を確認してください。');
+            // Rollback UI on error
+            setItinerary(previousItinerary);
+            alert('保存に失敗しました。変更を元に戻しました。');
         } finally {
             setSaving(false);
         }
@@ -280,6 +285,9 @@ export default function TravelApp() {
     const handleDeleteEvent = async (id) => {
         if (!window.confirm("この予定を削除しますか？")) return;
         if (!window.confirm("本当に削除しますか？\nこの操作は取り消せません。")) return;
+
+        // Save previous state for rollback
+        const previousItinerary = [...itinerary];
 
         // Find the event to delete
         let eventToDelete, dayDate;
@@ -304,7 +312,9 @@ export default function TravelApp() {
                 await server.deleteEvent(dayDate, eventToDelete.name);
             } catch (err) {
                 console.error('Delete error:', err);
-                alert('削除に失敗しました。ネット接続を確認してください。');
+                // Rollback UI on error
+                setItinerary(previousItinerary);
+                alert('削除に失敗しました。変更を元に戻しました。');
             } finally {
                 setSaving(false);
             }
@@ -785,11 +795,10 @@ export default function TravelApp() {
                                             <button
                                                 onClick={addNewDay}
                                                 disabled={!isEditMode}
-                                                className={`flex-shrink-0 h-10 flex items-center justify-center rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-800/40 transition-all duration-300 ease-out active:scale-95 overflow-hidden ${
-                                                    isEditMode
-                                                        ? 'opacity-100 scale-100 pointer-events-auto w-10 delay-150'
-                                                        : 'opacity-0 scale-90 pointer-events-none w-0'
-                                                }`}
+                                                className={`flex-shrink-0 h-10 flex items-center justify-center rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-800/40 transition-all duration-300 ease-out active:scale-95 overflow-hidden ${isEditMode
+                                                    ? 'opacity-100 scale-100 pointer-events-auto w-10 delay-150'
+                                                    : 'opacity-0 scale-90 pointer-events-none w-0'
+                                                    }`}
                                                 aria-label="新しい日を追加"
                                             >
                                                 <Plus size={18} />

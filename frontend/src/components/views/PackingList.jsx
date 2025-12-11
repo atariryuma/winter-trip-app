@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
     CheckCircle2, Circle, Plus, Trash2, Loader2, X,
@@ -43,6 +43,9 @@ export default function PackingList() {
     const [newShoppingItem, setNewShoppingItem] = useState({
         name: '', category: 'souvenir', recipient: '', buyer: '', price: '', isPurchased: false
     });
+
+    // Lock to prevent double-toggle race condition
+    const toggleLock = useRef(new Set());
 
     // Save shopping list to localStorage
     useEffect(() => {
@@ -139,33 +142,43 @@ export default function PackingList() {
     };
 
     const handleToggleShoppingPurchased = (item) => {
-        const updated = { ...item, isPurchased: !item.isPurchased };
+        // Prevent double-toggle race condition
+        if (toggleLock.current.has(item.id)) return;
 
-        // If marking as purchased and it's a souvenir with price, add to budget
-        if (updated.isPurchased && updated.category === 'souvenir' && updated.price > 0) {
-            // Add to expenses in localStorage (Budget reads from here)
-            try {
-                const expenses = JSON.parse(localStorage.getItem('expenses') || '[]');
-                const newExpense = {
-                    id: `shop-${item.id}`,
-                    name: `${item.name}${item.recipient ? ` (→${item.recipient})` : ''}`,
-                    amount: updated.price,
-                    category: 'souvenir',
-                    paidBy: updated.buyer || '未設定',
-                    date: new Date().toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' }),
-                    eventId: null
-                };
-                // Avoid duplicates
-                if (!expenses.find(e => e.id === newExpense.id)) {
-                    expenses.push(newExpense);
-                    localStorage.setItem('expenses', JSON.stringify(expenses));
+        toggleLock.current.add(item.id);
+
+        try {
+            const updated = { ...item, isPurchased: !item.isPurchased };
+
+            // If marking as purchased and it's a souvenir with price, add to budget
+            if (updated.isPurchased && updated.category === 'souvenir' && updated.price > 0) {
+                // Add to expenses in localStorage (Budget reads from here)
+                try {
+                    const expenses = JSON.parse(localStorage.getItem('expenses') || '[]');
+                    const newExpense = {
+                        id: `shop-${item.id}`,
+                        name: `${item.name}${item.recipient ? ` (→${item.recipient})` : ''}`,
+                        amount: updated.price,
+                        category: 'souvenir',
+                        paidBy: updated.buyer || '未設定',
+                        date: new Date().toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' }),
+                        eventId: null
+                    };
+                    // Avoid duplicates
+                    if (!expenses.find(e => e.id === newExpense.id)) {
+                        expenses.push(newExpense);
+                        localStorage.setItem('expenses', JSON.stringify(expenses));
+                    }
+                } catch (err) {
+                    console.error('Failed to add to budget:', err);
                 }
-            } catch (err) {
-                console.error('Failed to add to budget:', err);
             }
-        }
 
-        setShoppingItems(prev => prev.map(i => i.id === item.id ? updated : i));
+            setShoppingItems(prev => prev.map(i => i.id === item.id ? updated : i));
+        } finally {
+            // Remove lock after a short delay to prevent rapid re-clicks
+            setTimeout(() => toggleLock.current.delete(item.id), 300);
+        }
     };
 
     const handleDeleteShoppingItem = (id) => {
@@ -423,8 +436,8 @@ export default function PackingList() {
 
             {/* Packing Add Modal - iOS Bottom Sheet Style */}
             {isAddModalOpen && createPortal(
-                <div className="fixed inset-0 z-overlay flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4" onClick={() => setIsAddModalOpen(false)}>
-                    <div className="bg-white dark:bg-slate-800 w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[90vh] animate-slide-up" onClick={e => e.stopPropagation()}>
+                <div className="fixed inset-0 z-modal flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4" onClick={() => setIsAddModalOpen(false)}>
+                    <div className="bg-white dark:bg-slate-800 w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[90vh] animate-slide-up-spring" onClick={e => e.stopPropagation()}>
                         {/* Grabber */}
                         <div className="flex justify-center pt-3 pb-1 sm:hidden">
                             <div className="w-9 h-1 bg-gray-300 dark:bg-slate-600 rounded-full" />
@@ -482,8 +495,8 @@ export default function PackingList() {
             {/* Shopping Add Modal - iOS Bottom Sheet Style */}
             {
                 isShoppingModalOpen && createPortal(
-                    <div className="fixed inset-0 z-overlay flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4" onClick={() => setIsShoppingModalOpen(false)}>
-                        <div className="bg-white dark:bg-slate-800 w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[90vh] animate-slide-up" onClick={e => e.stopPropagation()}>
+                    <div className="fixed inset-0 z-modal flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4" onClick={() => setIsShoppingModalOpen(false)}>
+                        <div className="bg-white dark:bg-slate-800 w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[90vh] animate-slide-up-spring" onClick={e => e.stopPropagation()}>
                             {/* Grabber */}
                             <div className="flex justify-center pt-3 pb-1 sm:hidden">
                                 <div className="w-9 h-1 bg-gray-300 dark:bg-slate-600 rounded-full" />

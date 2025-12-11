@@ -122,8 +122,23 @@ a,
   }
 }
 
+/* IOS Spring Animation (Nyoki) */
+@keyframes slide-up-spring {
+  0% {
+    transform: translateY(100%);
+  }
+
+  100% {
+    transform: translateY(0);
+  }
+}
+
 .animate-slide-up {
   animation: slide-up 0.3s ease-out;
+}
+
+.animate-slide-up-spring {
+  animation: slide-up-spring 0.5s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 .animate-fade-in {

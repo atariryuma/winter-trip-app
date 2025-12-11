@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { RefreshCw } from 'lucide-react';
 
 /**
@@ -80,6 +80,14 @@ export default function PullToRefresh({
         }
     }, [isPulling, pullDistance, onRefresh]);
 
+    // Cleanup on unmount to prevent state updates on unmounted component
+    useEffect(() => {
+        return () => {
+            setIsPulling(false);
+            setPullDistance(0);
+        };
+    }, []);
+
     const progress = Math.min(pullDistance / (THRESHOLD / RESISTANCE), 1);
     const shouldTrigger = progress >= 1;
 
@@ -96,7 +104,7 @@ export default function PullToRefresh({
             <div
                 className="absolute left-0 right-0 flex items-center justify-center pointer-events-none transition-opacity duration-200"
                 style={{
-                    top: 0,
+                    top: '0.5rem',
                     height: `${Math.max(pullDistance, 0)}px`,
                     opacity: pullDistance > 10 ? 1 : 0,
                     zIndex: 50

@@ -69,6 +69,32 @@ const server = {
             .catch(e => reject(new Error(e.message)));
     }),
 
+    // Get place autocomplete suggestions
+    getPlaceAutocomplete: (input) => new Promise((resolve) => {
+        if (!input?.trim() || input.length < 2) {
+            resolve({ predictions: [] });
+            return;
+        }
+
+        const cacheKey = `autocomplete_${btoa(unescape(encodeURIComponent(input)))}`;
+        const cached = sessionStorage.getItem(cacheKey);
+        if (cached) {
+            try { resolve(JSON.parse(cached)); return; } catch (e) { }
+        }
+
+        fetch(`${API_URL}?action=getPlaceAutocomplete&input=${encodeURIComponent(input)}`)
+            .then(res => res.json())
+            .then(json => {
+                if (json.status === 'success' && json.data) {
+                    try { sessionStorage.setItem(cacheKey, JSON.stringify(json.data)); } catch (e) { }
+                    resolve(json.data);
+                } else {
+                    resolve({ predictions: [] });
+                }
+            })
+            .catch(() => resolve({ predictions: [] }));
+    }),
+
 
 
     // Upload Events CSV

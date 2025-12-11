@@ -59,6 +59,8 @@ function doGet(e) {
                 return handleValidatePasscode(e);
             case 'getPlaceInfo':
                 return handleGetPlaceInfo(e);
+            case 'getPlaceAutocomplete':
+                return handleGetPlaceAutocomplete(e);
             case 'updateEvent':
                 return handleUpdateEvent(e);
             case 'getWeather':
@@ -648,6 +650,85 @@ function handleGetWeather(e) {
 // PLACES API
 // ============================================================================
 
+function handleGetPlaceAutocomplete(e) {
+    const input = e.parameter.input || '';
+    if (!input) return createApiResponse('error', null, { message: 'No input provided' });
+    return createApiResponse('success', getPlaceAutocomplete(input));
+}
+
+/**
+ * Get place autocomplete suggestions using Google Places API (New)
+ * Returns array of suggestions with description and placeId
+ */
+function getPlaceAutocomplete(input) {
+    if (!input || input.trim() === '' || input.length < 2) {
+        return { predictions: [] };
+    }
+
+    const cache = CacheService.getScriptCache();
+    const cacheKey = 'autocomplete_' + Utilities.base64Encode(Utilities.newBlob(input).getBytes());
+
+    try {
+        const cached = cache.get(cacheKey);
+        if (cached) return JSON.parse(cached);
+    } catch (e) { }
+
+    const API_KEY = PropertiesService.getScriptProperties().getProperty('GOOGLE_MAPS_API_KEY');
+
+    if (!API_KEY) {
+        return { predictions: [], error: 'API key not configured' };
+    }
+
+    try {
+        const autocompleteUrl = 'https://places.googleapis.com/v1/places:autocomplete';
+        const payload = {
+            input: input,
+            languageCode: 'ja',
+            regionCode: 'JP',
+            locationBias: {
+                circle: {
+                    center: { latitude: 36.0, longitude: 138.0 },
+                    radius: 800000.0
+                }
+            }
+        };
+
+        const response = UrlFetchApp.fetch(autocompleteUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Goog-Api-Key': API_KEY
+            },
+            payload: JSON.stringify(payload),
+            muteHttpExceptions: true
+        });
+
+        if (response.getResponseCode() === 200) {
+            const data = JSON.parse(response.getContentText());
+
+            const result = {
+                predictions: (data.suggestions || []).map(s => ({
+                    description: s.placePrediction?.text?.text || s.placePrediction?.structuredFormat?.mainText?.text || '',
+                    placeId: s.placePrediction?.placeId || null
+                })).filter(p => p.description)
+            };
+
+            // Cache for 1 hour
+            try {
+                cache.put(cacheKey, JSON.stringify(result), 3600);
+            } catch (e) { }
+
+            return result;
+        } else {
+            Logger.log('Autocomplete API error: ' + response.getContentText());
+            return { predictions: [], error: 'API request failed' };
+        }
+    } catch (e) {
+        Logger.log('Autocomplete error: ' + e);
+        return { predictions: [], error: e.toString() };
+    }
+}
+
 function handleGetPlaceInfo(e) {
     const query = e.parameter.query || '';
     if (!query) return createApiResponse('error', null, { message: 'No query provided' });
@@ -758,48 +839,6 @@ function getPlaceInfo(query) {
     } catch (e) { }
 
     return placeInfo;
-}
-
-/**
- * Auto-fill location details for events
- */
-function autoFillAllMissingDetails() {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const eventsSheet = ss.getSheetByName(EVENTS_SHEET);
-
-    if (!eventsSheet) return 0;
-
-    const lastRow = eventsSheet.getLastRow();
-    if (lastRow < 2) return 0;
-
-    const data = eventsSheet.getRange(2, 1, lastRow - 1, 12).getValues();
-    let count = 0;
-
-    data.forEach((row, idx) => {
-        const [date, type, category, name, time, endTime, from, to, status, bookingRef, memo, budget] = row;
-
-        if (memo && toString(memo).includes('📍')) return;
-
-        let targetName = toString(name);
-        if (type === 'transport') {
-            targetName = toString(from) || toString(to);
-        }
-
-        if (targetName) {
-            try {
-                const info = getPlaceInfo(targetName);
-                if (info && info.found && info.formattedAddress) {
-                    const newMemo = memo
-                        ? `${toString(memo)}\n📍 ${info.formattedAddress}`
-                        : `📍 ${info.formattedAddress}`;
-                    eventsSheet.getRange(idx + 2, 11).setValue(newMemo);
-                    count++;
-                }
-            } catch (e) { }
-        }
-    });
-
-    return count;
 }
 
 // ============================================================================
@@ -1055,14 +1094,14 @@ function handleMoveEvent(e) {
                 // Update date (column 1)
                 eventsSheet.getRange(rowIndex, 1).setValue(newDate);
 
-                // Update start time if provided (column 2)
+                // Update start time if provided (column 5)
                 if (newStartTime !== undefined && newStartTime !== null) {
-                    eventsSheet.getRange(rowIndex, 2).setValue(newStartTime);
+                    eventsSheet.getRange(rowIndex, 5).setValue(newStartTime);
                 }
 
-                // Update end time if provided (column 3)
+                // Update end time if provided (column 6)
                 if (newEndTime !== undefined && newEndTime !== null) {
-                    eventsSheet.getRange(rowIndex, 3).setValue(newEndTime);
+                    eventsSheet.getRange(rowIndex, 6).setValue(newEndTime);
                 }
 
                 // Invalidate cache

@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef, useMemo, Suspense, lazy } from 'react';
-const PlaceDetailModal = React.lazy(() => import('./views/PlaceDetailModal'));
+import EventDetailModal from './EventDetailModal';
 import {
     Calendar, Map, Settings as SettingsIcon,
     Plane, Train, Bus, Hotel, MapPin, Utensils, Ticket,
-    Plus, ArrowRight, Wallet, CheckCircle, Search,
-    Copy, X, Edit3, Save, Navigation, Package, ChevronRight, Trash2
+    Plus, ArrowRight, Wallet, CheckCircle,
+    X, Edit3, Save, Navigation, Package, ChevronRight, Trash2
 } from 'lucide-react';
 import { initialItinerary } from '../data/initialData';
 import { generateId, toMinutes, toTimeStr, getMidTime } from '../utils';
@@ -21,7 +21,6 @@ import server from '../api/gas';
 const TicketList = lazy(() => import('./views/TicketList'));
 const SettingsView = lazy(() => import('./views/SettingsView'));
 const PackingList = lazy(() => import('./views/PackingList'));
-const EmergencyContacts = lazy(() => import('./views/EmergencyContacts'));
 const BudgetView = lazy(() => import('./views/BudgetView'));
 
 // Helper: Determine event type from category
@@ -58,23 +57,224 @@ const TimeConnector = ({ duration, isEditMode, onInsert }) => {
         <div className="flex items-center py-2 pl-6">
             {/* Vertical line with insert button */}
             <div className="w-0.5 h-10 bg-gray-200 dark:bg-slate-700 relative">
-                {/* Insert button in edit mode */}
-                {isEditMode && onInsert && (
-                    <button
-                        onClick={onInsert}
-                        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-indigo-700 active:scale-95 transition-all z-content"
-                    >
-                        <Plus size={14} />
-                    </button>
-                )}
-                {/* Duration badge - shown when not in edit mode */}
-                {!isEditMode && durationText && (
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 whitespace-nowrap">
+                {/* Insert button in edit mode - Pop animation */}
+                <div className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transition-all duration-300 cubic-bezier(0.175, 0.885, 0.32, 1.275) ${isEditMode ? 'opacity-100 scale-100 z-10' : 'opacity-0 scale-0 z-0 pointer-events-none'}`}>
+                    {onInsert && (
+                        <button
+                            onClick={onInsert}
+                            className="w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-indigo-700 active:scale-95 transition-transform"
+                        >
+                            <Plus size={14} />
+                        </button>
+                    )}
+                </div>
+                {/* Duration badge - Fade out in edit mode */}
+                {durationText && (
+                    <div className={`absolute left-3 top-1/2 -translate-y-1/2 whitespace-nowrap transition-all duration-300 ${isEditMode ? 'opacity-0 translate-x-[-10px]' : 'opacity-100 translate-x-0'}`}>
                         <span className="text-sm font-bold text-gray-500 dark:text-slate-400 bg-white dark:bg-slate-800 px-2.5 py-1 rounded-full border border-gray-200 dark:border-slate-700 shadow-sm">
                             {durationText}
                         </span>
                     </div>
                 )}
+            </div>
+        </div>
+    );
+};
+
+// DynamicSummary Component - Moved outside to prevent re-renders on parent updates
+const DynamicSummary = ({ day, events, dayIdx, onEditPlanned, onDeleteDay, isEditMode }) => {
+    if (!day || !events) return null;
+
+    // Calculate from Events data only
+    const spotCount = events.filter(e => e.type !== 'transport').length;
+    const moveCount = events.filter(e => e.type === 'transport').length;
+    const confirmedCount = events.filter(e => e.status === 'booked' || e.status === 'confirmed').length;
+    const plannedCount = events.filter(e => e.status === 'planned' || e.status === 'suggested').length;
+    const pendingBooking = events.filter(e => e.status === 'planned' && ['flight', 'train', 'hotel'].includes(e.category));
+
+    // Determine trip phase and next action
+    const today = new Date();
+    const [month, dayNum] = day.date.split('/').map(Number);
+    const tripDate = new Date(today.getFullYear(), month - 1, dayNum);
+    const daysUntil = Math.ceil((tripDate - today) / (1000 * 60 * 60 * 24));
+    const isTripDay = daysUntil === 0;
+    const isPast = daysUntil < 0;
+
+    // Generate next action message
+    const getNextAction = () => {
+        if (isPast) {
+            return { icon: <CheckCircle size={18} />, text: '完了した日程', sub: '' };
+        }
+
+        if (isTripDay) {
+            // During trip - show next event
+            const now = new Date();
+            const currentHour = now.getHours();
+            const currentMin = now.getMinutes();
+            const nextEvent = events.find(e => {
+                if (!e.time) return false;
+                const [h, m] = e.time.split(':').map(Number);
+                return h > currentHour || (h === currentHour && m > currentMin);
+            });
+            if (nextEvent) {
+                const categoryLabel = { flight: '搭乗', train: '乗車', bus: '乗車', hotel: 'チェックイン', meal: '食事', sightseeing: '観光' }[nextEvent.category] || '予定';
+                return {
+                    icon: getIcon(nextEvent.category, nextEvent.type, { size: 18, className: 'text-white/80' }),
+                    text: `${nextEvent.time} ${categoryLabel}`,
+                    sub: nextEvent.name
+                };
+            }
+            return { icon: <CheckCircle size={18} />, text: '本日の予定は完了', sub: '' };
+        }
+
+        // Planning phase - show booking action
+        if (pendingBooking.length > 0) {
+            const urgent = pendingBooking[0];
+            const categoryLabel = { flight: '航空券', train: '電車', hotel: 'ホテル' }[urgent.category] || '予約';
+            return {
+                icon: <Ticket size={18} />,
+                text: `${categoryLabel}の予約が必要`,
+                sub: urgent.name
+            };
+        }
+
+        if (plannedCount > 0) {
+            return { icon: <Edit3 size={18} />, text: `${plannedCount}件の計画を確認`, sub: '', editable: true };
+        }
+
+        return { icon: <CheckCircle size={18} />, text: '準備完了', sub: `${daysUntil}日後に出発` };
+    };
+
+    const nextAction = getNextAction();
+    const firstPlannedEvent = events.find(e => e.status === 'planned' || e.status === 'suggested');
+
+    return (
+        <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top)+4.5rem)] z-sticky bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-2xl p-5 mb-6 shadow-lg">
+            {/* Day Header */}
+            <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                    <span className="px-3 py-1.5 rounded-xl bg-white/20 text-white text-sm font-black">
+                        DAY {dayIdx + 1}
+                    </span>
+                    <span className="text-sm font-bold text-white/80">
+                        {day.date}
+                    </span>
+                </div>
+                {/* Status indicator & Delete button */}
+                <div className="flex items-center gap-2">
+                    {confirmedCount > 0 && (
+                        <span className="px-2 py-0.5 rounded-full bg-green-400/20 text-green-100 text-[10px] font-bold flex items-center gap-1">
+                            <CheckCircle size={10} /> {confirmedCount}
+                        </span>
+                    )}
+                    {plannedCount > 0 && (
+                        <span className="px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-100 text-[10px] font-bold">
+                            計画中 {plannedCount}
+                        </span>
+                    )}
+                    {/* Delete Day Button - Animated */}
+                    {onDeleteDay && (
+                        <div className={`overflow-hidden transition-all duration-500 ease-out ${isEditMode ? 'w-8 opacity-100 scale-100' : 'w-0 opacity-0 scale-90 pointer-events-none'}`}>
+                            <button
+                                onClick={() => onDeleteDay(day.date, dayIdx)}
+                                className="p-1.5 rounded-lg bg-red-500/30 hover:bg-red-500/50 text-red-100 transition-colors whitespace-nowrap"
+                                title="この日を削除"
+                            >
+                                <Trash2 size={14} />
+                            </button>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Next Action - Main focus (Clickable if editable) */}
+            <div
+                className={`flex items-center gap-3 mb-3 ${nextAction.editable ? 'cursor-pointer hover:bg-white/10 -mx-2 px-2 py-2 rounded-xl transition-colors' : ''}`}
+                onClick={() => {
+                    if (nextAction.editable && firstPlannedEvent && onEditPlanned) {
+                        onEditPlanned(firstPlannedEvent);
+                    }
+                }}
+            >
+                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white">
+                    {nextAction.icon}
+                </div>
+                <div className="flex-1 min-w-0">
+                    <h2 className="text-lg font-black text-white leading-tight">
+                        {nextAction.text}
+                    </h2>
+                    {nextAction.sub && (
+                        <p className="text-sm text-white/70 truncate">{nextAction.sub}</p>
+                    )}
+                </div>
+                {nextAction.editable && (
+                    <ChevronRight size={20} className="text-white/60" />
+                )}
+            </div>
+
+            {/* Day Route Display */}
+            {(() => {
+                const locations = events
+                    .filter(e => e.type !== 'transport' && (e.to || e.address || e.name))
+                    .map(e => e.to || e.address || e.name)
+                    .filter((v, i, arr) => arr.indexOf(v) === i); // unique locations
+
+                if (locations.length >= 2) {
+                    return (
+                        <div className="mb-3 py-2 px-3 bg-white/10 rounded-xl">
+                            <div className="flex items-center gap-1.5 text-xs text-white/90 flex-wrap">
+                                {locations.slice(0, 5).map((loc, i) => (
+                                    <React.Fragment key={i}>
+                                        <span className="font-medium truncate max-w-[100px]" title={loc}>
+                                            {loc.length > 12 ? loc.slice(0, 10) + '...' : loc}
+                                        </span>
+                                        {i < Math.min(locations.length - 1, 4) && (
+                                            <span className="text-white/50">→</span>
+                                        )}
+                                    </React.Fragment>
+                                ))}
+                                {locations.length > 5 && (
+                                    <span className="text-white/50">+{locations.length - 5}</span>
+                                )}
+                            </div>
+                        </div>
+                    );
+                }
+                return null;
+            })()}
+
+            {/* Stats + Route Button */}
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-6 text-sm">
+                    <div className="flex items-center gap-2 text-white">
+                        <span className="text-xl font-black">{spotCount}</span>
+                        <span className="text-xs text-white/70">スポット</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-white">
+                        <span className="text-xl font-black">{moveCount}</span>
+                        <span className="text-xs text-white/70">移動</span>
+                    </div>
+                </div>
+                {/* Route Button */}
+                <a
+                    href={(() => {
+                        const locations = events
+                            .filter(e => e.type !== 'transport' && (e.address || e.name))
+                            .map(e => e.address || e.name);
+                        if (locations.length === 0) return 'https://www.google.com/maps';
+                        if (locations.length === 1) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(locations[0])}`;
+                        const origin = encodeURIComponent(locations[0]);
+                        const destination = encodeURIComponent(locations[locations.length - 1]);
+                        const waypoints = locations.slice(1, -1).slice(0, 9).map(l => encodeURIComponent(l)).join('|');
+                        return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}`;
+                    })()}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-3 py-2 bg-white/20 hover:bg-white/30 rounded-xl text-white text-xs font-bold transition-colors"
+                >
+                    <Navigation size={14} />
+                    ルート
+                </a>
             </div>
         </div>
     );
@@ -208,29 +408,19 @@ export default function TravelApp() {
         } finally {
             setLoading(false);
         }
-    }, []); // Remove itinerary dependency to prevent infinite loop
+    }, []); // No external dependencies - fetchData is stable
 
     useEffect(() => {
-        if (auth) fetchData();
-    }, [auth, fetchData]);
+        if (auth) {
+            fetchData();
+        }
+    }, [auth]); // Only depend on auth, not fetchData
 
     useEffect(() => {
         if (itinerary.length > 0) {
             sessionStorage.setItem('trip_data_v7', JSON.stringify(itinerary));
         }
     }, [itinerary]);
-
-    const saveToSpreadsheet = async (newItinerary) => {
-        try {
-            setSaving(true);
-            await server.saveData(newItinerary);
-        } catch (err) {
-            console.error('Save error:', err);
-            alert('Failed to save. Please check your connection.');
-        } finally {
-            setSaving(false);
-        }
-    };
 
     const handleSaveEvent = async (newItem) => {
         // Save previous state for rollback
@@ -282,10 +472,14 @@ export default function TravelApp() {
         try {
             setSaving(true);
             if (isMoving) {
-                // Call moveEvent API
+                // Call moveEvent API - use original name for event lookup
+                const originalDay = itinerary.find(d => d.date === newItem.originalDate);
+                const originalEvent = originalDay?.events.find(e => e.id === newItem.id);
+                const originalEventName = originalEvent?.name || newItem.name;
+
                 await server.moveEvent({
                     originalDate: newItem.originalDate,
-                    eventId: newItem.name,
+                    eventId: originalEventName,
                     newDate: newItem.newDate,
                     newStartTime: newItem.time,
                     newEndTime: newItem.endTime
@@ -471,201 +665,7 @@ export default function TravelApp() {
         );
     }
 
-    const DynamicSummary = ({ day, events, dayIdx, onEditPlanned, onDeleteDay }) => {
-        if (!day || !events) return null;
 
-        // Calculate from Events data only
-        const spotCount = events.filter(e => e.type !== 'transport').length;
-        const moveCount = events.filter(e => e.type === 'transport').length;
-        const confirmedCount = events.filter(e => e.status === 'booked' || e.status === 'confirmed').length;
-        const plannedCount = events.filter(e => e.status === 'planned' || e.status === 'suggested').length;
-        const pendingBooking = events.filter(e => e.status === 'planned' && ['flight', 'train', 'hotel'].includes(e.category));
-
-        // Determine trip phase and next action
-        const today = new Date();
-        const [month, dayNum] = day.date.split('/').map(Number);
-        const tripDate = new Date(today.getFullYear(), month - 1, dayNum);
-        const daysUntil = Math.ceil((tripDate - today) / (1000 * 60 * 60 * 24));
-        const isTripDay = daysUntil === 0;
-        const isPast = daysUntil < 0;
-
-        // Generate next action message
-        const getNextAction = () => {
-            if (isPast) {
-                return { icon: <CheckCircle size={18} />, text: '完了した日程', sub: '' };
-            }
-
-            if (isTripDay) {
-                // During trip - show next event
-                const now = new Date();
-                const currentHour = now.getHours();
-                const currentMin = now.getMinutes();
-                const nextEvent = events.find(e => {
-                    if (!e.time) return false;
-                    const [h, m] = e.time.split(':').map(Number);
-                    return h > currentHour || (h === currentHour && m > currentMin);
-                });
-                if (nextEvent) {
-                    const categoryLabel = { flight: '搭乗', train: '乗車', bus: '乗車', hotel: 'チェックイン', meal: '食事', sightseeing: '観光' }[nextEvent.category] || '予定';
-                    return {
-                        icon: getIcon(nextEvent.category, nextEvent.type, { size: 18, className: 'text-white/80' }),
-                        text: `${nextEvent.time} ${categoryLabel}`,
-                        sub: nextEvent.name
-                    };
-                }
-                return { icon: <CheckCircle size={18} />, text: '本日の予定は完了', sub: '' };
-            }
-
-            // Planning phase - show booking action
-            if (pendingBooking.length > 0) {
-                const urgent = pendingBooking[0];
-                const categoryLabel = { flight: '航空券', train: '電車', hotel: 'ホテル' }[urgent.category] || '予約';
-                return {
-                    icon: <Ticket size={18} />,
-                    text: `${categoryLabel}の予約が必要`,
-                    sub: urgent.name
-                };
-            }
-
-            if (plannedCount > 0) {
-                return { icon: <Edit3 size={18} />, text: `${plannedCount}件の計画を確認`, sub: '', editable: true };
-            }
-
-            return { icon: <CheckCircle size={18} />, text: '準備完了', sub: `${daysUntil}日後に出発` };
-        };
-
-        const nextAction = getNextAction();
-        const firstPlannedEvent = events.find(e => e.status === 'planned' || e.status === 'suggested');
-
-        return (
-            <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top)+4.5rem)] z-sticky bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-2xl p-5 mb-6 shadow-lg">
-                {/* Day Header */}
-                <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                        <span className="px-3 py-1.5 rounded-xl bg-white/20 text-white text-sm font-black">
-                            DAY {dayIdx + 1}
-                        </span>
-                        <span className="text-sm font-bold text-white/80">
-                            {day.date}
-                        </span>
-                    </div>
-                    {/* Status indicator & Delete button */}
-                    <div className="flex items-center gap-2">
-                        {confirmedCount > 0 && (
-                            <span className="px-2 py-0.5 rounded-full bg-green-400/20 text-green-100 text-[10px] font-bold flex items-center gap-1">
-                                <CheckCircle size={10} /> {confirmedCount}
-                            </span>
-                        )}
-                        {plannedCount > 0 && (
-                            <span className="px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-100 text-[10px] font-bold">
-                                計画中 {plannedCount}
-                            </span>
-                        )}
-                        {/* Delete Day Button */}
-                        {onDeleteDay && (
-                            <button
-                                onClick={() => onDeleteDay(day.date, dayIdx)}
-                                className="p-1.5 rounded-lg bg-red-500/30 hover:bg-red-500/50 text-red-100 transition-colors"
-                                title="この日を削除"
-                            >
-                                <Trash2 size={14} />
-                            </button>
-                        )}
-                    </div>
-                </div>
-
-                {/* Next Action - Main focus (Clickable if editable) */}
-                <div
-                    className={`flex items-center gap-3 mb-3 ${nextAction.editable ? 'cursor-pointer hover:bg-white/10 -mx-2 px-2 py-2 rounded-xl transition-colors' : ''}`}
-                    onClick={() => {
-                        if (nextAction.editable && firstPlannedEvent && onEditPlanned) {
-                            onEditPlanned(firstPlannedEvent);
-                        }
-                    }}
-                >
-                    <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white">
-                        {nextAction.icon}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                        <h2 className="text-lg font-black text-white leading-tight">
-                            {nextAction.text}
-                        </h2>
-                        {nextAction.sub && (
-                            <p className="text-sm text-white/70 truncate">{nextAction.sub}</p>
-                        )}
-                    </div>
-                    {nextAction.editable && (
-                        <ChevronRight size={20} className="text-white/60" />
-                    )}
-                </div>
-
-                {/* Day Route Display */}
-                {(() => {
-                    const locations = events
-                        .filter(e => e.type !== 'transport' && (e.to || e.address || e.name))
-                        .map(e => e.to || e.address || e.name)
-                        .filter((v, i, arr) => arr.indexOf(v) === i); // unique locations
-
-                    if (locations.length >= 2) {
-                        return (
-                            <div className="mb-3 py-2 px-3 bg-white/10 rounded-xl">
-                                <div className="flex items-center gap-1.5 text-xs text-white/90 flex-wrap">
-                                    {locations.slice(0, 5).map((loc, i) => (
-                                        <React.Fragment key={i}>
-                                            <span className="font-medium truncate max-w-[100px]" title={loc}>
-                                                {loc.length > 12 ? loc.slice(0, 10) + '...' : loc}
-                                            </span>
-                                            {i < Math.min(locations.length - 1, 4) && (
-                                                <span className="text-white/50">→</span>
-                                            )}
-                                        </React.Fragment>
-                                    ))}
-                                    {locations.length > 5 && (
-                                        <span className="text-white/50">+{locations.length - 5}</span>
-                                    )}
-                                </div>
-                            </div>
-                        );
-                    }
-                    return null;
-                })()}
-
-                {/* Stats + Route Button */}
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-6 text-sm">
-                        <div className="flex items-center gap-2 text-white">
-                            <span className="text-xl font-black">{spotCount}</span>
-                            <span className="text-xs text-white/70">スポット</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-white">
-                            <span className="text-xl font-black">{moveCount}</span>
-                            <span className="text-xs text-white/70">移動</span>
-                        </div>
-                    </div>
-                    {/* Route Button */}
-                    <a
-                        href={(() => {
-                            const locations = events
-                                .filter(e => e.type !== 'transport' && (e.address || e.name))
-                                .map(e => e.address || e.name);
-                            if (locations.length === 0) return 'https://www.google.com/maps';
-                            if (locations.length === 1) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(locations[0])}`;
-                            const origin = encodeURIComponent(locations[0]);
-                            const destination = encodeURIComponent(locations[locations.length - 1]);
-                            const waypoints = locations.slice(1, -1).slice(0, 9).map(l => encodeURIComponent(l)).join('|');
-                            return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}`;
-                        })()}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 px-3 py-2 bg-white/20 hover:bg-white/30 rounded-xl text-white text-xs font-bold transition-colors"
-                    >
-                        <Navigation size={14} />
-                        ルート
-                    </a>
-                </div>
-            </div>
-        );
-    };
 
     // Note: Landscape mode is handled via CSS (landscape-hide-header/footer classes)
 
@@ -728,11 +728,9 @@ export default function TravelApp() {
                     >
                         <div className="flex items-center justify-center h-14 relative px-4 sm:px-6 pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))] sm:pl-[calc(1.5rem+env(safe-area-inset-left))] sm:pr-[calc(1.5rem+env(safe-area-inset-right))]">
                             <div className={`flex items-center gap-2 transition-opacity duration-300 ${isScrolled || activeTab !== 'timeline' ? 'opacity-100' : 'opacity-0'}`}>
-                                {activeTab !== 'timeline' && (
-                                    <div className="w-6 h-6 bg-indigo-600 rounded-md flex items-center justify-center shadow-sm">
-                                        <Plane className="text-white transform -rotate-45" size={12} />
-                                    </div>
-                                )}
+                                <div className="w-6 h-6 bg-indigo-600 rounded-md flex items-center justify-center shadow-sm">
+                                    <Plane className="text-white transform -rotate-45" size={12} />
+                                </div>
                                 <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 tracking-tight">
                                     {activeTab === 'timeline' ? 'TripPlanner' :
                                         activeTab === 'tickets' ? 'Tickets' :
@@ -799,7 +797,7 @@ export default function TravelApp() {
                                                     onClick={addNewDay}
                                                     disabled={!isEditMode}
                                                     className={`flex-shrink-0 h-10 flex items-center justify-center rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-800/40 transition-all duration-300 ease-out active:scale-95 overflow-hidden ${isEditMode
-                                                        ? 'opacity-100 scale-100 pointer-events-auto w-10 delay-150'
+                                                        ? 'opacity-100 scale-100 pointer-events-auto w-10'
                                                         : 'opacity-0 scale-90 pointer-events-none w-0'
                                                         }`}
                                                     aria-label="新しい日を追加"
@@ -817,11 +815,73 @@ export default function TravelApp() {
                                                 dayIdx={dayIndex}
                                                 onEditPlanned={(event) => { setEditItem(event); setModalOpen(true); }}
                                                 onDeleteDay={handleDeleteDay}
+                                                isEditMode={isEditMode}
                                             />
+
+                                            {/* Departure Indicator - Shows where today starts from */}
+                                            {(() => {
+                                                if (dayIndex <= 0) return null;
+                                                const prevDay = itinerary[dayIndex - 1];
+                                                if (!prevDay) return null;
+                                                const prevHotel = prevDay.events.filter(e => e.category === 'hotel').pop();
+                                                if (!prevHotel) return null;
+                                                const firstEvent = sortedEvents[0];
+                                                // Calculate duration from hotel checkout to first event
+                                                const hotelCheckout = prevHotel.endTime || prevHotel.checkOut || '10:00'; // default checkout
+                                                const durationToFirst = firstEvent ? getDurationMinutes({ time: hotelCheckout, endTime: hotelCheckout }, firstEvent) : null;
+                                                return (
+                                                    <>
+                                                        <div className="flex items-center gap-3 p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800">
+                                                            <div className="w-8 h-8 bg-indigo-100 dark:bg-indigo-800/50 rounded-lg flex items-center justify-center">
+                                                                <Hotel size={16} className="text-indigo-600 dark:text-indigo-400" />
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase">出発地</p>
+                                                                <p className="font-bold text-gray-800 dark:text-white truncate">{prevHotel.name}</p>
+                                                            </div>
+                                                            <a
+                                                                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(prevHotel.name)}`}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                onClick={(e) => e.stopPropagation()}
+                                                                className="p-2 bg-indigo-100 dark:bg-indigo-800/50 rounded-lg text-indigo-600 dark:text-indigo-400"
+                                                            >
+                                                                <MapPin size={16} />
+                                                            </a>
+                                                        </div>
+                                                        {/* Time connector to first event */}
+                                                        {firstEvent && (
+                                                            <TimeConnector
+                                                                duration={durationToFirst}
+                                                                isEditMode={isEditMode}
+                                                                onInsert={() => {
+                                                                    setEditItem(null);
+                                                                    setModalOpen(true);
+                                                                }}
+                                                            />
+                                                        )}
+                                                    </>
+                                                );
+                                            })()}
+
 
                                             {/* Event List */}
                                             <div className="relative pb-12">
                                                 {sortedEvents.map((event, index) => {
+                                                    const prevEvent = index > 0 ? sortedEvents[index - 1] : null;
+                                                    // For first event, use previous day hotel if exists
+                                                    const getRouteOrigin = () => {
+                                                        if (prevEvent) {
+                                                            return prevEvent.to || prevEvent.address || prevEvent.name;
+                                                        }
+                                                        if (dayIndex > 0) {
+                                                            const prevDay = itinerary[dayIndex - 1];
+                                                            const prevHotel = prevDay?.events.filter(e => e.category === 'hotel').pop();
+                                                            return prevHotel?.name || null;
+                                                        }
+                                                        return null;
+                                                    };
+                                                    const routeOrigin = getRouteOrigin();
                                                     const nextEvent = index < sortedEvents.length - 1 ? sortedEvents[index + 1] : null;
                                                     const durationToNext = getDurationMinutes(event, nextEvent);
 
@@ -829,7 +889,7 @@ export default function TravelApp() {
                                                         <div key={event.id} className="relative">
                                                             {/* Event Card */}
                                                             <div
-                                                                className={`relative bg-white dark:bg-slate-800 rounded-2xl p-4 transition-all duration-200 ${isEditMode ? 'border-2 border-dashed border-gray-300 dark:border-slate-600 hover:border-indigo-400 cursor-pointer' : 'border border-gray-200 dark:border-slate-700 shadow-sm'}`}
+                                                                className={`relative bg-white dark:bg-slate-800 rounded-2xl p-4 transition-all duration-300 ease-out ${isEditMode ? 'scale-[0.95] shadow-sm' : 'scale-100 shadow-sm border border-gray-200 dark:border-slate-700'}`}
                                                                 onClick={() => {
                                                                     if (isEditMode) {
                                                                         setEditItem(event);
@@ -842,6 +902,8 @@ export default function TravelApp() {
                                                                 onTouchEnd={handleTouchEnd}
                                                                 onTouchMove={handleTouchEnd}
                                                             >
+
+
                                                                 <div className="flex justify-between items-start mb-2">
                                                                     <div className="flex items-center gap-2">
                                                                         <div className="flex items-center gap-2">
@@ -863,9 +925,23 @@ export default function TravelApp() {
                                                                                 setModalOpen(true);
                                                                             }
                                                                         }}
-                                                                        className={`${event.status !== 'confirmed' && event.status !== 'booked' ? 'cursor-pointer hover:opacity-80 active:scale-95' : ''} transition-transform`}
+                                                                        className={`${event.status !== 'confirmed' && event.status !== 'booked' ? 'cursor-pointer hover:opacity-80 active:scale-95' : ''} transition-transform flex items-center gap-2`}
                                                                     >
                                                                         <StatusBadge status={event.status} />
+
+                                                                        {/* Delete Event Button - Animated Reveal (Same as Summary) */}
+                                                                        <div className={`overflow-hidden transition-all duration-500 ease-out flex justify-end ${isEditMode ? 'w-8 opacity-100 scale-100' : 'w-0 opacity-0 scale-90 pointer-events-none'}`}>
+                                                                            <button
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    handleDeleteEvent(event.id);
+                                                                                }}
+                                                                                className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-colors whitespace-nowrap"
+                                                                                title="この予定を削除"
+                                                                            >
+                                                                                <Trash2 size={14} />
+                                                                            </button>
+                                                                        </div>
                                                                     </div>
                                                                 </div>
                                                                 <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight mb-1">
@@ -883,19 +959,18 @@ export default function TravelApp() {
                                                                         {event.details}
                                                                     </p>
                                                                 )}
-                                                                <div className="flex items-center gap-2 mt-2 justify-end">
-                                                                    {!isEditMode && (
-                                                                        <a
-                                                                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.type === 'transport' ? event.to : (event.address || event.name))}`}
-                                                                            target="_blank"
-                                                                            rel="noopener noreferrer"
-                                                                            onClick={(e) => e.stopPropagation()}
-                                                                            className="h-8 w-8 bg-gray-100 dark:bg-slate-700 rounded-lg flex items-center justify-center text-indigo-600 dark:text-indigo-400 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
-                                                                            title="地図を開く"
-                                                                        >
-                                                                            <MapPin size={16} />
-                                                                        </a>
-                                                                    )}
+                                                                <div className={`flex items-center gap-2 mt-2 justify-end transition-all duration-300 ${isEditMode ? 'opacity-0 pointer-events-none h-0 overflow-hidden' : 'opacity-100 h-8'}`}>
+                                                                    {/* Map Button */}
+                                                                    <a
+                                                                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.type === 'transport' ? event.to : (event.address || event.name))}`}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        onClick={(e) => e.stopPropagation()}
+                                                                        className="h-8 w-8 bg-gray-100 dark:bg-slate-700 rounded-lg flex items-center justify-center text-indigo-600 dark:text-indigo-400 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
+                                                                        title="地図を開く"
+                                                                    >
+                                                                        <MapPin size={16} />
+                                                                    </a>
                                                                 </div>
                                                             </div>
                                                             {nextEvent && (
@@ -952,7 +1027,7 @@ export default function TravelApp() {
                                         {/* Multi-Column Container */}
                                         <div className="flex gap-4 px-6 overflow-x-auto pb-6 scrollbar-hide" style={{ height: 'calc(100vh - 140px)' }}>
                                             {itinerary.map((day, dayIdx) => {
-                                                const daySortedEvents = [...day.events].sort((a, b) => {
+                                                const daySortedEvents = [...(day.events || [])].sort((a, b) => {
                                                     const t1 = (a.time || '23:59').padStart(5, '0');
                                                     const t2 = (b.time || '23:59').padStart(5, '0');
                                                     return t1.localeCompare(t2);
@@ -1077,7 +1152,7 @@ export default function TravelApp() {
 
                     {/* ========== BOTTOM NAV (Mobile only) - Hidden in landscape ========== */}
                     <nav className={`lg:hidden landscape-hide-footer fixed bottom-0 left-0 right-0 z-fixed bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800 transition-transform duration-300 pb-[env(safe-area-inset-bottom)] ${scrollDirection === 'down' ? 'translate-y-full' : 'translate-y-0'}`}>
-                        <div className="flex justify-around items-center h-[4.5rem] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]">
+                        <div className="flex justify-around items-center h-[5.5rem] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))] pb-2">
                             {[
                                 { id: 'timeline', icon: Calendar },
                                 { id: 'packing', icon: Package },
@@ -1112,9 +1187,24 @@ export default function TravelApp() {
 
                     <Suspense fallback={null}>
                         {selectedPlaceEvent && (
-                            <PlaceDetailModal
+                            <EventDetailModal
                                 event={selectedPlaceEvent}
                                 onClose={() => setSelectedPlaceEvent(null)}
+                                onEdit={(event) => {
+                                    setEditItem(event);
+                                    setModalOpen(true);
+                                }}
+                                previousEvent={(() => {
+                                    if (!selectedPlaceEvent || !selectedDay) return null;
+                                    const idx = sortedEvents.findIndex(e => e.id === selectedPlaceEvent.id);
+                                    return idx > 0 ? sortedEvents[idx - 1] : null;
+                                })()}
+                                previousDayHotel={(() => {
+                                    if (!selectedPlaceEvent || dayIndex <= 0) return null;
+                                    const prevDay = itinerary[dayIndex - 1];
+                                    if (!prevDay) return null;
+                                    return prevDay.events.filter(e => e.category === 'hotel').pop() || null;
+                                })()}
                             />
                         )}
 
@@ -1122,7 +1212,7 @@ export default function TravelApp() {
                         {mapModalOpen && mapModalQuery && (
                             <div className="fixed inset-0 z-modal flex items-end sm:items-center justify-center p-0 sm:p-4">
                                 <div className="absolute inset-0 bg-black/50" onClick={() => setMapModalOpen(false)} />
-                                <div className="relative w-full sm:max-w-lg h-[75vh] sm:h-[70vh] bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+                                <div className="relative w-full sm:max-w-lg h-[75vh] sm:h-[70vh] bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-slide-up-spring">
                                     {/* Header */}
                                     <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-slate-700">
                                         <h3 className="font-bold text-gray-800 dark:text-white flex items-center gap-2 truncate">
@@ -1139,7 +1229,7 @@ export default function TravelApp() {
                                     {/* Map iframe */}
                                     <div className="flex-1">
                                         <iframe
-                                            src={`https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${encodeURIComponent(mapModalQuery)}&zoom=15`}
+                                            src={`https://www.google.com/maps/embed/v1/place?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&q=${encodeURIComponent(mapModalQuery)}&zoom=15`}
                                             className="w-full h-full border-0"
                                             allowFullScreen
                                             loading="lazy"

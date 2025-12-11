@@ -331,8 +331,8 @@ const BudgetView = ({ itinerary, onForceReload }) => {
 
                 {/* Quick Add Payment Modal */}
                 {showAddPayment && createPortal(
-                    <div className="fixed inset-0 z-overlay flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4">
-                        <div className="bg-white dark:bg-slate-800 w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[90vh] sm:max-h-[85vh] animate-slide-up">
+                    <div className="fixed inset-0 z-modal flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4">
+                        <div className="bg-white dark:bg-slate-800 w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[90vh] sm:max-h-[85vh] animate-slide-up-spring">
                             {/* Header */}
                             <div className="p-4 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center shrink-0">
                                 <h3 className="font-bold text-lg text-gray-800 dark:text-slate-100 flex items-center gap-2">

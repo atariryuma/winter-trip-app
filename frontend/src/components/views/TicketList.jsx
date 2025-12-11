@@ -9,10 +9,19 @@ import {
 // Helper: Calculate days until event
 const getDaysUntil = (dateStr) => {
     const now = new Date();
+    now.setHours(0, 0, 0, 0); // Reset to start of day for accurate comparison
+
     const currentYear = now.getFullYear();
     const [month, day] = dateStr.split('/').map(Number);
-    const eventYear = month >= now.getMonth() + 1 ? currentYear : currentYear + 1;
-    const eventDate = new Date(eventYear, month - 1, day);
+
+    // Try current year first
+    let eventDate = new Date(currentYear, month - 1, day);
+
+    // If the date already passed, assume it's next year
+    if (eventDate < now) {
+        eventDate = new Date(currentYear + 1, month - 1, day);
+    }
+
     const diffTime = eventDate - now;
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 };
@@ -115,9 +124,9 @@ const SearchModal = ({ event, onClose }) => {
     };
 
     return createPortal(
-        <div className="fixed inset-0 z-overlay flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4" onClick={onClose}>
+        <div className="fixed inset-0 z-modal flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4" onClick={onClose}>
             <div
-                className={`bg-white dark:bg-slate-800 w-full shadow-2xl flex flex-col transition-all duration-300 ${isMaximized
+                className={`bg-white dark:bg-slate-800 w-full shadow-2xl flex flex-col animate-slide-up-spring transition-all duration-300 ${isMaximized
                     ? 'h-[100dvh] rounded-none'
                     : 'max-h-[90vh] h-[85vh] sm:h-[75vh] rounded-t-3xl sm:rounded-3xl sm:max-w-lg'
                     }`}

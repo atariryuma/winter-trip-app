@@ -34,19 +34,19 @@ const PlaceDetailModal = ({ event, onClose }) => {
     if (!event) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center p-0 sm:p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-modal flex items-end justify-center sm:items-center p-0 sm:p-4">
             {/* Backdrop */}
             <div className="absolute inset-0 bg-black/50" onClick={onClose} />
 
             {/* Modal Content */}
             <div
                 className={`
-                    relative w-full bg-white dark:bg-slate-900 shadow-2xl overflow-hidden flex flex-col transition-all duration-300
+                    relative w-full bg-white dark:bg-slate-900 shadow-2xl overflow-hidden flex flex-col animate-slide-up
                     ${isMaximized ? 'h-[100dvh] rounded-none' : 'h-[85vh] sm:h-[80vh] rounded-t-3xl sm:rounded-3xl max-w-2xl'}
                 `}
             >
                 {/* Header */}
-                <div className={`shrink-0 border-b border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 z-10 transition-all duration-300 ${isMaximized ? 'p-2' : 'p-4'}`}>
+                <div className={`shrink-0 border-b border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 z-modal-content transition-all duration-300 ${isMaximized ? 'p-2' : 'p-4'}`}>
                     <div className="flex items-center justify-between gap-4">
                         <div className="flex-1 min-w-0">
                             <h2 className={`font-bold text-gray-900 dark:text-white truncate ${isMaximized ? 'text-sm' : 'text-lg'}`}>

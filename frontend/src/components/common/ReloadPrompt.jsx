@@ -57,7 +57,7 @@ export default function ReloadPrompt() {
     if (!needRefresh) return null;
 
     return (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 w-[90%] max-w-[400px] z-50 animate-in slide-in-from-bottom duration-300">
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 w-[90%] max-w-[400px] z-notification animate-in slide-in-from-bottom duration-300">
             <div className="bg-slate-800/90 backdrop-blur-md text-white p-4 rounded-2xl shadow-2xl border border-white/10 flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                     <div className="bg-blue-500 p-2 rounded-full animate-pulse">

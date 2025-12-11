@@ -42,7 +42,7 @@ export default function LoginView({ onLogin, validatePasscode, yearRange = "2025
                     <Plane className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white/5 transform -rotate-12" size={400} />
                 </div>
 
-                <div className="relative z-10 max-w-lg text-center lg:text-left">
+                <div className="relative z-content max-w-lg text-center lg:text-left">
                     <div className="inline-flex items-center justify-center w-20 h-20 bg-white/10 backdrop-blur-md rounded-3xl mb-8 border border-white/20 shadow-xl">
                         <Plane className="text-white transform -rotate-45" size={40} />
                     </div>
@@ -61,9 +61,9 @@ export default function LoginView({ onLogin, validatePasscode, yearRange = "2025
             {/* Right Side - Login Form (Desktop & Mobile) */}
             <div className="w-full lg:w-1/2 flex items-center justify-center p-6 bg-[#F0F2F5] dark:bg-slate-900 lg:bg-white lg:dark:bg-slate-900 relative">
                 {/* Mobile Background (Absolute) */}
-                <div className="lg:hidden absolute inset-0 bg-gradient-to-br from-indigo-600 to-indigo-800 z-0"></div>
+                <div className="lg:hidden absolute inset-0 bg-gradient-to-br from-indigo-600 to-indigo-800 z-base"></div>
 
-                <div className={`w-full max-w-sm bg-white/90 lg:bg-white dark:bg-slate-800 lg:dark:bg-slate-800 backdrop-blur-xl lg:backdrop-blur-none rounded-3xl p-8 lg:p-12 shadow-2xl lg:shadow-none border border-white/20 lg:border-none z-10 transition-all duration-300 ${shake ? 'animate-shake' : ''}`}>
+                <div className={`w-full max-w-sm bg-white/90 lg:bg-white dark:bg-slate-800 lg:dark:bg-slate-800 backdrop-blur-xl lg:backdrop-blur-none rounded-3xl p-8 lg:p-12 shadow-2xl lg:shadow-none border border-white/20 lg:border-none z-content transition-all duration-300 ${shake ? 'animate-shake' : ''}`}>
 
                     {/* Mobile Logo */}
                     <div className="lg:hidden text-center mb-8">

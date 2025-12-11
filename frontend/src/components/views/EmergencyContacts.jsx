@@ -26,7 +26,7 @@ const EmergencyContacts = () => {
     ];
 
     return (
-        <div className="pt-4 space-y-4 pb-24">
+        <div className="space-y-4">
             {/* Emergency Buttons */}
             <div className="grid grid-cols-3 gap-3">
                 {emergencyNumbers.map((item) => (
@@ -72,16 +72,6 @@ const EmergencyContacts = () => {
                         </div>
                     ))}
                 </div>
-            </div>
-
-            {/* Tips */}
-            <div className="bg-amber-50 dark:bg-amber-900/20 rounded-2xl p-4 border border-amber-100 dark:border-amber-800/30">
-                <h4 className="font-bold text-amber-700 dark:text-amber-400 text-sm mb-2">💡 旅行中のヒント</h4>
-                <ul className="space-y-1.5 text-sm text-amber-800 dark:text-amber-300">
-                    <li>• 保険証・身分証明書を携帯</li>
-                    <li>• 宿泊先の住所をメモしておく</li>
-                    <li>• 電池残量に注意（モバイルバッテリー推奨）</li>
-                </ul>
             </div>
         </div>
     );

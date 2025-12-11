@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { DollarSign, Target, Wallet, PlusCircle, X, Check, AlertCircle, User } from 'lucide-react';
 import server from '../../api/gas';
 
@@ -60,6 +61,9 @@ const BudgetView = ({ itinerary, onForceReload }) => {
     const [conflictWarning, setConflictWarning] = useState(null);
     const [saving, setSaving] = useState(false);
 
+    // Edit expense state
+    const [editingExpense, setEditingExpense] = useState(null);
+
     // Get all events with their day info
     const allEvents = useMemo(() => {
         if (!itinerary) return [];
@@ -119,6 +123,7 @@ const BudgetView = ({ itinerary, onForceReload }) => {
         setShowNewPayerInput(false);
         setNewPayerName('');
         setConflictWarning(null);
+        setEditingExpense(null);
     };
 
     // Handle event selection
@@ -233,7 +238,7 @@ const BudgetView = ({ itinerary, onForceReload }) => {
                 <div className="bg-gradient-to-br from-indigo-600 to-violet-700 dark:from-indigo-900 dark:to-slate-800 rounded-2xl p-5 text-white shadow-xl relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl" />
 
-                    <div className="relative z-10">
+                    <div className="relative z-content">
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-white/70 uppercase text-[10px] font-bold tracking-wider">予算管理</h2>
                             <Wallet size={18} className="text-white/50" />
@@ -325,16 +330,16 @@ const BudgetView = ({ itinerary, onForceReload }) => {
                 </button>
 
                 {/* Quick Add Payment Modal */}
-                {showAddPayment && (
-                    <div className="fixed inset-0 z-modal flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4">
+                {showAddPayment && createPortal(
+                    <div className="fixed inset-0 z-overlay flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4">
                         <div className="bg-white dark:bg-slate-800 w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[90vh] sm:max-h-[85vh] animate-slide-up">
                             {/* Header */}
                             <div className="p-4 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center shrink-0">
                                 <h3 className="font-bold text-lg text-gray-800 dark:text-slate-100 flex items-center gap-2">
-                                    <DollarSign size={20} className="text-emerald-500" />
-                                    支出を追加
+                                    <DollarSign size={20} className={editingExpense ? "text-indigo-500" : "text-emerald-500"} />
+                                    {editingExpense ? '支出を編集' : '支出を追加'}
                                 </h3>
-                                <button onClick={() => setShowAddPayment(false)} className="p-2.5 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-xl">
+                                <button onClick={() => { setShowAddPayment(false); resetQuickAdd(); }} className="p-2.5 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-xl">
                                     <X size={20} className="text-gray-500" />
                                 </button>
                             </div>
@@ -525,7 +530,8 @@ const BudgetView = ({ itinerary, onForceReload }) => {
                                 )}
                             </div>
                         </div>
-                    </div>
+                    </div>,
+                    document.body
                 )}
             </div>
 
@@ -552,7 +558,20 @@ const BudgetView = ({ itinerary, onForceReload }) => {
                     ) : (
                         <div className="divide-y divide-gray-50 dark:divide-slate-700">
                             {expenses.map(e => (
-                                <div key={e.id} className="px-4 py-3 flex items-center gap-3">
+                                <button
+                                    key={e.id}
+                                    onClick={() => {
+                                        const event = allEvents.find(ev => ev.id === e.id);
+                                        if (event) {
+                                            setEditingExpense(event);
+                                            setSelectedEventId(e.id);
+                                            setSelectedAmount(e.amount);
+                                            setSelectedPayer(e.paidBy);
+                                            setShowAddPayment(true);
+                                        }
+                                    }}
+                                    className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors text-left"
+                                >
                                     <div className="w-10 h-10 bg-gray-100 dark:bg-slate-700 rounded-full flex items-center justify-center text-lg">
                                         {getCategoryEmoji(e.category)}
                                     </div>
@@ -567,7 +586,7 @@ const BudgetView = ({ itinerary, onForceReload }) => {
                                     <div className="font-black text-gray-800 dark:text-white">
                                         ¥{e.amount.toLocaleString()}
                                     </div>
-                                </div>
+                                </button>
                             ))}
                         </div>
                     )}
@@ -595,7 +614,7 @@ const BudgetView = ({ itinerary, onForceReload }) => {
                     </div>
                 )}
             </div>
-        </div>
+        </div >
     );
 };
 

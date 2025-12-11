@@ -76,6 +76,16 @@ function doGet(e) {
             case 'deletePackingItem':
                 deletePackingItem(e.parameter.id);
                 return createApiResponse('success');
+            case 'batchUpdatePackingItems':
+                return handleBatchUpdatePackingItems(e);
+            case 'batchUpdateEvents':
+                return handleBatchUpdateEvents(e);
+            case 'addEvent':
+                return handleAddEvent(e);
+            case 'deleteEvent':
+                return handleDeleteEvent(e);
+            case 'updateDay':
+                return handleUpdateDay(e);
             default:
                 const FRONTEND_URL = 'https://atariryuma.github.io/winter-trip-app/';
                 return HtmlService.createHtmlOutput(`
@@ -448,7 +458,8 @@ function getItineraryData() {
     };
 
     try {
-        cache.put('itinerary_json', JSON.stringify(result), 1800);
+        // Increased cache TTL from 30min to 1 hour for better performance
+        cache.put('itinerary_json', JSON.stringify(result), 3600);
     } catch (e) { }
 
     return result;
@@ -560,7 +571,8 @@ function getWeather(date, locationName) {
             code: weatherCode
         };
 
-        cache.put(cacheKey, JSON.stringify(result), 21600);
+        // Increased cache TTL from 6 hours to 12 hours for weather data
+        cache.put(cacheKey, JSON.stringify(result), 43200);
         return result;
 
     } catch (e) {
@@ -711,7 +723,8 @@ function getPlaceInfo(query) {
     }
 
     try {
-        cache.put(cacheKey, JSON.stringify(placeInfo), 21600);
+        // Increased cache TTL from 6 hours to 12 hours for place data
+        cache.put(cacheKey, JSON.stringify(placeInfo), 43200);
     } catch (e) { }
 
     return placeInfo;
@@ -760,7 +773,244 @@ function autoFillAllMissingDetails() {
 }
 
 // ============================================================================
-// EVENT UPDATE
+// INCREMENTAL UPDATE APIs (Performance Optimization)
+// ============================================================================
+
+/**
+ * Batch update multiple events - much faster than full rewrite
+ */
+function handleBatchUpdateEvents(e) {
+    try {
+        const updates = JSON.parse(e.parameter.updates || e.postData?.contents);
+        if (!updates || !Array.isArray(updates)) {
+            return createApiResponse('error', null, { message: 'Invalid updates format' });
+        }
+
+        const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+        const eventsSheet = ss.getSheetByName(EVENTS_SHEET);
+
+        if (!eventsSheet) {
+            return createApiResponse('error', null, { message: 'Events sheet not found' });
+        }
+
+        const lastRow = eventsSheet.getLastRow();
+        if (lastRow < 2) {
+            return createApiResponse('error', null, { message: 'No data to update' });
+        }
+
+        // Get all event data once (batch read)
+        const allData = eventsSheet.getRange(2, 1, lastRow - 1, 12).getValues();
+        let updateCount = 0;
+
+        // Process each update
+        updates.forEach(update => {
+            const { date, eventId, eventData } = update;
+
+            // Find the row index
+            const rowIndex = allData.findIndex((row, idx) => {
+                const rowDate = toString(row[0]);
+                const rowName = toString(row[3]);
+                return rowDate === date && (eventId ? rowName === eventId : true);
+            });
+
+            if (rowIndex !== -1) {
+                // Update the event data
+                const budget = eventData.budgetAmount
+                    ? `${eventData.budgetAmount}/${eventData.budgetPaidBy || ''}`
+                    : '';
+
+                const rowData = [
+                    date,
+                    eventData.type || allData[rowIndex][1],
+                    eventData.category || allData[rowIndex][2],
+                    eventData.name || allData[rowIndex][3],
+                    eventData.time || allData[rowIndex][4],
+                    eventData.endTime || allData[rowIndex][5],
+                    eventData.from || eventData.place || allData[rowIndex][6],
+                    eventData.to || allData[rowIndex][7],
+                    eventData.status || allData[rowIndex][8],
+                    eventData.bookingRef !== undefined ? eventData.bookingRef : allData[rowIndex][9],
+                    eventData.details !== undefined ? eventData.details : allData[rowIndex][10],
+                    budget || allData[rowIndex][11]
+                ];
+
+                // Write single row (much faster than full sheet rewrite)
+                eventsSheet.getRange(rowIndex + 2, 1, 1, 12).setValues([rowData]);
+                updateCount++;
+            }
+        });
+
+        // Invalidate cache
+        CacheService.getScriptCache().remove('itinerary_json');
+
+        return createApiResponse('success', { updated: updateCount });
+    } catch (error) {
+        return createApiResponse('error', null, { message: error.toString() });
+    }
+}
+
+/**
+ * Add a new event to a specific date
+ */
+function handleAddEvent(e) {
+    try {
+        const eventData = JSON.parse(e.parameter.eventData || e.postData?.contents);
+        const { date } = eventData;
+
+        if (!date) {
+            return createApiResponse('error', null, { message: 'Date is required' });
+        }
+
+        const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+        const eventsSheet = ss.getSheetByName(EVENTS_SHEET);
+
+        if (!eventsSheet) {
+            return createApiResponse('error', null, { message: 'Events sheet not found' });
+        }
+
+        const budget = eventData.budgetAmount
+            ? `${eventData.budgetAmount}/${eventData.budgetPaidBy || ''}`
+            : '';
+
+        const rowData = [
+            date,
+            eventData.type || '',
+            eventData.category || '',
+            eventData.name || '',
+            eventData.time || '',
+            eventData.endTime || '',
+            eventData.from || eventData.place || '',
+            eventData.to || '',
+            eventData.status || 'planned',
+            eventData.bookingRef || '',
+            eventData.details || '',
+            budget
+        ];
+
+        // Append row (fast operation)
+        eventsSheet.appendRow(rowData);
+
+        // Invalidate cache
+        CacheService.getScriptCache().remove('itinerary_json');
+
+        return createApiResponse('success', { message: 'Event added' });
+    } catch (error) {
+        return createApiResponse('error', null, { message: error.toString() });
+    }
+}
+
+/**
+ * Delete a specific event
+ */
+function handleDeleteEvent(e) {
+    try {
+        const date = e.parameter.date;
+        const eventId = e.parameter.eventId; // event name
+
+        if (!date || !eventId) {
+            return createApiResponse('error', null, { message: 'Date and eventId required' });
+        }
+
+        const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+        const eventsSheet = ss.getSheetByName(EVENTS_SHEET);
+
+        if (!eventsSheet) {
+            return createApiResponse('error', null, { message: 'Events sheet not found' });
+        }
+
+        const lastRow = eventsSheet.getLastRow();
+        if (lastRow < 2) {
+            return createApiResponse('error', null, { message: 'No data' });
+        }
+
+        // Find the row to delete
+        const data = eventsSheet.getRange(2, 1, lastRow - 1, 4).getValues();
+
+        for (let i = 0; i < data.length; i++) {
+            if (toString(data[i][0]) === date && toString(data[i][3]) === eventId) {
+                eventsSheet.deleteRow(i + 2);
+
+                // Invalidate cache
+                CacheService.getScriptCache().remove('itinerary_json');
+
+                return createApiResponse('success', { message: 'Event deleted' });
+            }
+        }
+
+        return createApiResponse('error', null, { message: 'Event not found' });
+    } catch (error) {
+        return createApiResponse('error', null, { message: error.toString() });
+    }
+}
+
+/**
+ * Update a single day's metadata (title, summary, theme)
+ */
+function handleUpdateDay(e) {
+    try {
+        const dayData = JSON.parse(e.parameter.dayData || e.postData?.contents);
+        const { date } = dayData;
+
+        if (!date) {
+            return createApiResponse('error', null, { message: 'Date is required' });
+        }
+
+        const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+        const daysSheet = ss.getSheetByName(DAYS_SHEET);
+
+        if (!daysSheet) {
+            return createApiResponse('error', null, { message: 'Days sheet not found' });
+        }
+
+        const lastRow = daysSheet.getLastRow();
+        if (lastRow < 2) {
+            // No data, create new row
+            const rowData = [
+                date,
+                dayData.dayOfWeek || '',
+                dayData.title || '',
+                dayData.summary || '',
+                dayData.theme || 'default'
+            ];
+            daysSheet.appendRow(rowData);
+        } else {
+            // Find and update existing row
+            const dates = daysSheet.getRange(2, 1, lastRow - 1, 1).getValues().flat();
+            const rowIndex = dates.findIndex(d => toString(d) === date);
+
+            if (rowIndex !== -1) {
+                const rowData = [
+                    date,
+                    dayData.dayOfWeek || '',
+                    dayData.title || '',
+                    dayData.summary || '',
+                    dayData.theme || 'default'
+                ];
+                daysSheet.getRange(rowIndex + 2, 1, 1, 5).setValues([rowData]);
+            } else {
+                // Date not found, append new
+                const rowData = [
+                    date,
+                    dayData.dayOfWeek || '',
+                    dayData.title || '',
+                    dayData.summary || '',
+                    dayData.theme || 'default'
+                ];
+                daysSheet.appendRow(rowData);
+            }
+        }
+
+        // Invalidate cache
+        CacheService.getScriptCache().remove('itinerary_json');
+
+        return createApiResponse('success', { message: 'Day updated' });
+    } catch (error) {
+        return createApiResponse('error', null, { message: error.toString() });
+    }
+}
+
+// ============================================================================
+// EVENT UPDATE (Legacy - for backward compatibility)
 // ============================================================================
 
 function handleUpdateEvent(e) {
@@ -828,6 +1078,81 @@ function generateStaticMapUrl(locations) {
 // ============================================================================
 // PACKING LIST
 // ============================================================================
+
+/**
+ * Batch update multiple packing items - much faster than individual updates
+ */
+function handleBatchUpdatePackingItems(e) {
+    try {
+        const items = JSON.parse(e.parameter.items || e.postData?.contents);
+        if (!items || !Array.isArray(items)) {
+            return createApiResponse('error', null, { message: 'Invalid items format' });
+        }
+
+        const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+        let sheet = ss.getSheetByName(PACKING_SHEET);
+
+        if (!sheet) {
+            sheet = ss.insertSheet(PACKING_SHEET);
+            sheet.appendRow(['id', 'name', 'category', 'isShared', 'assignee', 'isChecked', 'createdAt']);
+        }
+
+        const lastRow = sheet.getLastRow();
+        const now = new Date();
+
+        // Get all existing IDs if there are rows
+        const existingIds = lastRow >= 2
+            ? sheet.getRange(2, 1, lastRow - 1, 1).getValues().flat()
+            : [];
+
+        const rowsToUpdate = [];
+        const rowsToAppend = [];
+
+        // Process each item
+        items.forEach(item => {
+            const rowData = [
+                item.id || Utilities.getUuid(),
+                item.name,
+                item.category,
+                item.isShared,
+                item.assignee || '',
+                item.isChecked,
+                item.createdAt || now
+            ];
+
+            if (item.id) {
+                const rowIndex = existingIds.indexOf(item.id);
+                if (rowIndex !== -1) {
+                    // Update existing row
+                    rowsToUpdate.push({ index: rowIndex + 2, data: rowData });
+                } else {
+                    // New item
+                    rowsToAppend.push(rowData);
+                }
+            } else {
+                // New item without ID
+                rowsToAppend.push(rowData);
+            }
+        });
+
+        // Batch update existing rows
+        rowsToUpdate.forEach(({ index, data }) => {
+            sheet.getRange(index, 1, 1, 7).setValues([data]);
+        });
+
+        // Batch append new rows
+        if (rowsToAppend.length > 0) {
+            sheet.getRange(sheet.getLastRow() + 1, 1, rowsToAppend.length, 7).setValues(rowsToAppend);
+        }
+
+        return createApiResponse('success', {
+            updated: rowsToUpdate.length,
+            added: rowsToAppend.length
+        });
+    } catch (error) {
+        return createApiResponse('error', null, { message: error.toString() });
+    }
+}
 
 function getPackingList() {
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);

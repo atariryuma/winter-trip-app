@@ -1,15 +1,13 @@
 import React, { useState } from 'react';
 import {
-    ChevronRight, Phone, Download, Upload, Clock, Moon,
-    FileText, CheckCircle, XCircle, Loader2, ChevronDown, ChevronUp,
-    Package, AlertTriangle
+    ChevronRight, Download, Upload, Clock, Moon,
+    FileText, CheckCircle, XCircle, Loader2, AlertTriangle
 } from 'lucide-react';
 import server from '../../api/gas';
 
-const SettingsView = ({ itinerary, setItinerary, setSelectedDayId, isDarkMode, setIsDarkMode, lastUpdate, setActiveTab, onDataRefresh }) => {
+const SettingsView = ({ itinerary, isDarkMode, setIsDarkMode, lastUpdate, onDataRefresh }) => {
     const [uploadStatus, setUploadStatus] = useState(null);
     const [uploading, setUploading] = useState(false);
-    const [showDataManagement, setShowDataManagement] = useState(false);
 
     // CSV Export - all itinerary data
     const handleExportCSV = () => {
@@ -61,59 +59,18 @@ const SettingsView = ({ itinerary, setItinerary, setSelectedDayId, isDarkMode, s
         <div className="space-y-4 pb-24">
             {/* Large Title */}
             <div className="pb-2">
-                <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Other</h1>
+                <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Settings</h1>
             </div>
 
-            {/* 便利ツール - Main Features */}
+            {/* 外観 - Appearance (First - most commonly used) */}
             <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden">
                 <div className="px-4 py-3 border-b border-gray-100 dark:border-slate-700">
-                    <h3 className="font-bold text-gray-800 dark:text-slate-100 text-sm">便利ツール</h3>
-                </div>
-
-                {/* パッキングリスト */}
-                <button
-                    onClick={() => setActiveTab('packing')}
-                    className="w-full px-4 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-slate-700 active:bg-gray-100 dark:active:bg-slate-600 transition-colors touch-manipulation min-h-[56px]"
-                >
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-400 to-orange-500 flex items-center justify-center shadow-sm">
-                            <Package size={20} className="text-white" />
-                        </div>
-                        <div className="text-left">
-                            <span className="text-gray-700 dark:text-slate-200 font-bold block">持ち物チェックリスト</span>
-                            <span className="text-xs text-gray-400 dark:text-slate-500">忘れ物を防ぐ</span>
-                        </div>
-                    </div>
-                    <ChevronRight size={18} className="text-gray-300 dark:text-slate-500" />
-                </button>
-
-                {/* 緊急連絡先 */}
-                <button
-                    onClick={() => setActiveTab('emergency')}
-                    className="w-full px-4 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-slate-700 active:bg-gray-100 dark:active:bg-slate-600 transition-colors touch-manipulation min-h-[56px] border-t border-gray-50 dark:border-slate-700"
-                >
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-400 to-red-500 flex items-center justify-center shadow-sm">
-                            <Phone size={20} className="text-white" />
-                        </div>
-                        <div className="text-left">
-                            <span className="text-gray-700 dark:text-slate-200 font-bold block">緊急連絡先</span>
-                            <span className="text-xs text-gray-400 dark:text-slate-500">110・119・病院</span>
-                        </div>
-                    </div>
-                    <ChevronRight size={18} className="text-gray-300 dark:text-slate-500" />
-                </button>
-            </div>
-
-            {/* 外観 - Appearance */}
-            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden">
-                <div className="px-4 py-3 border-b border-gray-100 dark:border-slate-700">
-                    <h3 className="font-bold text-gray-800 dark:text-slate-100 text-sm">外観</h3>
+                    <h3 className="font-bold text-gray-800 dark:text-slate-100 text-sm">Appearance</h3>
                 </div>
                 <div className="px-4 py-3.5 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <Moon size={20} className="text-indigo-500" />
-                        <span className="text-gray-700 dark:text-slate-200">ダークモード</span>
+                        <span className="text-gray-700 dark:text-slate-200">Dark Mode</span>
                     </div>
                     <button
                         onClick={() => setIsDarkMode(!isDarkMode)}
@@ -124,18 +81,13 @@ const SettingsView = ({ itinerary, setItinerary, setSelectedDayId, isDarkMode, s
                 </div>
             </div>
 
-            {/* データ管理 - Collapsible */}
+            {/* データ管理 - Data Management */}
             <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden">
-                <button
-                    onClick={() => setShowDataManagement(!showDataManagement)}
-                    className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
-                >
-                    <h3 className="font-bold text-gray-800 dark:text-slate-100 text-sm">データ管理</h3>
-                    {showDataManagement ? <ChevronUp size={18} className="text-gray-400" /> : <ChevronDown size={18} className="text-gray-400" />}
-                </button>
+                <div className="px-4 py-3 border-b border-gray-100 dark:border-slate-700">
+                    <h3 className="font-bold text-gray-800 dark:text-slate-100 text-sm">Data Management</h3>
+                </div>
 
-                {showDataManagement && (
-                    <div className="border-t border-gray-100 dark:border-slate-700">
+                <div>
                         {/* CSV Export */}
                         <button onClick={handleExportCSV} className="w-full px-4 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-slate-700 active:bg-gray-100 dark:active:bg-slate-600 transition-colors touch-manipulation min-h-[56px]">
                             <div className="flex items-center gap-3">
@@ -143,8 +95,8 @@ const SettingsView = ({ itinerary, setItinerary, setSelectedDayId, isDarkMode, s
                                     <Download size={18} className="text-green-500" />
                                 </div>
                                 <div className="text-left">
-                                    <span className="text-gray-700 dark:text-slate-200 font-medium block">CSVエクスポート</span>
-                                    <span className="text-xs text-gray-400 dark:text-slate-500">旅程データをダウンロード</span>
+                                    <span className="text-gray-700 dark:text-slate-200 font-medium block">CSV Export</span>
+                                    <span className="text-xs text-gray-400 dark:text-slate-500">Download itinerary data</span>
                                 </div>
                             </div>
                             <ChevronRight size={18} className="text-gray-300 dark:text-slate-500" />
@@ -161,8 +113,8 @@ const SettingsView = ({ itinerary, setItinerary, setSelectedDayId, isDarkMode, s
                                     )}
                                 </div>
                                 <div className="text-left">
-                                    <span className="text-gray-700 dark:text-slate-200 font-medium block">CSVインポート</span>
-                                    <span className="text-xs text-gray-400 dark:text-slate-500">旅程データをアップロード</span>
+                                    <span className="text-gray-700 dark:text-slate-200 font-medium block">CSV Import</span>
+                                    <span className="text-xs text-gray-400 dark:text-slate-500">Upload itinerary data</span>
                                 </div>
                             </div>
                             <input type="file" accept=".csv" onChange={handleImportCSV} className="hidden" disabled={uploading} />
@@ -179,28 +131,27 @@ const SettingsView = ({ itinerary, setItinerary, setSelectedDayId, isDarkMode, s
                         <div className="px-4 py-3 bg-amber-50 dark:bg-amber-900/20 border-t border-amber-100 dark:border-amber-800/30">
                             <div className="flex items-start gap-2 text-amber-700 dark:text-amber-400 text-xs">
                                 <AlertTriangle size={14} className="shrink-0 mt-0.5" />
-                                <span>CSVをインポートすると既存データが上書きされます</span>
+                                <span>Importing CSV will overwrite existing data</span>
                             </div>
                         </div>
-                    </div>
-                )}
+                </div>
 
                 {/* Last Update - Always visible */}
                 {lastUpdate && (
                     <div className="px-4 py-3 flex items-center gap-2 bg-gray-50 dark:bg-slate-700/50 border-t border-gray-100 dark:border-slate-700">
                         <Clock size={14} className="text-gray-400 dark:text-slate-500" />
-                        <span className="text-xs text-gray-500 dark:text-slate-400">最終更新: {lastUpdate}</span>
+                        <span className="text-xs text-gray-500 dark:text-slate-400">Last updated: {lastUpdate}</span>
                     </div>
                 )}
             </div>
 
-            {/* アプリ情報 */}
+            {/* アプリ情報 - App Info */}
             <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden">
                 <div className="px-4 py-3 border-b border-gray-100 dark:border-slate-700">
-                    <h3 className="font-bold text-gray-800 dark:text-slate-100 text-sm">アプリ情報</h3>
+                    <h3 className="font-bold text-gray-800 dark:text-slate-100 text-sm">About</h3>
                 </div>
                 <div className="px-4 py-3.5 flex items-center justify-between">
-                    <span className="text-gray-700 dark:text-slate-200">バージョン</span>
+                    <span className="text-gray-700 dark:text-slate-200">Version</span>
                     <span className="text-gray-400 dark:text-slate-500 text-sm">2.0.0</span>
                 </div>
                 <a href="https://github.com/atariryuma/winter-trip-app" target="_blank" rel="noopener noreferrer" className="px-4 py-3.5 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-slate-700 border-t border-gray-50 dark:border-slate-700">

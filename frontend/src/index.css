@@ -211,7 +211,7 @@ body {
 .sticky-header {
   position: sticky;
   top: 0;
-  z-index: 40;
+  /* z-index removed - use Tailwind z-sticky class instead */
   /* GPU acceleration to prevent iOS Safari "jumping" effect */
   transform: translateZ(0);
   -webkit-transform: translateZ(0);
@@ -286,34 +286,7 @@ body {
     display: none !important;
   }
 
-  /* Day tabs in landscape - compact horizontal strip at top (unused, kept for future) */
-  /*
-  .landscape-day-tabs {
-    position: fixed !important;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 48px;
-    z-index: 50;
-    background: linear-gradient(to right, rgba(37, 99, 235, 0.95), rgba(99, 102, 241, 0.95));
-    backdrop-filter: blur(8px);
-    display: flex !important;
-    align-items: center;
-    padding: 0 1rem;
-  }
-
-  .landscape-day-tabs button {
-    min-width: 52px !important;
-    height: 36px !important;
-    padding: 0 0.75rem !important;
-    font-size: 12px !important;
-  }
-
-  .landscape-with-tabs {
-    padding-top: 56px !important;
-    height: calc(100dvh - 56px) !important;
-  }
-  */
+  /* Removed unused .landscape-day-tabs styles with hardcoded z-index */
 }
 
 /* ==========================================================================

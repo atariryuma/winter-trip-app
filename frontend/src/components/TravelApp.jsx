@@ -4,7 +4,7 @@ import {
     Calendar, Map, Settings as SettingsIcon,
     Plane, Train, Bus, Hotel, MapPin, Utensils, Ticket,
     Plus, ArrowRight, Wallet, CheckCircle, Search,
-    Copy, X, Edit3, Save, Navigation, Package
+    Copy, X, Edit3, Save, Navigation, Package, ChevronRight
 } from 'lucide-react';
 import { initialItinerary } from '../data/initialData';
 import { generateId, toMinutes, toTimeStr, getMidTime } from '../utils';
@@ -62,7 +62,7 @@ const TimeConnector = ({ duration, isEditMode, onInsert }) => {
                 {isEditMode && onInsert && (
                     <button
                         onClick={onInsert}
-                        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-indigo-700 active:scale-95 transition-all z-10"
+                        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-indigo-700 active:scale-95 transition-all z-content"
                     >
                         <Plus size={14} />
                     </button>
@@ -70,7 +70,7 @@ const TimeConnector = ({ duration, isEditMode, onInsert }) => {
                 {/* Duration badge - shown when not in edit mode */}
                 {!isEditMode && durationText && (
                     <div className="absolute left-3 top-1/2 -translate-y-1/2 whitespace-nowrap">
-                        <span className="text-[11px] font-bold text-gray-400 dark:text-slate-500 bg-gray-50 dark:bg-slate-800 px-2 py-0.5 rounded-full border border-gray-200 dark:border-slate-700">
+                        <span className="text-sm font-bold text-gray-500 dark:text-slate-400 bg-white dark:bg-slate-800 px-2.5 py-1 rounded-full border border-gray-200 dark:border-slate-700 shadow-sm">
                             {durationText}
                         </span>
                     </div>
@@ -113,7 +113,7 @@ export default function TravelApp() {
             if (direction !== scrollDirection) {
                 setScrollDirection(direction);
             }
-            setIsScrolled(scrollY > 20);
+            setIsScrolled(scrollY > 10);
             lastScrollY = scrollY > 0 ? scrollY : 0;
         };
 
@@ -237,36 +237,124 @@ export default function TravelApp() {
         }
     };
 
-    const handleSaveEvent = (newItem) => {
-        let updatedItinerary;
+    const handleSaveEvent = async (newItem) => {
+        // Optimistically update UI immediately
+        let targetDay, isEdit = !!editItem;
         setItinerary(prev => {
-            updatedItinerary = prev.map(day => {
+            return prev.map(day => {
                 if (day.id === selectedDayId) {
-                    let newEvents = editItem
+                    targetDay = day;
+                    let newEvents = isEdit
                         ? day.events.map(e => e.id === newItem.id ? newItem : e)
                         : [...day.events, { ...newItem, id: generateId(), type: getCategoryType(newItem.category) }];
                     return { ...day, events: newEvents };
                 }
                 return day;
             });
-            return updatedItinerary;
         });
         setModalOpen(false);
         setEditItem(null);
-        if (updatedItinerary) saveToSpreadsheet(updatedItinerary);
+
+        // Background save using optimized API
+        try {
+            setSaving(true);
+            if (isEdit) {
+                // Update existing event using batch API (much faster than full save)
+                await server.batchUpdateEvents([{
+                    date: targetDay.date,
+                    eventId: newItem.name,
+                    eventData: newItem
+                }]);
+            } else {
+                // Add new event using optimized API
+                await server.addEvent({ ...newItem, date: targetDay.date });
+            }
+        } catch (err) {
+            console.error('Save error:', err);
+            alert('保存に失敗しました。ネット接続を確認してください。');
+        } finally {
+            setSaving(false);
+        }
     };
 
-    const handleDeleteEvent = (id) => {
+    const handleDeleteEvent = async (id) => {
         if (!window.confirm("この予定を削除しますか？")) return;
         if (!window.confirm("本当に削除しますか？\nこの操作は取り消せません。")) return;
-        let updatedItinerary;
-        setItinerary(prev => {
-            updatedItinerary = prev.map(day => ({ ...day, events: day.events.filter(e => e.id !== id) }));
-            return updatedItinerary;
-        });
+
+        // Find the event to delete
+        let eventToDelete, dayDate;
+        for (const day of itinerary) {
+            const event = day.events.find(e => e.id === id);
+            if (event) {
+                eventToDelete = event;
+                dayDate = day.date;
+                break;
+            }
+        }
+
+        // Optimistically update UI immediately
+        setItinerary(prev => prev.map(day => ({ ...day, events: day.events.filter(e => e.id !== id) })));
         setModalOpen(false);
         setEditItem(null);
-        if (updatedItinerary) saveToSpreadsheet(updatedItinerary);
+
+        // Background delete using optimized API
+        if (eventToDelete && dayDate) {
+            try {
+                setSaving(true);
+                await server.deleteEvent(dayDate, eventToDelete.name);
+            } catch (err) {
+                console.error('Delete error:', err);
+                alert('削除に失敗しました。ネット接続を確認してください。');
+            } finally {
+                setSaving(false);
+            }
+        }
+    };
+
+    const addNewDay = async () => {
+        if (itinerary.length === 0) return;
+
+        const lastDay = itinerary[itinerary.length - 1];
+        const [month, day] = lastDay.date.split('/').map(Number);
+
+        // Create date object for the last day
+        const currentYear = new Date().getFullYear();
+        const baseYear = month >= 10 ? currentYear : currentYear + 1;
+        const lastDate = new Date(baseYear, month - 1, day);
+
+        // Add one day
+        const newDate = new Date(lastDate);
+        newDate.setDate(newDate.getDate() + 1);
+
+        // Get day of week in Japanese
+        const daysOfWeek = ['日', '月', '火', '水', '木', '金', '土'];
+        const dayOfWeek = daysOfWeek[newDate.getDay()];
+
+        // Create new day object
+        const newDay = {
+            id: generateId(),
+            date: `${newDate.getMonth() + 1}/${newDate.getDate()}`,
+            dayOfWeek,
+            title: '',
+            summary: '',
+            theme: 'default',
+            events: []
+        };
+
+        // Optimistically update UI immediately
+        setItinerary(prev => [...prev, newDay]);
+        setSelectedDayId(newDay.id);
+
+        // Background save using optimized API
+        try {
+            setSaving(true);
+            await server.updateDay(newDay);
+        } catch (err) {
+            console.error('Save error:', err);
+            alert('保存に失敗しました。ネット接続を確認してください。');
+        } finally {
+            setSaving(false);
+        }
     };
 
     if (!auth) {
@@ -300,7 +388,7 @@ export default function TravelApp() {
         );
     }
 
-    const DynamicSummary = ({ day, events, dayIdx }) => {
+    const DynamicSummary = ({ day, events, dayIdx, onEditPlanned }) => {
         if (!day || !events) return null;
 
         // Calculate from Events data only
@@ -357,16 +445,17 @@ export default function TravelApp() {
             }
 
             if (plannedCount > 0) {
-                return { icon: <Edit3 size={18} />, text: `${plannedCount}件の計画を確認`, sub: '' };
+                return { icon: <Edit3 size={18} />, text: `${plannedCount}件の計画を確認`, sub: '', editable: true };
             }
 
             return { icon: <CheckCircle size={18} />, text: '準備完了', sub: `${daysUntil}日後に出発` };
         };
 
         const nextAction = getNextAction();
+        const firstPlannedEvent = events.find(e => e.status === 'planned' || e.status === 'suggested');
 
         return (
-            <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-2xl p-5 mb-6 shadow-lg">
+            <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top)+4.5rem)] z-sticky bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-2xl p-5 mb-6 shadow-lg">
                 {/* Day Header */}
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
@@ -392,8 +481,15 @@ export default function TravelApp() {
                     </div>
                 </div>
 
-                {/* Next Action - Main focus */}
-                <div className="flex items-center gap-3 mb-3">
+                {/* Next Action - Main focus (Clickable if editable) */}
+                <div
+                    className={`flex items-center gap-3 mb-3 ${nextAction.editable ? 'cursor-pointer hover:bg-white/10 -mx-2 px-2 py-2 rounded-xl transition-colors' : ''}`}
+                    onClick={() => {
+                        if (nextAction.editable && firstPlannedEvent && onEditPlanned) {
+                            onEditPlanned(firstPlannedEvent);
+                        }
+                    }}
+                >
                     <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white">
                         {nextAction.icon}
                     </div>
@@ -405,16 +501,19 @@ export default function TravelApp() {
                             <p className="text-sm text-white/70 truncate">{nextAction.sub}</p>
                         )}
                     </div>
+                    {nextAction.editable && (
+                        <ChevronRight size={20} className="text-white/60" />
+                    )}
                 </div>
 
                 {/* Stats + Route Button */}
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-6 text-sm">
-                        <div className="flex items-center gap-2 text-white/90">
+                        <div className="flex items-center gap-2 text-white">
                             <span className="text-xl font-black">{spotCount}</span>
                             <span className="text-xs text-white/70">スポット</span>
                         </div>
-                        <div className="flex items-center gap-2 text-white/90">
+                        <div className="flex items-center gap-2 text-white">
                             <span className="text-xl font-black">{moveCount}</span>
                             <span className="text-xs text-white/70">移動</span>
                         </div>
@@ -568,17 +667,6 @@ export default function TravelApp() {
                 </div>
             )}
 
-            {/* Flat Immersive Edit Button - Only show on Timeline tab */}
-            {activeTab === 'timeline' && (
-                <button
-                    onClick={() => setIsEditMode(!isEditMode)}
-                    className={`fixed top-4 right-4 z-fixed bg-white dark:bg-slate-800 text-slate-500 dark:text-indigo-400 p-3 rounded-full shadow-lg border border-gray-100 dark:border-slate-700 transition-all duration-300 active:scale-95 ${isEditMode ? 'ring-2 ring-indigo-500 bg-indigo-50' : ''} ${scrollDirection === 'down' ? '-translate-y-[200%] opacity-0' : 'translate-y-0 opacity-100'}`}
-                    aria-label="編集モード切り替え"
-                >
-                    {isEditMode ? <Save size={20} className="text-indigo-600" /> : <Edit3 size={20} />}
-                </button>
-            )}
-
             {/* Sidebar (Desktop) */}
             <aside
                 className={`hidden lg:flex flex-col w-64 h-screen fixed left-0 top-0 border-r border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 z-fixed transition-transform duration-300 ${scrollDirection === 'down' ? '-translate-x-full' : 'translate-x-0'}`}
@@ -595,10 +683,10 @@ export default function TravelApp() {
                 <nav className="px-4 space-y-1">
                     {[
                         { id: 'timeline', icon: Calendar, label: 'Timeline' },
-                        { id: 'tickets', icon: Ticket, label: 'Tickets' },
                         { id: 'packing', icon: Package, label: 'Lists' },
                         { id: 'budget', icon: Wallet, label: 'Budget' },
-                        { id: 'settings', icon: SettingsIcon, label: 'Other' },
+                        { id: 'tickets', icon: Ticket, label: 'Tickets' },
+                        { id: 'settings', icon: SettingsIcon, label: 'Settings' },
                     ].map(item => (
                         <button
                             key={item.id}
@@ -670,13 +758,13 @@ export default function TravelApp() {
                                     </div>
 
                                     {/* Sticky Date Tabs */}
-                                    <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-sticky bg-gray-100/95 dark:bg-slate-900/95 backdrop-blur-sm pt-2 pb-4 px-4 sm:px-6 border-b border-gray-200/50 dark:border-slate-800/50">
-                                        <div className="flex justify-between items-center bg-white dark:bg-slate-800 rounded-xl p-1 shadow-sm border border-gray-200 dark:border-slate-700">
+                                    <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-sticky-content bg-gray-100/95 dark:bg-slate-900/95 backdrop-blur-sm pt-2 pb-4 px-4 sm:px-6 border-b border-gray-200/50 dark:border-slate-800/50">
+                                        <div className="flex items-center gap-1 bg-white dark:bg-slate-800 rounded-xl p-1 shadow-sm border border-gray-200 dark:border-slate-700 transition-all duration-300 ease-out overflow-x-auto scrollbar-hide w-full">
                                             {itinerary.map((day, idx) => (
                                                 <button
                                                     key={day.id}
                                                     onClick={() => setSelectedDayId(day.id)}
-                                                    className={`flex-1 flex flex-col items-center justify-center py-2 rounded-lg transition-all duration-200 ${selectedDayId === day.id
+                                                    className={`flex-1 flex flex-col items-center justify-center py-2 px-2 rounded-lg transition-all duration-300 ease-out ${selectedDayId === day.id
                                                         ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-white shadow-sm ring-1 ring-gray-100 dark:ring-slate-600"
                                                         : "text-gray-400 dark:text-slate-500 hover:bg-gray-50 dark:hover:bg-slate-700"
                                                         }`}
@@ -692,12 +780,31 @@ export default function TravelApp() {
                                                     </span>
                                                 </button>
                                             ))}
+
+                                            {/* Add Day Button - Always rendered, animated with opacity and width */}
+                                            <button
+                                                onClick={addNewDay}
+                                                disabled={!isEditMode}
+                                                className={`flex-shrink-0 h-10 flex items-center justify-center rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-800/40 transition-all duration-300 ease-out active:scale-95 overflow-hidden ${
+                                                    isEditMode
+                                                        ? 'opacity-100 scale-100 pointer-events-auto w-10 delay-150'
+                                                        : 'opacity-0 scale-90 pointer-events-none w-0'
+                                                }`}
+                                                aria-label="新しい日を追加"
+                                            >
+                                                <Plus size={18} />
+                                            </button>
                                         </div>
                                     </div>
 
                                     {/* Mobile Events List */}
                                     <div className="px-4 sm:px-6 space-y-6 pb-24">
-                                        <DynamicSummary day={selectedDay} events={sortedEvents} dayIdx={dayIndex} />
+                                        <DynamicSummary
+                                            day={selectedDay}
+                                            events={sortedEvents}
+                                            dayIdx={dayIndex}
+                                            onEditPlanned={(event) => { setEditItem(event); setModalOpen(true); }}
+                                        />
 
                                         {/* Event List */}
                                         <div className="relative pb-12">
@@ -932,16 +1039,12 @@ export default function TravelApp() {
                                     {activeTab === 'tickets' && <TicketList itinerary={itinerary} onForceReload={fetchData} />}
                                     {activeTab === 'budget' && <BudgetView itinerary={itinerary} onForceReload={fetchData} />}
                                     {activeTab === 'packing' && <PackingList />}
-                                    {activeTab === 'emergency' && <EmergencyContacts />}
                                     {activeTab === 'settings' && (
                                         <SettingsView
                                             itinerary={itinerary}
-                                            setItinerary={setItinerary}
-                                            setSelectedDayId={setSelectedDayId}
                                             isDarkMode={isDarkMode}
                                             setIsDarkMode={setIsDarkMode}
                                             lastUpdate={lastUpdate}
-                                            setActiveTab={setActiveTab}
                                             onDataRefresh={fetchData}
                                         />
                                     )}
@@ -955,9 +1058,9 @@ export default function TravelApp() {
                         <div className="flex justify-around items-center h-[4.5rem] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]">
                             {[
                                 { id: 'timeline', icon: Calendar },
-                                { id: 'tickets', icon: Ticket },
                                 { id: 'packing', icon: Package },
                                 { id: 'budget', icon: Wallet },
+                                { id: 'tickets', icon: Ticket },
                                 { id: 'settings', icon: SettingsIcon },
                             ].map(item => (
                                 <button
@@ -973,6 +1076,17 @@ export default function TravelApp() {
                             ))}
                         </div>
                     </nav>
+
+                    {/* Flat Immersive Edit Button - Only show on Timeline tab */}
+                    {activeTab === 'timeline' && (
+                        <button
+                            onClick={() => setIsEditMode(!isEditMode)}
+                            className={`fixed top-4 right-4 z-fixed bg-white dark:bg-slate-800 text-slate-500 dark:text-indigo-400 p-3 rounded-full shadow-lg border border-gray-100 dark:border-slate-700 transition-all duration-300 active:scale-95 ${isEditMode ? 'ring-2 ring-indigo-500 bg-indigo-50' : ''} ${scrollDirection === 'down' ? '-translate-y-[200%] opacity-0' : 'translate-y-0 opacity-100'}`}
+                            aria-label="編集モード切り替え"
+                        >
+                            {isEditMode ? <Save size={20} className="text-indigo-600" /> : <Edit3 size={20} />}
+                        </button>
+                    )}
 
                     <Suspense fallback={null}>
                         {selectedPlaceEvent && (

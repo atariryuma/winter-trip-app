@@ -149,6 +149,90 @@ const server = {
                 else reject(new Error(json.error?.message || 'Failed'));
             })
             .catch(reject);
+    }),
+
+    // ============================================================================
+    // PERFORMANCE OPTIMIZED APIs
+    // ============================================================================
+
+    // Batch update multiple events (much faster than saveData)
+    batchUpdateEvents: (updates) => new Promise((resolve, reject) => {
+        const params = new URLSearchParams();
+        params.append('action', 'batchUpdateEvents');
+        params.append('updates', JSON.stringify(updates));
+        fetch(API_URL, {
+            method: 'POST',
+            body: params
+        })
+            .then(res => res.json())
+            .then(json => {
+                if (json.status === 'success') resolve(json.data);
+                else reject(new Error(json.error?.message || 'Update failed'));
+            })
+            .catch(reject);
+    }),
+
+    // Add a new event to a specific date
+    addEvent: (eventData) => new Promise((resolve, reject) => {
+        const params = new URLSearchParams();
+        params.append('action', 'addEvent');
+        params.append('eventData', JSON.stringify(eventData));
+        fetch(API_URL, {
+            method: 'POST',
+            body: params
+        })
+            .then(res => res.json())
+            .then(json => {
+                if (json.status === 'success') resolve(json.data);
+                else reject(new Error(json.error?.message || 'Failed to add event'));
+            })
+            .catch(reject);
+    }),
+
+    // Delete a specific event
+    deleteEvent: (date, eventId) => new Promise((resolve, reject) => {
+        const params = new URLSearchParams({ action: 'deleteEvent', date, eventId });
+        fetch(`${API_URL}?${params.toString()}`)
+            .then(res => res.json())
+            .then(json => {
+                if (json.status === 'success') resolve(json.data);
+                else reject(new Error(json.error?.message || 'Failed to delete event'));
+            })
+            .catch(reject);
+    }),
+
+    // Update a single day's metadata
+    updateDay: (dayData) => new Promise((resolve, reject) => {
+        const params = new URLSearchParams();
+        params.append('action', 'updateDay');
+        params.append('dayData', JSON.stringify(dayData));
+        fetch(API_URL, {
+            method: 'POST',
+            body: params
+        })
+            .then(res => res.json())
+            .then(json => {
+                if (json.status === 'success') resolve(json.data);
+                else reject(new Error(json.error?.message || 'Failed to update day'));
+            })
+            .catch(reject);
+    }),
+
+    // Batch update multiple packing items
+    batchUpdatePackingItems: (items) => new Promise((resolve, reject) => {
+        const params = new URLSearchParams();
+        params.append('action', 'batchUpdatePackingItems');
+        params.append('items', JSON.stringify(items));
+        fetch(API_URL, {
+            method: 'POST',
+            body: params
+        })
+            .then(res => res.json())
+            .then(json => {
+                if (json.status === 'success') resolve(json.data);
+                else reject(new Error(json.error?.message || 'Failed to update items'));
+            })
+            .catch(reject);
     })
 };
 

@@ -159,7 +159,7 @@ const EditModal = ({ isOpen, onClose, item, onSave, onDelete, previousEvent }) =
 
                                 {/* Autocomplete Suggestions */}
                                 {showSuggestions && toSuggestions.length > 0 && (
-                                    <div className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-700 rounded-xl shadow-lg border border-gray-200 dark:border-slate-600 max-h-48 overflow-y-auto">
+                                    <div className="absolute z-modal-content w-full mt-1 bg-white dark:bg-slate-700 rounded-xl shadow-lg border border-gray-200 dark:border-slate-600 max-h-48 overflow-y-auto">
                                         {toSuggestions.map((suggestion, i) => (
                                             <button
                                                 key={i}

@@ -114,7 +114,7 @@ const SearchModal = ({ event, onClose }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div className="fixed inset-0 z-modal flex items-end sm:items-center justify-center p-0 sm:p-4">
             <div className="absolute inset-0 bg-black/50" onClick={onClose} />
             <div className={`relative w-full bg-white dark:bg-slate-900 shadow-2xl overflow-hidden flex flex-col transition-all duration-300 ${isMaximized ? 'h-[100dvh] rounded-none' : 'h-[80vh] sm:h-[75vh] rounded-t-3xl sm:rounded-2xl sm:max-w-lg'
                 }`}>

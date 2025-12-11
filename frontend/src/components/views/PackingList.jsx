@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
     CheckCircle2, Circle, Plus, Trash2, Loader2, X,
     Shirt, Smartphone, Package, FileText, Briefcase,
@@ -222,11 +223,11 @@ export default function PackingList() {
     }, [shoppingItems]);
 
     return (
-        <div className="pb-24">
+        <div className="pb-24 space-y-4">
             {/* Tab Header */}
-            <div className="bg-white dark:bg-slate-800 sticky top-0 z-10 shadow-sm border-b dark:border-slate-700">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden">
                 {/* Tab Buttons */}
-                <div className="flex border-b dark:border-slate-700">
+                <div className="flex border-b border-gray-100 dark:border-slate-700">
                     <button
                         onClick={() => setActiveTab('packing')}
                         className={`flex-1 py-3 text-center font-bold text-sm transition-colors ${activeTab === 'packing'
@@ -420,148 +421,172 @@ export default function PackingList() {
                 )}
             </div>
 
-            {/* Packing Add Modal */}
-            {isAddModalOpen && (
-                <div className="fixed inset-0 z-modal flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-slate-800 w-full max-w-md rounded-2xl p-4 shadow-xl animate-scale-in">
-                        <div className="flex justify-between items-center mb-4 border-b dark:border-slate-700 pb-3">
-                            <h3 className="font-bold text-lg dark:text-white">持ち物を追加</h3>
-                            <button onClick={() => setIsAddModalOpen(false)} className="bg-gray-100 dark:bg-slate-700 p-1.5 rounded-full">
-                                <X size={18} />
+            {/* Packing Add Modal - iOS Bottom Sheet Style */}
+            {isAddModalOpen && createPortal(
+                <div className="fixed inset-0 z-overlay flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4" onClick={() => setIsAddModalOpen(false)}>
+                    <div className="bg-white dark:bg-slate-800 w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[90vh] animate-slide-up" onClick={e => e.stopPropagation()}>
+                        {/* Grabber */}
+                        <div className="flex justify-center pt-3 pb-1 sm:hidden">
+                            <div className="w-9 h-1 bg-gray-300 dark:bg-slate-600 rounded-full" />
+                        </div>
+                        {/* Header */}
+                        <div className="p-4 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center shrink-0">
+                            <h3 className="font-bold text-lg text-gray-800 dark:text-slate-100">持ち物を追加</h3>
+                            <button onClick={() => setIsAddModalOpen(false)} className="p-2.5 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-xl">
+                                <X size={20} className="text-gray-500 dark:text-slate-400" />
                             </button>
                         </div>
 
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 mb-1">アイテム名</label>
-                                <input
-                                    type="text"
-                                    value={newItem.name}
-                                    onChange={e => setNewItem({ ...newItem, name: e.target.value })}
-                                    placeholder="例: パジャマ、充電器"
-                                    className="w-full bg-gray-50 dark:bg-slate-700 border-none rounded-xl px-4 py-3 font-medium text-gray-800 dark:text-white focus:ring-2 focus:ring-indigo-500"
-                                    autoFocus
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 mb-1">カテゴリ</label>
-                                <select
-                                    value={newItem.category}
-                                    onChange={e => setNewItem({ ...newItem, category: e.target.value })}
-                                    className="w-full appearance-none bg-gray-50 dark:bg-slate-700 border-none rounded-xl px-4 py-3 font-medium text-gray-800 dark:text-white focus:ring-2 focus:ring-indigo-500"
-                                >
-                                    {PACKING_CATEGORIES.map(cat => (
-                                        <option key={cat.id} value={cat.id}>{cat.label}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <button
-                                type="submit"
-                                disabled={submitting || !newItem.name.trim()}
-                                className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold py-3 rounded-xl shadow-lg flex justify-center items-center gap-2"
-                            >
-                                {submitting ? <Loader2 className="animate-spin" size={20} /> : '追加する'}
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            )}
-
-            {/* Shopping Add Modal */}
-            {isShoppingModalOpen && (
-                <div className="fixed inset-0 z-modal flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-slate-800 w-full max-w-md rounded-2xl p-4 shadow-xl animate-scale-in max-h-[85vh] overflow-y-auto">
-                        <div className="flex justify-between items-center mb-4 border-b dark:border-slate-700 pb-3">
-                            <h3 className="font-bold text-lg dark:text-white">買い物を追加</h3>
-                            <button onClick={() => setIsShoppingModalOpen(false)} className="bg-gray-100 dark:bg-slate-700 p-1.5 rounded-full">
-                                <X size={18} />
-                            </button>
-                        </div>
-
-                        <form onSubmit={handleAddShoppingItem} className="space-y-4">
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 mb-1">商品名 *</label>
-                                <input
-                                    type="text"
-                                    value={newShoppingItem.name}
-                                    onChange={e => setNewShoppingItem({ ...newShoppingItem, name: e.target.value })}
-                                    placeholder="例: 飛騨牛まん、地酒"
-                                    className="w-full bg-gray-50 dark:bg-slate-700 border-none rounded-xl px-4 py-3 font-medium text-gray-800 dark:text-white focus:ring-2 focus:ring-indigo-500"
-                                    autoFocus
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 mb-1">カテゴリ</label>
-                                <select
-                                    value={newShoppingItem.category}
-                                    onChange={e => setNewShoppingItem({ ...newShoppingItem, category: e.target.value })}
-                                    className="w-full appearance-none bg-gray-50 dark:bg-slate-700 border-none rounded-xl px-4 py-3 font-medium text-gray-800 dark:text-white focus:ring-2 focus:ring-indigo-500"
-                                >
-                                    {SHOPPING_CATEGORIES.map(cat => (
-                                        <option key={cat.id} value={cat.id}>{cat.label}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            {newShoppingItem.category === 'souvenir' && (
+                        {/* Content */}
+                        <div className="p-4 overflow-y-auto space-y-5 flex-1">
+                            <form onSubmit={handleSubmit} className="space-y-4">
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 mb-1">
-                                        <Gift size={12} className="inline mr-1" />
-                                        贈る相手
-                                    </label>
+                                    <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 mb-1">アイテム名</label>
                                     <input
                                         type="text"
-                                        value={newShoppingItem.recipient}
-                                        onChange={e => setNewShoppingItem({ ...newShoppingItem, recipient: e.target.value })}
-                                        placeholder="例: 両親、職場の同僚"
+                                        value={newItem.name}
+                                        onChange={e => setNewItem({ ...newItem, name: e.target.value })}
+                                        placeholder="例: パジャマ、充電器"
                                         className="w-full bg-gray-50 dark:bg-slate-700 border-none rounded-xl px-4 py-3 font-medium text-gray-800 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                                        autoFocus
                                     />
                                 </div>
-                            )}
 
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 mb-1">
-                                    <User size={12} className="inline mr-1" />
-                                    購入者
-                                </label>
-                                <input
-                                    type="text"
-                                    value={newShoppingItem.buyer}
-                                    onChange={e => setNewShoppingItem({ ...newShoppingItem, buyer: e.target.value })}
-                                    placeholder="例: パパ、ママ"
-                                    className="w-full bg-gray-50 dark:bg-slate-700 border-none rounded-xl px-4 py-3 font-medium text-gray-800 dark:text-white focus:ring-2 focus:ring-indigo-500"
-                                />
-                            </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 mb-1">カテゴリ</label>
+                                    <select
+                                        value={newItem.category}
+                                        onChange={e => setNewItem({ ...newItem, category: e.target.value })}
+                                        className="w-full appearance-none bg-gray-50 dark:bg-slate-700 border-none rounded-xl px-4 py-3 font-medium text-gray-800 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                                    >
+                                        {PACKING_CATEGORIES.map(cat => (
+                                            <option key={cat.id} value={cat.id}>{cat.label}</option>
+                                        ))}
+                                    </select>
+                                </div>
 
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 mb-1">
-                                    <DollarSign size={12} className="inline mr-1" />
-                                    予定金額
-                                </label>
-                                <input
-                                    type="number"
-                                    value={newShoppingItem.price}
-                                    onChange={e => setNewShoppingItem({ ...newShoppingItem, price: e.target.value })}
-                                    placeholder="購入時に確定"
-                                    className="w-full bg-gray-50 dark:bg-slate-700 border-none rounded-xl px-4 py-3 font-medium text-gray-800 dark:text-white focus:ring-2 focus:ring-indigo-500"
-                                />
-                                <p className="text-xs text-gray-400 mt-1">購入完了時にお財布へ自動登録されます</p>
-                            </div>
-
-                            <button
-                                type="submit"
-                                disabled={!newShoppingItem.name.trim()}
-                                className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold py-3 rounded-xl shadow-lg flex justify-center items-center gap-2"
-                            >
-                                追加する
-                            </button>
-                        </form>
+                                <button
+                                    type="submit"
+                                    disabled={submitting || !newItem.name.trim()}
+                                    className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold py-3.5 rounded-xl shadow-lg flex justify-center items-center gap-2 transition-colors"
+                                >
+                                    {submitting ? <Loader2 className="animate-spin" size={20} /> : '追加する'}
+                                </button>
+                            </form>
+                        </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
+
+            {/* Shopping Add Modal - iOS Bottom Sheet Style */}
+            {
+                isShoppingModalOpen && createPortal(
+                    <div className="fixed inset-0 z-overlay flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4" onClick={() => setIsShoppingModalOpen(false)}>
+                        <div className="bg-white dark:bg-slate-800 w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[90vh] animate-slide-up" onClick={e => e.stopPropagation()}>
+                            {/* Grabber */}
+                            <div className="flex justify-center pt-3 pb-1 sm:hidden">
+                                <div className="w-9 h-1 bg-gray-300 dark:bg-slate-600 rounded-full" />
+                            </div>
+                            {/* Header */}
+                            <div className="p-4 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center shrink-0">
+                                <h3 className="font-bold text-lg text-gray-800 dark:text-slate-100">買い物を追加</h3>
+                                <button onClick={() => setIsShoppingModalOpen(false)} className="p-2.5 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-xl">
+                                    <X size={20} className="text-gray-500 dark:text-slate-400" />
+                                </button>
+                            </div>
+
+                            {/* Content */}
+                            <div className="p-4 overflow-y-auto space-y-5 flex-1">
+                                <form onSubmit={handleAddShoppingItem} className="space-y-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 mb-1">商品名 *</label>
+                                        <input
+                                            type="text"
+                                            value={newShoppingItem.name}
+                                            onChange={e => setNewShoppingItem({ ...newShoppingItem, name: e.target.value })}
+                                            placeholder="例: 北海道チーズケーキ、熊の木彫り"
+                                            className="w-full bg-gray-50 dark:bg-slate-700 border-none rounded-xl px-4 py-3 font-medium text-gray-800 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                                            autoFocus
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 mb-1">
+                                            <Gift size={12} className="inline mr-1" />
+                                            カテゴリ
+                                        </label>
+                                        <select
+                                            value={newShoppingItem.category}
+                                            onChange={e => setNewShoppingItem({ ...newShoppingItem, category: e.target.value })}
+                                            className="w-full appearance-none bg-gray-50 dark:bg-slate-700 border-none rounded-xl px-4 py-3 font-medium text-gray-800 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                                        >
+                                            {SHOPPING_CATEGORIES.map(cat => (
+                                                <option key={cat.id} value={cat.id}>{cat.label}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* Recipient (Optional) */}
+                                    {newShoppingItem.category === 'souvenir' && (
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 mb-1">
+                                                <Users size={12} className="inline mr-1" />
+                                                渡す相手
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={newShoppingItem.recipient}
+                                                onChange={e => setNewShoppingItem({ ...newShoppingItem, recipient: e.target.value })}
+                                                placeholder="例: 両親、職場の同僚"
+                                                className="w-full bg-gray-50 dark:bg-slate-700 border-none rounded-xl px-4 py-3 font-medium text-gray-800 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                                            />
+                                        </div>
+                                    )}
+
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 mb-1">
+                                            <User size={12} className="inline mr-1" />
+                                            購入者
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={newShoppingItem.buyer}
+                                            onChange={e => setNewShoppingItem({ ...newShoppingItem, buyer: e.target.value })}
+                                            placeholder="例: パパ、ママ"
+                                            className="w-full bg-gray-50 dark:bg-slate-700 border-none rounded-xl px-4 py-3 font-medium text-gray-800 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 mb-1">
+                                            <DollarSign size={12} className="inline mr-1" />
+                                            予定金額
+                                        </label>
+                                        <input
+                                            type="number"
+                                            value={newShoppingItem.price}
+                                            onChange={e => setNewShoppingItem({ ...newShoppingItem, price: e.target.value })}
+                                            placeholder="購入時に確定"
+                                            className="w-full bg-gray-50 dark:bg-slate-700 border-none rounded-xl px-4 py-3 font-medium text-gray-800 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                                        />
+                                        <p className="text-xs text-gray-400 mt-1">購入完了時にお財布へ自動登録されます</p>
+                                    </div>
+
+                                    <button
+                                        type="submit"
+                                        disabled={!newShoppingItem.name.trim()}
+                                        className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold py-3.5 rounded-xl shadow-lg flex justify-center items-center gap-2 transition-colors"
+                                    >
+                                        追加する
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>,
+                    document.body
+                )
+            }
         </div>
     );
 }

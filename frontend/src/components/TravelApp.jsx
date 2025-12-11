@@ -4,7 +4,7 @@ import {
     Calendar, Map, Settings as SettingsIcon,
     Plane, Train, Bus, Hotel, MapPin, Utensils, Ticket,
     Plus, ArrowRight, Wallet, CheckCircle, Search,
-    Copy, X, Edit3, Save, Navigation
+    Copy, X, Edit3, Save, Navigation, Package
 } from 'lucide-react';
 import { initialItinerary } from '../data/initialData';
 import { generateId, toMinutes, toTimeStr, getMidTime } from '../utils';
@@ -19,7 +19,6 @@ import server from '../api/gas';
 
 // Lazy load view components
 const TicketList = lazy(() => import('./views/TicketList'));
-const MapView = lazy(() => import('./views/MapView'));
 const SettingsView = lazy(() => import('./views/SettingsView'));
 const PackingList = lazy(() => import('./views/PackingList'));
 const EmergencyContacts = lazy(() => import('./views/EmergencyContacts'));
@@ -412,16 +411,38 @@ export default function TravelApp() {
                     </div>
                 </div>
 
-                {/* Stats */}
-                <div className="flex items-center gap-6 text-sm">
-                    <div className="flex items-center gap-2 text-white/90">
-                        <span className="text-xl font-black">{spotCount}</span>
-                        <span className="text-xs text-white/70">スポット</span>
+                {/* Stats + Route Button */}
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-6 text-sm">
+                        <div className="flex items-center gap-2 text-white/90">
+                            <span className="text-xl font-black">{spotCount}</span>
+                            <span className="text-xs text-white/70">スポット</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-white/90">
+                            <span className="text-xl font-black">{moveCount}</span>
+                            <span className="text-xs text-white/70">移動</span>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-2 text-white/90">
-                        <span className="text-xl font-black">{moveCount}</span>
-                        <span className="text-xs text-white/70">移動</span>
-                    </div>
+                    {/* Route Button */}
+                    <a
+                        href={(() => {
+                            const locations = events
+                                .filter(e => e.type !== 'transport' && (e.address || e.name))
+                                .map(e => e.address || e.name);
+                            if (locations.length === 0) return 'https://www.google.com/maps';
+                            if (locations.length === 1) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(locations[0])}`;
+                            const origin = encodeURIComponent(locations[0]);
+                            const destination = encodeURIComponent(locations[locations.length - 1]);
+                            const waypoints = locations.slice(1, -1).slice(0, 9).map(l => encodeURIComponent(l)).join('|');
+                            return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}`;
+                        })()}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 px-3 py-2 bg-white/20 hover:bg-white/30 rounded-xl text-white text-xs font-bold transition-colors"
+                    >
+                        <Navigation size={14} />
+                        ルート
+                    </a>
                 </div>
             </div>
         );
@@ -579,7 +600,7 @@ export default function TravelApp() {
                     {[
                         { id: 'timeline', icon: Calendar, label: 'Timeline' },
                         { id: 'tickets', icon: Ticket, label: 'Tickets' },
-                        { id: 'map', icon: MapPin, label: 'Places' },
+                        { id: 'packing', icon: Package, label: 'Packing' },
                         { id: 'budget', icon: Wallet, label: 'Budget' },
                         { id: 'settings', icon: SettingsIcon, label: 'Other' },
                     ].map(item => (
@@ -619,7 +640,7 @@ export default function TravelApp() {
                                 <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 tracking-tight">
                                     {activeTab === 'timeline' ? 'TripPlanner' :
                                         activeTab === 'tickets' ? 'Tickets' :
-                                            activeTab === 'map' ? 'Places' :
+                                            activeTab === 'packing' ? 'Packing' :
                                                 activeTab === 'budget' ? 'Budget' :
                                                     activeTab === 'settings' ? 'Other' : ''}
                                 </h2>
@@ -909,7 +930,6 @@ export default function TravelApp() {
                             <main className="pt-[calc(4rem+env(safe-area-inset-top))] lg:pt-8 pb-32 lg:pb-8 pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] overflow-x-hidden">
                                 <div className="max-w-full lg:max-w-7xl 2xl:max-w-screen-2xl mx-auto w-full px-4 sm:px-6 lg:px-8 2xl:px-12 overflow-x-hidden">
                                     {activeTab === 'tickets' && <TicketList itinerary={itinerary} onForceReload={fetchData} />}
-                                    {activeTab === 'map' && <MapView mapUrl={mapUrl} itinerary={itinerary} mapError={mapError} />}
                                     {activeTab === 'budget' && <BudgetView itinerary={itinerary} onForceReload={fetchData} />}
                                     {activeTab === 'packing' && <PackingList />}
                                     {activeTab === 'emergency' && <EmergencyContacts />}
@@ -936,7 +956,7 @@ export default function TravelApp() {
                             {[
                                 { id: 'timeline', icon: Calendar },
                                 { id: 'tickets', icon: Ticket },
-                                { id: 'map', icon: MapPin },
+                                { id: 'packing', icon: Package },
                                 { id: 'budget', icon: Wallet },
                                 { id: 'settings', icon: SettingsIcon },
                             ].map(item => (

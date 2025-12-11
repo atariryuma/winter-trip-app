@@ -596,7 +596,7 @@ export default function TravelApp() {
                     {[
                         { id: 'timeline', icon: Calendar, label: 'Timeline' },
                         { id: 'tickets', icon: Ticket, label: 'Tickets' },
-                        { id: 'packing', icon: Package, label: 'Packing' },
+                        { id: 'packing', icon: Package, label: 'Lists' },
                         { id: 'budget', icon: Wallet, label: 'Budget' },
                         { id: 'settings', icon: SettingsIcon, label: 'Other' },
                     ].map(item => (
@@ -636,7 +636,7 @@ export default function TravelApp() {
                                 <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 tracking-tight">
                                     {activeTab === 'timeline' ? 'TripPlanner' :
                                         activeTab === 'tickets' ? 'Tickets' :
-                                            activeTab === 'packing' ? 'Packing' :
+                                            activeTab === 'packing' ? 'Lists' :
                                                 activeTab === 'budget' ? 'Budget' :
                                                     activeTab === 'settings' ? 'Other' : ''}
                                 </h2>
@@ -735,7 +735,16 @@ export default function TravelApp() {
                                                                         <span>{event.category}</span>
                                                                     </div>
                                                                 </div>
-                                                                <div onClick={(e) => { e.stopPropagation(); setEditItem(event); setModalOpen(true); }} className="cursor-pointer hover:opacity-80 active:scale-95 transition-transform">
+                                                                <div
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        if (event.status !== 'confirmed' && event.status !== 'booked') {
+                                                                            setEditItem(event);
+                                                                            setModalOpen(true);
+                                                                        }
+                                                                    }}
+                                                                    className={`${event.status !== 'confirmed' && event.status !== 'booked' ? 'cursor-pointer hover:opacity-80 active:scale-95' : ''} transition-transform`}
+                                                                >
                                                                     <StatusBadge status={event.status} />
                                                                 </div>
                                                             </div>
@@ -755,6 +764,20 @@ export default function TravelApp() {
                                                                 </p>
                                                             )}
                                                             <div className="flex items-center gap-2 mt-2 justify-end">
+                                                                {/* Edit button for non-confirmed status */}
+                                                                {!isEditMode && event.status !== 'confirmed' && event.status !== 'booked' && (
+                                                                    <button
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setEditItem(event);
+                                                                            setModalOpen(true);
+                                                                        }}
+                                                                        className="h-8 w-8 bg-amber-50 dark:bg-amber-900/20 rounded-lg flex items-center justify-center text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors"
+                                                                        title="編集"
+                                                                    >
+                                                                        <Edit3 size={16} />
+                                                                    </button>
+                                                                )}
                                                                 {!isEditMode && (
                                                                     <a
                                                                         href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.type === 'transport' ? event.to : (event.address || event.name))}`}

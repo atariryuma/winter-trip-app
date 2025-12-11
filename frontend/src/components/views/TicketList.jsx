@@ -176,12 +176,36 @@ export default function TicketList({ itinerary }) {
         });
     }, [itinerary]);
 
-    const { pending, booked } = useMemo(() => {
-        return {
-            pending: processedEvents.filter(e => !e.isBooked),
-            booked: processedEvents.filter(e => e.isBooked)
-        };
-    }, [processedEvents]);
+    // Group by day
+    const groupedByDay = useMemo(() => {
+        if (!itinerary) return [];
+        return itinerary.map((day, idx) => {
+            const dayEvents = (day.events || [])
+                .filter(e => ['stay', 'transport'].includes(e.type) || ['flight', 'train', 'bus', 'hotel', 'sightseeing', 'meal'].includes(e.category))
+                .map(e => ({
+                    ...e,
+                    date: day.date,
+                    dayOfWeek: day.dayOfWeek,
+                    isBooked: !!(e.status === 'confirmed' || e.bookingRef)
+                }))
+                .sort((a, b) => {
+                    const ta = a.time ? parseInt(a.time.split(':')[0]) : 99;
+                    const tb = b.time ? parseInt(b.time.split(':')[0]) : 99;
+                    return ta - tb;
+                });
+            return {
+                dayIdx: idx + 1,
+                date: day.date,
+                dayOfWeek: day.dayOfWeek,
+                events: dayEvents,
+                pending: dayEvents.filter(e => !e.isBooked).length,
+                booked: dayEvents.filter(e => e.isBooked).length
+            };
+        }).filter(d => d.events.length > 0);
+    }, [itinerary]);
+
+    const totalPending = useMemo(() => processedEvents.filter(e => !e.isBooked).length, [processedEvents]);
+    const totalBooked = useMemo(() => processedEvents.filter(e => e.isBooked).length, [processedEvents]);
 
     return (
         <div className="space-y-6 pt-2 pb-20">
@@ -190,46 +214,59 @@ export default function TicketList({ itinerary }) {
                 <div className="flex-none w-32 lg:flex-1 bg-white dark:bg-slate-800 rounded-2xl p-4 border border-gray-100 dark:border-slate-700 shadow-sm">
                     <div className="text-gray-400 dark:text-slate-500 text-xs font-bold mb-1">未予約</div>
                     <div className="flex items-end gap-1">
-                        <span className="text-3xl font-black text-rose-500">{pending.length}</span>
+                        <span className="text-3xl font-black text-rose-500">{totalPending}</span>
                         <span className="text-sm font-bold text-gray-400 mb-1">件</span>
                     </div>
                 </div>
                 <div className="flex-none w-32 lg:flex-1 bg-white dark:bg-slate-800 rounded-2xl p-4 border border-gray-100 dark:border-slate-700 shadow-sm">
                     <div className="text-gray-400 dark:text-slate-500 text-xs font-bold mb-1">予約済み</div>
                     <div className="flex items-end gap-1">
-                        <span className="text-3xl font-black text-emerald-500">{booked.length}</span>
+                        <span className="text-3xl font-black text-emerald-500">{totalBooked}</span>
                         <span className="text-sm font-bold text-gray-400 mb-1">件</span>
                     </div>
                 </div>
             </div>
 
-            {/* Pending Section */}
-            {pending.length > 0 && (
-                <div>
-                    <h2 className="text-gray-900 dark:text-white font-black text-lg mb-4 flex items-center gap-2">
-                        <AlertCircle className="text-rose-500" />
-                        予約が必要 ({pending.length})
-                    </h2>
-                    <div className="space-y-3 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-4 lg:space-y-0">
-                        {pending.map((event, i) => (
-                            <SimpleTicketCard key={`pending-${i}`} event={event} isBooked={false} onSearchClick={setSearchEvent} />
+            {/* Day Groups */}
+            {groupedByDay.map(day => (
+                <div key={day.date} className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm overflow-hidden">
+                    {/* Day Header */}
+                    <div className="px-4 py-3 bg-gray-50 dark:bg-slate-700/50 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <span className="px-2.5 py-1 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 text-xs font-black rounded-lg">
+                                DAY {day.dayIdx}
+                            </span>
+                            <span className="font-bold text-gray-800 dark:text-white text-sm">
+                                {day.date} <span className="text-gray-400 dark:text-slate-500 font-normal">({day.dayOfWeek})</span>
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs">
+                            {day.pending > 0 && (
+                                <span className="px-2 py-0.5 bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-full font-bold">
+                                    未予約 {day.pending}
+                                </span>
+                            )}
+                            {day.booked > 0 && (
+                                <span className="px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full font-bold">
+                                    確定 {day.booked}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Day Events */}
+                    <div className="divide-y divide-gray-50 dark:divide-slate-700">
+                        {day.events.map((event, i) => (
+                            <SimpleTicketCard
+                                key={`${day.date}-${i}`}
+                                event={event}
+                                isBooked={event.isBooked}
+                                onSearchClick={setSearchEvent}
+                            />
                         ))}
                     </div>
                 </div>
-            )}
-
-            {/* Booked Section */}
-            <div>
-                <h2 className="text-gray-900 dark:text-white font-black text-lg mb-4 flex items-center gap-2">
-                    <CheckCircle className="text-emerald-500" />
-                    予約済み ({booked.length})
-                </h2>
-                <div className="space-y-3 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-4 lg:space-y-0">
-                    {booked.map((event, i) => (
-                        <SimpleTicketCard key={`booked-${i}`} event={event} isBooked={true} onSearchClick={setSearchEvent} />
-                    ))}
-                </div>
-            </div>
+            ))}
 
             {/* Empty State */}
             {processedEvents.length === 0 && (

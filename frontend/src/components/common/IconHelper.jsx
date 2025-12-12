@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-    Plane, Train, Bus, MapPin, BedDouble, Sun, Cloud, Snowflake,
+    Plane, Train, Bus, MapPin, BedDouble,
     Camera, Utensils, Mountain, ShoppingBag, Car
 } from 'lucide-react';
 
@@ -21,16 +21,4 @@ export const getIcon = (category, type, props = {}) => {
     if (type === 'train') return <Train {...iconProps} />;
 
     return <MapPin {...iconProps} />;
-};
-
-export const getWeatherIcon = (condition, props = {}) => {
-    const iconProps = { size: 16, className: "text-gray-500", ...props };
-    switch (condition) {
-        case 'Sunny': return <Sun {...iconProps} className="text-orange-500" />;
-        case 'Cloudy': return <Cloud {...iconProps} className="text-gray-400" />;
-        case 'Rain': return <Cloud {...iconProps} className="text-blue-400" />;
-        case 'Snow': return <Snowflake {...iconProps} className="text-blue-300" />;
-        case 'Clear': return <Sun {...iconProps} className="text-yellow-500" />;
-        default: return <Sun {...iconProps} className="text-gray-400" />;
-    }
 };

@@ -830,7 +830,7 @@ export default function TravelApp() {
                                         activeTab === 'tickets' ? 'Tickets' :
                                             activeTab === 'packing' ? 'Lists' :
                                                 activeTab === 'budget' ? 'Budget' :
-                                                    activeTab === 'settings' ? 'Other' : ''}
+                                                    activeTab === 'settings' ? 'Settings' : ''}
                                 </h2>
                             </div>
                         </div>

@@ -63,17 +63,17 @@ const TicketCard = ({ event, isBooked }) => {
                             {isBooked ? (
                                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
                                     <CheckCircle size={10} strokeWidth={3} />
-                                    Confirmed
+                                    予約済み
                                 </span>
                             ) : (
                                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300">
                                     <AlertTriangle size={10} strokeWidth={3} />
-                                    Not Booked
+                                    未予約
                                 </span>
                             )}
                             {!isPast && (
                                 <span className="text-[10px] font-bold text-gray-400 dark:text-slate-500 flex items-center gap-1">
-                                    • {daysUntil === 0 ? 'Today' : daysUntil === 1 ? 'Tomorrow' : `${daysUntil} days left`}
+                                    • {daysUntil === 0 ? '今日' : daysUntil === 1 ? '明日' : `${daysUntil}日後`}
                                 </span>
                             )}
                         </div>
@@ -114,7 +114,7 @@ const TicketCard = ({ event, isBooked }) => {
                                 <Ticket size={14} className="text-indigo-500 dark:text-indigo-400" />
                             </div>
                             <div className="flex flex-col items-start gap-0.5">
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">Booking ID</span>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">予約番号</span>
                                 <span className="font-mono text-sm font-bold text-slate-700 dark:text-slate-200 leading-none">{event.bookingRef}</span>
                             </div>
                         </div>
@@ -125,7 +125,7 @@ const TicketCard = ({ event, isBooked }) => {
                 ) : (
                     <div className="w-full bg-rose-50/50 dark:bg-rose-900/10 border border-dashed border-rose-200 dark:border-rose-800/30 rounded-xl p-3 flex items-center justify-center gap-2">
                         <AlertTriangle size={15} className="text-rose-500" />
-                        <span className="text-xs font-bold text-rose-600 dark:text-rose-400">Booking required for this event</span>
+                        <span className="text-xs font-bold text-rose-600 dark:text-rose-400">予約が必要です</span>
                     </div>
                 )}
             </div>
@@ -198,17 +198,17 @@ export default function TicketList({ itinerary, isScrolled }) {
             <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-sticky-content bg-gray-100/95 dark:bg-slate-900/95 backdrop-blur-sm -mx-4 px-4 sm:-mx-6 sm:px-6 py-2">
                 <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide lg:overflow-visible">
                     <div className="flex-none w-32 lg:flex-1 bg-white dark:bg-slate-800 rounded-2xl p-4 border border-gray-100 dark:border-slate-700 shadow-sm transition-all hover:shadow-md">
-                        <div className="text-gray-400 dark:text-slate-500 text-xs font-bold mb-1 uppercase tracking-wide">Unbooked</div>
+                        <div className="text-gray-400 dark:text-slate-500 text-xs font-bold mb-1 uppercase tracking-wide">未予約</div>
                         <div className="flex items-end gap-1">
                             <span className="text-3xl font-black text-rose-500">{totalPending}</span>
-                            <span className="text-sm font-bold text-gray-400 mb-1">items</span>
+                            <span className="text-sm font-bold text-gray-400 mb-1">件</span>
                         </div>
                     </div>
                     <div className="flex-none w-32 lg:flex-1 bg-white dark:bg-slate-800 rounded-2xl p-4 border border-gray-100 dark:border-slate-700 shadow-sm transition-all hover:shadow-md">
-                        <div className="text-gray-400 dark:text-slate-500 text-xs font-bold mb-1 uppercase tracking-wide">Ready</div>
+                        <div className="text-gray-400 dark:text-slate-500 text-xs font-bold mb-1 uppercase tracking-wide">予約済み</div>
                         <div className="flex items-end gap-1">
                             <span className="text-3xl font-black text-emerald-500">{totalBooked}</span>
-                            <span className="text-sm font-bold text-gray-400 mb-1">items</span>
+                            <span className="text-sm font-bold text-gray-400 mb-1">件</span>
                         </div>
                     </div>
                 </div>

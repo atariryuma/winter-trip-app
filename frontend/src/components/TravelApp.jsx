@@ -925,17 +925,17 @@ export default function TravelApp() {
                                                                 }
                                                             }}
                                                             onClick={() => setSelectedDayId(day.id)}
-                                                            className={`flex-1 min-w-[60px] flex flex-col items-center justify-center py-2.5 px-3 rounded-lg transition-all duration-300 ease-out ${isSelected
-                                                                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 scale-[1.02]"
-                                                                : "text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 active:scale-95"
+                                                            className={`flex-1 flex flex-col items-center justify-center py-2 px-2 rounded-lg transition-all duration-300 ease-out ${isSelected
+                                                                ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-white shadow-sm ring-1 ring-gray-100 dark:ring-slate-600"
+                                                                : "text-gray-400 dark:text-slate-500 hover:bg-gray-50 dark:hover:bg-slate-700"
                                                                 }`}
                                                         >
-                                                            <span className={`text-[10px] font-bold uppercase tracking-wider ${isSelected ? 'opacity-80' : 'opacity-60'}`}>
+                                                            <span className="text-[10px] font-bold uppercase tracking-wider opacity-70">
                                                                 Day {idx + 1}
                                                             </span>
                                                             <span className="text-sm font-black">
                                                                 {day.date.split('/')[1]}
-                                                                <span className={`text-[10px] font-medium ml-0.5 ${isSelected ? 'opacity-70' : 'opacity-50'}`}>
+                                                                <span className="text-[10px] font-medium ml-0.5 opacity-60">
                                                                     {day.dayOfWeek}
                                                                 </span>
                                                             </span>

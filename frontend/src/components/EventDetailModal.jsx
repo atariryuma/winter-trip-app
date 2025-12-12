@@ -30,8 +30,10 @@ const EventDetailModal = ({ event, onClose, onEdit, previousEvent, previousDayHo
     const { routeOrigin, routeDestination, placeQuery } = useMemo(() => {
         // For transport events (flight, train, bus), use the event's own from/to
         if (event?.type === 'transport') {
+            // Skip route origin for flights to prevent driving route calculation
+            const isFlight = event.category === 'flight';
             return {
-                routeOrigin: event.from || null,
+                routeOrigin: isFlight ? null : (event.from || null),
                 routeDestination: event.to || null,
                 placeQuery: event.to || event.name || event.from
             };

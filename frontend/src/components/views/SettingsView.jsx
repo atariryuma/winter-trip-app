@@ -57,7 +57,7 @@ const SettingsView = ({ itinerary, isDarkMode, setIsDarkMode, lastUpdate, onData
     };
 
     return (
-        <div className="space-y-4 pb-8">
+        <div className="space-y-4 pb-24">
             {/* Large Title */}
             <div className="pb-2">
                 <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Settings</h1>

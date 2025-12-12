@@ -232,7 +232,11 @@ export default function TicketList({ itinerary }) {
     const totalBooked = useMemo(() => processedEvents.filter(e => e.isBooked).length, [processedEvents]);
 
     return (
-        <div className="space-y-6 pt-2 pb-20">
+        <div className="space-y-4 pb-24">
+            {/* Large Title */}
+            <div className="pb-2">
+                <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Bookings</h1>
+            </div>
             {/* Header / Stats */}
             <div className="flex gap-3 overflow-x-auto pb-2 -mx-2 px-2 scrollbar-hide lg:overflow-visible lg:mx-0 lg:px-0">
                 <div className="flex-none w-32 lg:flex-1 bg-white dark:bg-slate-800 rounded-2xl p-4 border border-gray-100 dark:border-slate-700 shadow-sm">

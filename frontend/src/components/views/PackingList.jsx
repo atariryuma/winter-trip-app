@@ -237,6 +237,10 @@ export default function PackingList() {
 
     return (
         <div className="pb-24 space-y-4">
+            {/* Large Title */}
+            <div className="pb-2">
+                <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Packing</h1>
+            </div>
             {/* Tab Header */}
             <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden">
                 {/* Tab Buttons */}

@@ -135,8 +135,8 @@ const TicketCard = ({ event, isExpanded, onToggle, onEditClick }) => {
 
                 {/* Expanded Details */}
                 <div className={`overflow-hidden transition-all duration-300 ease-out ${isExpanded ? 'max-h-96 opacity-100 mt-4' : 'max-h-0 opacity-0 mt-0'}`}>
-                    {/* Route: From / To (from this event's details) */}
-                    {(routeFrom || routeTo) ? (
+                    {/* Route: From / To */}
+                    {(routeFrom || routeTo) && (
                         <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-3 mb-3 space-y-2 border border-indigo-100 dark:border-indigo-800/30">
                             {routeFrom && (
                                 <div className="flex items-center gap-2 text-sm">
@@ -153,11 +153,14 @@ const TicketCard = ({ event, isExpanded, onToggle, onEditClick }) => {
                                 </div>
                             )}
                         </div>
-                    ) : event.details ? (
+                    )}
+
+                    {/* Memo / Details */}
+                    {event.details && (
                         <div className="mb-3 px-1">
                             <p className="text-sm text-slate-600 dark:text-slate-400">{event.details}</p>
                         </div>
-                    ) : null}
+                    )}
 
                     {/* Booking Ref (if booked) */}
                     {isBooked && event.bookingRef && (

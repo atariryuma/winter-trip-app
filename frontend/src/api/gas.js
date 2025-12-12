@@ -1,4 +1,4 @@
-const API_URL = 'https://script.google.com/macros/s/AKfycbzdHh9NfxwTXrtDa41A_2DIhyA32o5OMVg0WxpCNBLYqyF_afPcTqsnSO5cN5t2SKtrPg/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbxdqZBzJm-TscH3ed7HsG9jBqK1hBQzCKqgJ1qngz42TERjOqju2jQqu3m1KRw49avX5Q/exec';
 
 const fetchWithRetry = async (url, options = {}, retries = 3, backoff = 1000) => {
     try {

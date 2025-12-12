@@ -61,7 +61,7 @@ const SettingsView = ({ itinerary, isDarkMode, setIsDarkMode, lastUpdate, onData
             {/* Large Title with fade animation */}
             <div className={`pb-2 transition-all duration-300 ${isScrolled ? 'opacity-0 scale-95 -translate-y-2' : 'opacity-100 scale-100 translate-y-0'}`}>
                 <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Settings</h1>
-                <p className="text-sm text-slate-500 dark:text-slate-400">アプリ設定</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">App Settings</p>
             </div>
 
             {/* 外観 - Appearance (First - most commonly used) */}
@@ -141,7 +141,7 @@ const SettingsView = ({ itinerary, isDarkMode, setIsDarkMode, lastUpdate, onData
                     <button
                         onClick={() => {
                             const count = server.clearAllCaches();
-                            setCacheClearMessage(`${count}件のキャッシュを削除しました`);
+                            setCacheClearMessage(`Cleared ${count} cached items`);
                             setTimeout(() => setCacheClearMessage(null), 3000);
                         }}
                         className="w-full px-4 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-slate-700 active:bg-gray-100 dark:active:bg-slate-600 transition-colors touch-manipulation min-h-[56px] border-t border-gray-100 dark:border-slate-700"
@@ -193,7 +193,7 @@ const SettingsView = ({ itinerary, isDarkMode, setIsDarkMode, lastUpdate, onData
             <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden">
                 <button
                     onClick={() => {
-                        if (window.confirm('ログアウトしますか？\n次回アクセス時にパスコードの入力が必要になります。')) {
+                        if (window.confirm('Logout?\nYou will need to enter the passcode next time you access.')) {
                             localStorage.removeItem('tripapp_authenticated');
                             if (onLogout) onLogout();
                         }
@@ -206,7 +206,7 @@ const SettingsView = ({ itinerary, isDarkMode, setIsDarkMode, lastUpdate, onData
                         </div>
                         <div className="text-left">
                             <span className="text-gray-700 dark:text-slate-200 font-medium block">Logout</span>
-                            <span className="text-xs text-gray-400 dark:text-slate-500">パスコード入力画面に戻る</span>
+                            <span className="text-xs text-gray-400 dark:text-slate-500">Return to passcode screen</span>
                         </div>
                     </div>
                     <ChevronRight size={18} className="text-gray-300 dark:text-slate-500" />

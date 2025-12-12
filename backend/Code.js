@@ -262,11 +262,6 @@ function fixTimeData() {
 // ============================================================================
 
 /**
- * Handle Days CSV upload - overwrites days sheet
- */
-
-
-/**
  * Handle Events CSV upload - overwrites events sheet
  */
 function handleUploadEvents(e) {

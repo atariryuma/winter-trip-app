@@ -39,7 +39,7 @@ const savePayers = (payers) => {
     localStorage.setItem('travel_payers', JSON.stringify(payers));
 };
 
-const BudgetView = ({ itinerary, onForceReload }) => {
+const BudgetView = ({ itinerary, onForceReload, isScrolled }) => {
     // Budget goal (stored in localStorage)
     const [budgetGoal, setBudgetGoal] = useState(() => {
         const saved = localStorage.getItem('travel_budget_goal');
@@ -230,9 +230,10 @@ const BudgetView = ({ itinerary, onForceReload }) => {
         <div className="space-y-4 pb-24 lg:grid lg:grid-cols-2 lg:gap-6 lg:space-y-0">
             {/* Left Column - Summary */}
             <div className="space-y-4">
-                {/* Large Title */}
-                <div className="pb-2">
+                {/* Large Title with fade animation */}
+                <div className={`pb-2 transition-all duration-300 ${isScrolled ? 'opacity-0 scale-95 -translate-y-2' : 'opacity-100 scale-100 translate-y-0'}`}>
                     <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Budget</h1>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">予算管理</p>
                 </div>
                 {/* Summary Card */}
                 <div className="bg-gradient-to-br from-indigo-600 to-violet-700 dark:from-indigo-900 dark:to-slate-800 rounded-2xl p-5 text-white shadow-xl relative overflow-hidden">

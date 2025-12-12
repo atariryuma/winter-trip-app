@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import server from '../../api/gas';
 
-const SettingsView = ({ itinerary, isDarkMode, setIsDarkMode, lastUpdate, onDataRefresh, onLogout }) => {
+const SettingsView = ({ itinerary, isDarkMode, setIsDarkMode, lastUpdate, onDataRefresh, onLogout, isScrolled }) => {
     const [uploadStatus, setUploadStatus] = useState(null);
     const [uploading, setUploading] = useState(false);
     const [cacheClearMessage, setCacheClearMessage] = useState(null);
@@ -58,9 +58,10 @@ const SettingsView = ({ itinerary, isDarkMode, setIsDarkMode, lastUpdate, onData
 
     return (
         <div className="space-y-4 pb-24">
-            {/* Large Title */}
-            <div className="pb-2">
+            {/* Large Title with fade animation */}
+            <div className={`pb-2 transition-all duration-300 ${isScrolled ? 'opacity-0 scale-95 -translate-y-2' : 'opacity-100 scale-100 translate-y-0'}`}>
                 <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Settings</h1>
+                <p className="text-sm text-slate-500 dark:text-slate-400">アプリ設定</p>
             </div>
 
             {/* 外観 - Appearance (First - most commonly used) */}

@@ -175,7 +175,7 @@ const SearchModal = ({ event, onClose }) => {
     );
 };
 
-export default function TicketList({ itinerary }) {
+export default function TicketList({ itinerary, isScrolled }) {
     const [searchEvent, setSearchEvent] = useState(null);
 
     // Process events
@@ -233,24 +233,27 @@ export default function TicketList({ itinerary }) {
 
     return (
         <div className="space-y-4 pb-24">
-            {/* Large Title */}
-            <div className="pb-2">
+            {/* Large Title with fade animation */}
+            <div className={`pb-2 transition-all duration-300 ${isScrolled ? 'opacity-0 scale-95 -translate-y-2' : 'opacity-100 scale-100 translate-y-0'}`}>
                 <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Tickets</h1>
+                <p className="text-sm text-slate-500 dark:text-slate-400">予約状況</p>
             </div>
-            {/* Header / Stats */}
-            <div className="flex gap-3 overflow-x-auto pb-2 -mx-2 px-2 scrollbar-hide lg:overflow-visible lg:mx-0 lg:px-0">
-                <div className="flex-none w-32 lg:flex-1 bg-white dark:bg-slate-800 rounded-2xl p-4 border border-gray-100 dark:border-slate-700 shadow-sm">
-                    <div className="text-gray-400 dark:text-slate-500 text-xs font-bold mb-1">未予約</div>
-                    <div className="flex items-end gap-1">
-                        <span className="text-3xl font-black text-rose-500">{totalPending}</span>
-                        <span className="text-sm font-bold text-gray-400 mb-1">件</span>
+            {/* Header / Stats - Sticky */}
+            <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-sticky-content bg-gray-100/95 dark:bg-slate-900/95 backdrop-blur-sm -mx-4 px-4 sm:-mx-6 sm:px-6 py-2">
+                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide lg:overflow-visible">
+                    <div className="flex-none w-32 lg:flex-1 bg-white dark:bg-slate-800 rounded-2xl p-4 border border-gray-100 dark:border-slate-700 shadow-sm">
+                        <div className="text-gray-400 dark:text-slate-500 text-xs font-bold mb-1">未予約</div>
+                        <div className="flex items-end gap-1">
+                            <span className="text-3xl font-black text-rose-500">{totalPending}</span>
+                            <span className="text-sm font-bold text-gray-400 mb-1">件</span>
+                        </div>
                     </div>
-                </div>
-                <div className="flex-none w-32 lg:flex-1 bg-white dark:bg-slate-800 rounded-2xl p-4 border border-gray-100 dark:border-slate-700 shadow-sm">
-                    <div className="text-gray-400 dark:text-slate-500 text-xs font-bold mb-1">予約済み</div>
-                    <div className="flex items-end gap-1">
-                        <span className="text-3xl font-black text-emerald-500">{totalBooked}</span>
-                        <span className="text-sm font-bold text-gray-400 mb-1">件</span>
+                    <div className="flex-none w-32 lg:flex-1 bg-white dark:bg-slate-800 rounded-2xl p-4 border border-gray-100 dark:border-slate-700 shadow-sm">
+                        <div className="text-gray-400 dark:text-slate-500 text-xs font-bold mb-1">予約済み</div>
+                        <div className="flex items-end gap-1">
+                            <span className="text-3xl font-black text-emerald-500">{totalBooked}</span>
+                            <span className="text-sm font-bold text-gray-400 mb-1">件</span>
+                        </div>
                     </div>
                 </div>
             </div>

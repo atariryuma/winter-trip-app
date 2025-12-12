@@ -23,7 +23,7 @@ const SHOPPING_CATEGORIES = [
     { id: 'other', label: 'その他', icon: Package },
 ];
 
-export default function PackingList() {
+export default function PackingList({ isScrolled }) {
     const [activeTab, setActiveTab] = useState('packing'); // 'packing' | 'shopping'
 
     // Packing list state
@@ -237,72 +237,75 @@ export default function PackingList() {
 
     return (
         <div className="pb-24 space-y-4">
-            {/* Large Title */}
-            <div className="pb-2">
+            {/* Large Title with fade animation */}
+            <div className={`pb-2 transition-all duration-300 ${isScrolled ? 'opacity-0 scale-95 -translate-y-2' : 'opacity-100 scale-100 translate-y-0'}`}>
                 <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Lists</h1>
+                <p className="text-sm text-slate-500 dark:text-slate-400">持ち物・買い物リスト</p>
             </div>
-            {/* Tab Header */}
-            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden">
-                {/* Tab Buttons */}
-                <div className="flex border-b border-gray-100 dark:border-slate-700">
-                    <button
-                        onClick={() => setActiveTab('packing')}
-                        className={`flex-1 py-3 text-center font-bold text-sm transition-colors ${activeTab === 'packing'
-                            ? 'text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600'
-                            : 'text-gray-400 dark:text-slate-500'
-                            }`}
-                    >
-                        <Package size={16} className="inline mr-1.5 -mt-0.5" />
-                        持ち物
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('shopping')}
-                        className={`flex-1 py-3 text-center font-bold text-sm transition-colors ${activeTab === 'shopping'
-                            ? 'text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600'
-                            : 'text-gray-400 dark:text-slate-500'
-                            }`}
-                    >
-                        <ShoppingBag size={16} className="inline mr-1.5 -mt-0.5" />
-                        買い物
-                    </button>
-                </div>
-
-                {/* Stats Header */}
-                <div className="p-4">
-                    <div className="flex justify-between items-center mb-3">
-                        <div>
-                            <h2 className="text-xl font-bold dark:text-white">
-                                {activeTab === 'packing' ? '持ち物リスト' : '買い物リスト'}
-                            </h2>
-                            <p className="text-sm text-gray-500 dark:text-slate-400">
-                                {activeTab === 'packing'
-                                    ? `${items.filter(i => i.isChecked).length} / ${items.length} 準備完了`
-                                    : `${shoppingStats.purchased} / ${shoppingStats.total} 購入済み${shoppingStats.spent > 0 ? ` (¥${shoppingStats.spent.toLocaleString()})` : ''}`
-                                }
-                            </p>
-                        </div>
+            {/* Tab Header - Sticky */}
+            <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-sticky-content bg-gray-100/95 dark:bg-slate-900/95 backdrop-blur-sm -mx-4 px-4 sm:-mx-6 sm:px-6 py-2">
+                <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden">
+                    {/* Tab Buttons */}
+                    <div className="flex border-b border-gray-100 dark:border-slate-700">
                         <button
-                            onClick={() => activeTab === 'packing' ? setIsAddModalOpen(true) : setIsShoppingModalOpen(true)}
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white p-2.5 rounded-full shadow-lg transition-transform active:scale-90"
+                            onClick={() => setActiveTab('packing')}
+                            className={`flex-1 py-3 text-center font-bold text-sm transition-colors ${activeTab === 'packing'
+                                ? 'text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600'
+                                : 'text-gray-400 dark:text-slate-500'
+                                }`}
                         >
-                            <Plus size={22} />
+                            <Package size={16} className="inline mr-1.5 -mt-0.5" />
+                            持ち物
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('shopping')}
+                            className={`flex-1 py-3 text-center font-bold text-sm transition-colors ${activeTab === 'shopping'
+                                ? 'text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600'
+                                : 'text-gray-400 dark:text-slate-500'
+                                }`}
+                        >
+                            <ShoppingBag size={16} className="inline mr-1.5 -mt-0.5" />
+                            買い物
                         </button>
                     </div>
 
-                    {/* Progress Bar */}
-                    {activeTab === 'packing' && (
-                        <>
-                            <div className="w-full bg-gray-100 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
-                                <div
-                                    className={`h-full transition-all duration-500 ${packingProgress === 100 ? 'bg-green-500' : 'bg-indigo-500'}`}
-                                    style={{ width: `${packingProgress}%` }}
-                                />
+                    {/* Stats Header */}
+                    <div className="p-4">
+                        <div className="flex justify-between items-center mb-3">
+                            <div>
+                                <h2 className="text-xl font-bold dark:text-white">
+                                    {activeTab === 'packing' ? '持ち物リスト' : '買い物リスト'}
+                                </h2>
+                                <p className="text-sm text-gray-500 dark:text-slate-400">
+                                    {activeTab === 'packing'
+                                        ? `${items.filter(i => i.isChecked).length} / ${items.length} 準備完了`
+                                        : `${shoppingStats.purchased} / ${shoppingStats.total} 購入済み${shoppingStats.spent > 0 ? ` (¥${shoppingStats.spent.toLocaleString()})` : ''}`
+                                    }
+                                </p>
                             </div>
-                            {packingProgress === 100 && (
-                                <p className="text-center text-green-600 dark:text-green-400 text-sm font-bold mt-2">🎉 準備完了！</p>
-                            )}
-                        </>
-                    )}
+                            <button
+                                onClick={() => activeTab === 'packing' ? setIsAddModalOpen(true) : setIsShoppingModalOpen(true)}
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white p-2.5 rounded-full shadow-lg transition-transform active:scale-90"
+                            >
+                                <Plus size={22} />
+                            </button>
+                        </div>
+
+                        {/* Progress Bar */}
+                        {activeTab === 'packing' && (
+                            <>
+                                <div className="w-full bg-gray-100 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
+                                    <div
+                                        className={`h-full transition-all duration-500 ${packingProgress === 100 ? 'bg-green-500' : 'bg-indigo-500'}`}
+                                        style={{ width: `${packingProgress}%` }}
+                                    />
+                                </div>
+                                {packingProgress === 100 && (
+                                    <p className="text-center text-green-600 dark:text-green-400 text-sm font-bold mt-2">🎉 準備完了！</p>
+                                )}
+                            </>
+                        )}
+                    </div>
                 </div>
             </div>
 

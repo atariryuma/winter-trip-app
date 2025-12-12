@@ -235,7 +235,7 @@ export default function TicketList({ itinerary }) {
         <div className="space-y-4 pb-24">
             {/* Large Title */}
             <div className="pb-2">
-                <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Bookings</h1>
+                <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Tickets</h1>
             </div>
             {/* Header / Stats */}
             <div className="flex gap-3 overflow-x-auto pb-2 -mx-2 px-2 scrollbar-hide lg:overflow-visible lg:mx-0 lg:px-0">

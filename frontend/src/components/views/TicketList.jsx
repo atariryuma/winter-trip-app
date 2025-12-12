@@ -240,15 +240,11 @@ export default function TicketList({ itinerary, isScrolled, onEventClick }) {
             .filter(e => e.type === 'stay' || e.category === 'hotel')
             .sort((a, b) => parseInt(a.date.split('/')[1]) - parseInt(b.date.split('/')[1]));
 
-        const activities = allEvents
-            .filter(e => ['sightseeing', 'meal', 'ticket'].includes(e.category) && !['stay', 'transport'].includes(e.type))
-            .sort((a, b) => parseInt(a.date.split('/')[1]) - parseInt(b.date.split('/')[1]));
-
-        return { transport, stay, activities };
+        return { transport, stay };
     }, [allEvents]);
 
     // Stats
-    const pendingItems = allEvents.filter(e => !e.isBooked && (['flight', 'train', 'bus', 'hotel', 'ticket'].includes(e.category) || e.type === 'stay'));
+    const pendingItems = allEvents.filter(e => !e.isBooked && (['flight', 'train', 'bus', 'hotel'].includes(e.category) || e.type === 'stay' || e.type === 'transport'));
     const totalPending = pendingItems.length;
     const totalBooked = allEvents.filter(e => e.isBooked).length;
 
@@ -297,18 +293,6 @@ export default function TicketList({ itinerary, isScrolled, onEventClick }) {
                     <div className="space-y-3">
                         {categorized.stay.map((event, i) => (
                             <TicketCard key={`stay-${i}`} event={event} onEventClick={onEventClick} />
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {/* Activities Section */}
-            {categorized.activities.length > 0 && (
-                <div className="animate-slide-up-fade" style={{ animationDelay: '200ms' }}>
-                    <SectionHeader title="その他・アクティビティ" icon={Ticket} count={categorized.activities.length} />
-                    <div className="space-y-3">
-                        {categorized.activities.map((event, i) => (
-                            <TicketCard key={`activity-${i}`} event={event} onEventClick={onEventClick} />
                         ))}
                     </div>
                 </div>

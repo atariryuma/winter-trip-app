@@ -113,13 +113,21 @@ const TimeConnector = ({ duration, isEditMode, onInsert, fromLocation, toLocatio
     const status = getStatus();
 
     // Display text - always show raw duration, color indicates margin status
+    // Add warning icons for problem statuses
     const getText = () => {
         if (loading) return '...';
         if (duration === null || duration === undefined) return null;
 
-        // Always show raw duration format
-        if (duration < 0) return `⛔ ${Math.abs(duration)}分 重複`;
-        return formatDuration(duration);
+        const durationText = formatDuration(duration);
+
+        // Add icons based on status
+        if (status === 'overlap') {
+            // Show negative margin in consistent format
+            const overlapMins = Math.abs(margin !== null ? margin : duration);
+            return `⛔ -${formatDuration(overlapMins)}`;
+        }
+        if (status === 'tight') return `⚠️ ${durationText}`;
+        return durationText;  // ok status - no icon
     };
 
     // Color classes
@@ -176,18 +184,8 @@ const DynamicSummary = ({ day, events, dayIdx, previousDayHotel, onEditPlanned, 
     const confirmedCount = events.filter(e => e.status === 'booked' || e.status === 'confirmed').length;
     const plannedCount = events.filter(e => e.status === 'planned' || e.status === 'suggested').length;
     const pendingBooking = events.filter(e => e.status === 'planned' && ['flight', 'train', 'hotel'].includes(e.category));
-
-    // Calculate time warnings: count schedule gaps < 15 min or overlaps
-    const sortedEvents = [...events].sort((a, b) => toMinutes(a.time) - toMinutes(b.time));
-    let timeWarningCount = 0;
-    for (let i = 0; i < sortedEvents.length - 1; i++) {
-        const currentEnd = sortedEvents[i].endTime || sortedEvents[i].time;
-        const nextStart = sortedEvents[i + 1].time;
-        if (currentEnd && nextStart) {
-            const gap = toMinutes(nextStart) - toMinutes(currentEnd);
-            if (gap < 15) timeWarningCount++;
-        }
-    }
+    // Note: Time warnings (overlap/tight) are handled by TimeConnector component
+    // which uses cached API data for accurate travel time calculation
 
     // Determine trip phase and next action
     const today = new Date();
@@ -259,11 +257,6 @@ const DynamicSummary = ({ day, events, dayIdx, previousDayHotel, onEditPlanned, 
                 </div>
                 {/* Status indicator & Delete button */}
                 <div className="flex items-center gap-2">
-                    {timeWarningCount > 0 && (
-                        <span className="px-2 py-0.5 rounded-full bg-red-400/30 text-red-100 text-[10px] font-bold flex items-center gap-1">
-                            ⚠️ {timeWarningCount}
-                        </span>
-                    )}
                     {confirmedCount > 0 && (
                         <span className="px-2 py-0.5 rounded-full bg-green-400/20 text-green-100 text-[10px] font-bold flex items-center gap-1">
                             <CheckCircle size={10} /> {confirmedCount}

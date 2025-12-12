@@ -43,7 +43,6 @@ const TicketCard = ({ event, isExpanded, onToggle, onEditClick }) => {
     const cardRef = useRef(null);
     const headerRef = useRef(null);
     const [copied, setCopied] = useState(false);
-    const [headerTopBefore, setHeaderTopBefore] = useState(null);
     const CategoryIcon = getCategoryIcon(event.category, event.type);
     const daysUntil = getDaysUntil(event.date);
     const isPast = daysUntil < 0;
@@ -53,21 +52,7 @@ const TicketCard = ({ event, isExpanded, onToggle, onEditClick }) => {
     const routeFrom = event.from || null;
     const routeTo = event.to || null;
 
-    // Simple post-expansion scroll correction to keep header visible
-    useEffect(() => {
-        if (isExpanded && headerRef.current && headerTopBefore !== null) {
-            // Wait for expansion animation to start, then correct position
-            const timer = setTimeout(() => {
-                if (!headerRef.current) return;
-                const diff = headerRef.current.getBoundingClientRect().top - headerTopBefore;
-                if (Math.abs(diff) > 5) {
-                    window.scrollBy({ top: diff, behavior: 'smooth' });
-                }
-                setHeaderTopBefore(null);
-            }, 100);  // Wait for animation to begin
-            return () => clearTimeout(timer);
-        }
-    }, [isExpanded, headerTopBefore]);
+    // Note: Scroll correction removed - now using scrollIntoView center before expand
 
     const handleCopy = (e) => {
         e.stopPropagation();
@@ -89,11 +74,17 @@ const TicketCard = ({ event, isExpanded, onToggle, onEditClick }) => {
     };
 
     const handleCardClick = () => {
-        // Record header position before toggle (for scroll correction)
-        if (!isExpanded && headerRef.current) {
-            setHeaderTopBefore(headerRef.current.getBoundingClientRect().top);
+        if (!isExpanded) {
+            // 1. Scroll to center first
+            if (cardRef.current) {
+                cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            // 2. Wait for scroll to complete, then expand
+            setTimeout(() => onToggle(), 300);
+        } else {
+            // Collapse immediately
+            onToggle();
         }
-        onToggle();  // Toggle immediately
     };
 
     return (

@@ -7,8 +7,11 @@ import StatusBadge from './common/StatusBadge';
 /**
  * ExpandableEventCard - iOS HIG compliant expandable card
  * 
- * Animation: Smooth spring-like expand from click point
- * Style: White card (same as collapsed), matching DynamicSummary button sizes
+ * iOS Best Practices:
+ * - Scroll to center before expanding (predictable position)
+ * - Spring animation curve (0.5, 0.05, 0.2, 1) for natural feel
+ * - Subtle scale feedback on interaction
+ * - Smooth opacity transitions
  */
 const ExpandableEventCard = ({
     event,
@@ -28,18 +31,24 @@ const ExpandableEventCard = ({
     const headerRef = useRef(null);
     const [contentHeight, setContentHeight] = useState(0);
     const [headerTopBefore, setHeaderTopBefore] = useState(null);
+    const [isAnimating, setIsAnimating] = useState(false);
 
-    // Position correction after expansion to keep header visible
+    // iOS-style: Scroll to keep header visible after expansion
     useEffect(() => {
         if (isExpanded && headerRef.current && headerTopBefore !== null) {
-            requestAnimationFrame(() => {
-                const headerRect = headerRef.current.getBoundingClientRect();
-                const diff = headerRect.top - headerTopBefore;
-                if (Math.abs(diff) > 5) {
-                    window.scrollBy({ top: diff, behavior: 'smooth' });
-                }
-                setHeaderTopBefore(null);
-            });
+            // Wait for animation to start, then correct position
+            const timer = setTimeout(() => {
+                requestAnimationFrame(() => {
+                    const headerRect = headerRef.current.getBoundingClientRect();
+                    const diff = headerRect.top - headerTopBefore;
+                    if (Math.abs(diff) > 5) {
+                        window.scrollBy({ top: diff, behavior: 'smooth' });
+                    }
+                    setHeaderTopBefore(null);
+                    setIsAnimating(false);
+                });
+            }, 50);
+            return () => clearTimeout(timer);
         }
     }, [isExpanded, headerTopBefore]);
 
@@ -128,15 +137,22 @@ const ExpandableEventCard = ({
             {/* Header - Always Visible */}
             <div
                 ref={headerRef}
-                className="p-4 cursor-pointer"
+                className={`p-4 cursor-pointer transition-transform duration-150 ${isAnimating ? 'scale-[0.98]' : 'active:scale-[0.98]'}`}
                 onClick={() => {
                     if (isEditMode) {
                         onEdit?.(event);
-                    } else {
-                        // Record header position before expansion
-                        if (!isExpanded && headerRef.current) {
+                    } else if (!isExpanded) {
+                        // iOS-style: Record position, scroll to center, then expand
+                        if (cardRef.current && headerRef.current) {
                             setHeaderTopBefore(headerRef.current.getBoundingClientRect().top);
+                            setIsAnimating(true);
+                            // Scroll card to center of viewport
+                            cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            // Delay expand until scroll completes
+                            setTimeout(() => onToggle?.(), 250);
                         }
+                    } else {
+                        // Collapse immediately
                         onToggle?.();
                     }
                 }}
@@ -211,14 +227,15 @@ const ExpandableEventCard = ({
                 )}
             </div>
 
-            {/* Expanded Content - Downward expansion only */}
+            {/* Expanded Content - iOS spring animation */}
             <div
                 ref={contentRef}
                 className="overflow-hidden"
                 style={{
                     maxHeight: isExpanded ? `${contentHeight || 500}px` : '0px',
                     opacity: isExpanded ? 1 : 0,
-                    transition: 'max-height 400ms cubic-bezier(0.4, 0, 0.2, 1), opacity 300ms ease-out'
+                    // iOS spring curve: quick start, gentle settle
+                    transition: 'max-height 350ms cubic-bezier(0.2, 0.9, 0.3, 1), opacity 250ms ease-out'
                 }}
             >
                 <div className="px-4 pb-4 space-y-3 overflow-hidden">

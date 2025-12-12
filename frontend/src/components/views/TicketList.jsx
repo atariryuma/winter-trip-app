@@ -88,13 +88,14 @@ const TicketCard = ({ event, isExpanded, onToggle, onEditClick }) => {
 
     const handleCardClick = () => {
         if (!isExpanded && cardRef.current && headerRef.current) {
-            // Record header position before expansion
+            // iOS-style: Record position, scroll to center, then expand
             const headerRect = headerRef.current.getBoundingClientRect();
             setHeaderTopBefore(headerRect.top);
-            // Scroll to center first
             cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            setTimeout(() => onToggle(), 300);
+            // Delay matches ExpandableEventCard (250ms)
+            setTimeout(() => onToggle(), 250);
         } else {
+            // Collapse immediately
             onToggle();
         }
     };
@@ -152,14 +153,15 @@ const TicketCard = ({ event, isExpanded, onToggle, onEditClick }) => {
                     </div>
                 </div>
 
-                {/* Expanded Details - expands downward only */}
+                {/* Expanded Details - iOS spring animation */}
                 <div
                     className="overflow-hidden"
                     style={{
                         maxHeight: isExpanded ? '500px' : '0px',
                         opacity: isExpanded ? 1 : 0,
                         marginTop: isExpanded ? '16px' : '0px',
-                        transition: 'max-height 400ms cubic-bezier(0.4, 0, 0.2, 1), opacity 300ms ease-out, margin-top 300ms ease-out'
+                        // iOS spring curve: quick start, gentle settle - matches ExpandableEventCard
+                        transition: 'max-height 350ms cubic-bezier(0.2, 0.9, 0.3, 1), opacity 250ms ease-out, margin-top 250ms ease-out'
                     }}
                 >
                     {/* Route: From / To */}

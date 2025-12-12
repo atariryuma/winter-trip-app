@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useMemo, useRef, Suspense, lazy } from 'react';
 import ExpandableEventCard from './ExpandableEventCard';
 import DepartureIndicator from './DepartureIndicator';
 import {
@@ -388,6 +388,27 @@ export default function TravelApp() {
     const [mapModalQuery, setMapModalQuery] = useState(null);
 
 
+    // Swipe navigation for mobile day switching
+    const touchStartX = useRef(0);
+    const touchStartY = useRef(0);
+    const handleTouchStart = (e) => {
+        touchStartX.current = e.touches[0].clientX;
+        touchStartY.current = e.touches[0].clientY;
+    };
+    const handleTouchEnd = (e) => {
+        const deltaX = e.changedTouches[0].clientX - touchStartX.current;
+        const deltaY = e.changedTouches[0].clientY - touchStartY.current;
+        // Only trigger if horizontal swipe is dominant and > 75px
+        if (Math.abs(deltaX) > 75 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
+            if (deltaX < 0 && dayIndex < itinerary.length - 1) {
+                // Swipe left -> next day
+                setSelectedDayId(itinerary[dayIndex + 1].id);
+            } else if (deltaX > 0 && dayIndex > 0) {
+                // Swipe right -> previous day
+                setSelectedDayId(itinerary[dayIndex - 1].id);
+            }
+        }
+    };
 
     // Scroll detection for immersive mode
     useEffect(() => {
@@ -901,8 +922,12 @@ export default function TravelApp() {
                                             </div>
                                         </div>
 
-                                        {/* Mobile Events List */}
-                                        <div className="px-4 sm:px-6 space-y-6 pb-24">
+                                        {/* Mobile Events List - Swipeable */}
+                                        <div
+                                            className="px-4 sm:px-6 space-y-6 pb-24"
+                                            onTouchStart={handleTouchStart}
+                                            onTouchEnd={handleTouchEnd}
+                                        >
                                             <DynamicSummary
                                                 day={selectedDay}
                                                 events={sortedEvents}

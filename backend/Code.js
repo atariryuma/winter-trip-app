@@ -80,8 +80,6 @@ function doGet(e) {
                 return handleGetPlaceAutocomplete(e);
             case 'updateEvent':
                 return handleUpdateEvent(e);
-            case 'getWeather':
-                return handleGetWeather(e);
             case 'fixTimeData':
                 const fixResult = fixTimeData();
                 return createApiResponse('success', fixResult);
@@ -578,93 +576,6 @@ function saveItineraryData(data) {
     if (eventsData.length > 0) {
         eventsSheet.getRange(2, 1, eventsData.length, 12).setValues(eventsData);
     }
-}
-
-// ============================================================================
-// WEATHER API (Open-Meteo)
-// ============================================================================
-
-function getWeather(date, locationName) {
-    const cache = CacheService.getScriptCache();
-    const cacheKey = `weather_${date}_${Utilities.base64Encode(locationName)}`;
-
-    try {
-        const cached = cache.get(cacheKey);
-        if (cached) return JSON.parse(cached);
-    } catch (e) { }
-
-    try {
-        const geocoder = Maps.newGeocoder().setLanguage('ja').setRegion('jp');
-        const geoResult = geocoder.geocode(locationName);
-
-        if (geoResult.status !== 'OK' || !geoResult.results.length) {
-            return { error: 'Location not found' };
-        }
-
-        const loc = geoResult.results[0].geometry.location;
-        const currentYear = new Date().getFullYear();
-        const [month, day] = date.split('/').map(Number);
-        const year = month >= 10 ? currentYear : currentYear + 1;
-        const isoDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lng}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=Asia/Tokyo&start_date=${isoDate}&end_date=${isoDate}`;
-
-        const response = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
-        const data = JSON.parse(response.getContentText());
-
-        if (!data.daily || !data.daily.weathercode) {
-            return { error: 'No weather data' };
-        }
-
-        const weatherCode = data.daily.weathercode[0];
-        const result = {
-            temp: `${Math.round(data.daily.temperature_2m_max[0])}°/${Math.round(data.daily.temperature_2m_min[0])}°`,
-            condition: getWeatherCondition(weatherCode),
-            icon: getWeatherIcon(weatherCode),
-            code: weatherCode
-        };
-
-        // Increased cache TTL from 6 hours to 12 hours for weather data
-        cache.put(cacheKey, JSON.stringify(result), 43200);
-        return result;
-
-    } catch (e) {
-        return { error: e.toString() };
-    }
-}
-
-function getWeatherCondition(code) {
-    const conditions = {
-        0: 'Clear', 1: 'Mainly Clear', 2: 'Partly Cloudy', 3: 'Overcast',
-        45: 'Fog', 48: 'Fog',
-        51: 'Light Rain', 53: 'Rain', 55: 'Heavy Rain',
-        61: 'Light Rain', 63: 'Rain', 65: 'Heavy Rain',
-        71: 'Light Snow', 73: 'Snow', 75: 'Heavy Snow',
-        77: 'Snow', 80: 'Light Rain', 81: 'Rain', 82: 'Heavy Rain',
-        85: 'Light Snow', 86: 'Heavy Snow',
-        95: 'Thunderstorm', 96: 'Thunderstorm', 99: 'Thunderstorm'
-    };
-    return conditions[code] || 'Unknown';
-}
-
-function getWeatherIcon(code) {
-    if (code === 0) return '☀️';
-    if (code <= 3) return '⛅';
-    if (code <= 48) return '🌫️';
-    if (code <= 65) return '🌧️';
-    if (code <= 77) return '❄️';
-    if (code <= 82) return '🌧️';
-    if (code <= 86) return '❄️';
-    return '⛈️';
-}
-
-function handleGetWeather(e) {
-    const date = e.parameter.date;
-    const location = e.parameter.location;
-    if (!date || !location) {
-        return createApiResponse('error', null, { message: 'Missing date or location' });
-    }
-    return createApiResponse('success', getWeather(date, location));
 }
 
 // ============================================================================

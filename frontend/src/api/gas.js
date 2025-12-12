@@ -186,32 +186,6 @@ const server = {
             .catch(reject);
     }),
 
-    // Get weather data
-    getWeather: (date, location) => new Promise((resolve) => {
-        if (!date || !location) {
-            resolve({ error: 'Missing date or location' });
-            return;
-        }
-
-        const cacheKey = `weather_${date}_${btoa(unescape(encodeURIComponent(location)))}`;
-        const cached = localStorage.getItem(cacheKey);
-        if (cached) {
-            try { resolve(JSON.parse(cached)); return; } catch { /* ignore */ }
-        }
-
-        fetchWithRetry(`${API_URL}?action=getWeather&date=${encodeURIComponent(date)}&location=${encodeURIComponent(location)}`)
-            .then(res => res.json())
-            .then(json => {
-                if (json.status === 'success' && json.data) {
-                    try { localStorage.setItem(cacheKey, JSON.stringify(json.data)); } catch { /* ignore */ }
-                    resolve(json.data);
-                } else {
-                    resolve({ error: json.error?.message || 'Failed to get weather' });
-                }
-            })
-            .catch(e => resolve({ error: e.message }));
-    }),
-
     // Packing list operations
     getPackingList: () => new Promise((resolve) => {
         fetchWithRetry(`${API_URL}?action=getPackingList`)

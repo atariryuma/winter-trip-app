@@ -140,15 +140,18 @@ const TicketCard = ({ event, isExpanded, onToggle, onEditClick }) => {
                     </div>
                 </div>
 
-                {/* Expanded Details - iOS spring animation */}
+                {/* Expanded Details - Bidirectional expansion effect */}
                 <div
                     className="overflow-hidden"
                     style={{
                         maxHeight: isExpanded ? '500px' : '0px',
                         opacity: isExpanded ? 1 : 0,
                         marginTop: isExpanded ? '16px' : '0px',
-                        // iOS spring curve: quick start, gentle settle - matches ExpandableEventCard
-                        transition: 'max-height 350ms cubic-bezier(0.2, 0.9, 0.3, 1), opacity 250ms ease-out, margin-top 250ms ease-out'
+                        // Use transform for smooth bidirectional feel
+                        transform: isExpanded ? 'scaleY(1)' : 'scaleY(0)',
+                        transformOrigin: 'top',
+                        // iOS spring curve
+                        transition: 'max-height 350ms cubic-bezier(0.2, 0.9, 0.3, 1), transform 300ms cubic-bezier(0.2, 0.9, 0.3, 1), opacity 250ms ease-out, margin-top 250ms ease-out'
                     }}
                 >
                     {/* Route: From / To */}

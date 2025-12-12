@@ -205,15 +205,19 @@ const ExpandableEventCard = ({
                 )}
             </div>
 
-            {/* Expanded Content - iOS spring animation */}
+            {/* Expanded Content - Bidirectional expansion effect */}
             <div
                 ref={contentRef}
                 className="overflow-hidden"
                 style={{
                     maxHeight: isExpanded ? `${contentHeight || 500}px` : '0px',
+                    marginTop: isExpanded ? '0px' : '0px',
                     opacity: isExpanded ? 1 : 0,
-                    // iOS spring curve: quick start, gentle settle
-                    transition: 'max-height 350ms cubic-bezier(0.2, 0.9, 0.3, 1), opacity 250ms ease-out'
+                    // Use transform for smooth bidirectional feel
+                    transform: isExpanded ? 'scaleY(1)' : 'scaleY(0)',
+                    transformOrigin: 'top',
+                    // iOS spring curve
+                    transition: 'max-height 350ms cubic-bezier(0.2, 0.9, 0.3, 1), transform 300ms cubic-bezier(0.2, 0.9, 0.3, 1), opacity 250ms ease-out'
                 }}
             >
                 <div className="px-4 pb-4 space-y-3 overflow-hidden">

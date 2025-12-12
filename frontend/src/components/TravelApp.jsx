@@ -112,19 +112,12 @@ const TimeConnector = ({ duration, isEditMode, onInsert, fromLocation, toLocatio
 
     const status = getStatus();
 
-    // Display text
+    // Display text - always show raw duration, color indicates margin status
     const getText = () => {
         if (loading) return '...';
         if (duration === null || duration === undefined) return null;
 
-        if (travelMinutes !== null && margin !== null) {
-            // Show margin with travel context
-            if (margin < 0) return `⛔ ${Math.abs(margin)}分不足`;
-            if (margin < 10) return `⚡ 余裕${margin}分`;
-            return `✓ 余裕${margin}分`;
-        }
-
-        // Fallback: show raw duration
+        // Always show raw duration format
         if (duration < 0) return `⛔ ${Math.abs(duration)}分 重複`;
         return formatDuration(duration);
     };
@@ -267,7 +260,7 @@ const DynamicSummary = ({ day, events, dayIdx, previousDayHotel, onEditPlanned, 
     const firstPlannedEvent = events.find(e => e.status === 'planned' || e.status === 'suggested');
 
     return (
-        <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top)+4.5rem)] z-sticky bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-2xl p-5 mb-6 shadow-lg">
+        <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-2xl p-5 mb-6 shadow-lg">
             {/* Day Header */}
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
@@ -461,58 +454,13 @@ export default function TravelApp() {
     const [mapModalOpen, setMapModalOpen] = useState(false);
     const [mapModalQuery, setMapModalQuery] = useState(null);
 
-
-    // Carousel-based swipe navigation for mobile day switching
-    const carouselRef = useRef(null);
-    const isScrollingProgrammatically = useRef(false);
-
-    // Scroll to selected day when dayIndex changes (via tab click)
-    useEffect(() => {
-        if (carouselRef.current && dayIndex >= 0 && itinerary.length > 0) {
-            const pageWidth = carouselRef.current.offsetWidth;
-            const targetScroll = dayIndex * pageWidth;
-
-            // Only scroll programmatically if not already at the right position
-            if (Math.abs(carouselRef.current.scrollLeft - targetScroll) > 10) {
-                isScrollingProgrammatically.current = true;
-                carouselRef.current.scrollTo({
-                    left: targetScroll,
-                    behavior: 'smooth'
-                });
-                // Reset flag after scroll animation completes
-                setTimeout(() => {
-                    isScrollingProgrammatically.current = false;
-                }, 500);
-            }
-        }
-    }, [dayIndex, itinerary.length]);
-
-    // Handle carousel scroll end - update selectedDayId
-    const handleCarouselScroll = () => {
-        // Skip if this is a programmatic scroll (from tab click)
-        if (isScrollingProgrammatically.current) return;
-        if (!carouselRef.current || itinerary.length === 0) return;
-
-        const pageWidth = carouselRef.current.offsetWidth;
-        const scrollLeft = carouselRef.current.scrollLeft;
-        const newIndex = Math.round(scrollLeft / pageWidth);
-
-        if (newIndex >= 0 && newIndex < itinerary.length) {
-            const newDayId = itinerary[newIndex].id;
-            if (newDayId !== selectedDayId) {
-                setSelectedDayId(newDayId);
-            }
-        }
-    };
-
-    // Debounced scroll handler for performance
-    const scrollTimeoutRef = useRef(null);
-    const handleCarouselScrollDebounced = () => {
-        if (scrollTimeoutRef.current) {
-            clearTimeout(scrollTimeoutRef.current);
-        }
-        scrollTimeoutRef.current = setTimeout(handleCarouselScroll, 100);
-    };
+    // Interactive swipe navigation for mobile day switching (page transition style)
+    const [viewportOffset, setViewportOffset] = useState(0);
+    const [isTransitioning, setIsTransitioning] = useState(false);
+    const touchStartX = useRef(0);
+    const touchStartY = useRef(0);
+    const isSwiping = useRef(false);
+    const swipeContainerRef = useRef(null);
 
     // Scroll detection for immersive mode
     useEffect(() => {
@@ -545,6 +493,65 @@ export default function TravelApp() {
         });
     }, [selectedDay]);
     const dayIndex = useMemo(() => itinerary.findIndex(d => d.id === selectedDayId), [itinerary, selectedDayId]);
+
+    const handleTouchStart = (e) => {
+        if (isTransitioning) return;
+        touchStartX.current = e.touches[0].clientX;
+        touchStartY.current = e.touches[0].clientY;
+        isSwiping.current = false;
+    };
+
+    const handleTouchMove = (e) => {
+        if (isTransitioning) return;
+        const deltaX = e.touches[0].clientX - touchStartX.current;
+        const deltaY = e.touches[0].clientY - touchStartY.current;
+
+        if (!isSwiping.current && Math.abs(deltaX) > 10 && Math.abs(deltaX) > Math.abs(deltaY)) {
+            isSwiping.current = true;
+        }
+
+        if (isSwiping.current) {
+            let offset = deltaX;
+            if ((dayIndex === 0 && deltaX > 0) || (dayIndex === itinerary.length - 1 && deltaX < 0)) {
+                offset = deltaX * 0.3;
+            }
+            setViewportOffset(offset);
+        }
+    };
+
+    const handleTouchEnd = () => {
+        if (!isSwiping.current || isTransitioning) {
+            setViewportOffset(0);
+            return;
+        }
+
+        const threshold = 75;
+        const viewWidth = swipeContainerRef.current?.offsetWidth || window.innerWidth;
+
+        if (viewportOffset < -threshold && dayIndex < itinerary.length - 1) {
+            setIsTransitioning(true);
+            setViewportOffset(-viewWidth);
+            setTimeout(() => {
+                setSelectedDayId(itinerary[dayIndex + 1].id);
+                setViewportOffset(0);
+                setIsTransitioning(false);
+            }, 350);
+        } else if (viewportOffset > threshold && dayIndex > 0) {
+            setIsTransitioning(true);
+            setViewportOffset(viewWidth);
+            setTimeout(() => {
+                setSelectedDayId(itinerary[dayIndex - 1].id);
+                setViewportOffset(0);
+                setIsTransitioning(false);
+            }, 350);
+        } else {
+            setIsTransitioning(true);
+            setViewportOffset(0);
+            setTimeout(() => setIsTransitioning(false), 350);
+        }
+
+        isSwiping.current = false;
+    };
 
     const yearRange = useMemo(() => {
         if (itinerary.length === 0) return '';
@@ -1026,134 +1033,128 @@ export default function TravelApp() {
                                             </div>
                                         </div>
 
-                                        {/* Mobile Events Carousel - All days rendered side-by-side */}
-                                        <div className="day-carousel-wrapper">
+                                        {/* Mobile Events - Single day with swipe navigation */}
+                                        <div
+                                            ref={swipeContainerRef}
+                                            className="overflow-hidden"
+                                            onTouchStart={handleTouchStart}
+                                            onTouchMove={handleTouchMove}
+                                            onTouchEnd={handleTouchEnd}
+                                        >
                                             <div
-                                                ref={carouselRef}
-                                                className="day-carousel"
-                                                onScroll={handleCarouselScrollDebounced}
+                                                className="px-4 sm:px-6 space-y-6 pb-24"
+                                                style={{
+                                                    transform: `translateX(${viewportOffset}px)`,
+                                                    transition: isTransitioning ? 'transform 0.35s cubic-bezier(0.2, 0.9, 0.3, 1)' : 'none'
+                                                }}
                                             >
-                                                {itinerary.map((day, dayIdx) => {
-                                                    // Sort events for this day
-                                                    const daySortedEvents = [...(day.events || [])].sort((a, b) => {
-                                                        const t1 = (a.time || '23:59').padStart(5, '0');
-                                                        const t2 = (b.time || '23:59').padStart(5, '0');
-                                                        return t1.localeCompare(t2);
-                                                    });
+                                                <DynamicSummary
+                                                    day={selectedDay}
+                                                    events={sortedEvents}
+                                                    dayIdx={dayIndex}
+                                                    previousDayHotel={(() => {
+                                                        if (dayIndex <= 0) return null;
+                                                        const prevDay = itinerary[dayIndex - 1];
+                                                        return prevDay?.events.filter(e => e.category === 'hotel' || e.category === 'stay').pop();
+                                                    })()}
+                                                    onEditPlanned={(event) => {
+                                                        setEditItem(event);
+                                                        setModalOpen(true);
+                                                    }}
+                                                    onDeleteDay={handleDeleteDay}
+                                                    isEditMode={isEditMode}
+                                                />
 
-                                                    // Get previous day's hotel for departure indicator
-                                                    const prevDayHotel = dayIdx > 0
-                                                        ? itinerary[dayIdx - 1]?.events.filter(e => e.category === 'hotel' || e.category === 'stay').pop()
-                                                        : null;
-
+                                                {/* Departure Indicator - Shows where today starts from */}
+                                                {(() => {
+                                                    if (dayIndex <= 0) return null;
+                                                    const prevDay = itinerary[dayIndex - 1];
+                                                    if (!prevDay || !prevDay.events) return null;
+                                                    const prevHotel = prevDay.events.filter(e => e.type === 'stay' || e.category === 'hotel').pop();
+                                                    if (!prevHotel) return null;
+                                                    const firstEvent = sortedEvents[0];
+                                                    if (!firstEvent) return null;
                                                     return (
-                                                        <div key={day.id} className="day-carousel-page px-4 sm:px-6 space-y-6 pb-24">
-                                                            <DynamicSummary
-                                                                day={day}
-                                                                events={daySortedEvents}
-                                                                dayIdx={dayIdx}
-                                                                previousDayHotel={prevDayHotel}
-                                                                onEditPlanned={(event) => {
-                                                                    setSelectedDayId(day.id);
-                                                                    setEditItem(event);
-                                                                    setModalOpen(true);
-                                                                }}
-                                                                onDeleteDay={handleDeleteDay}
-                                                                isEditMode={isEditMode}
-                                                            />
+                                                        <DepartureIndicator
+                                                            prevHotel={prevHotel}
+                                                            firstEvent={firstEvent}
+                                                        />
+                                                    );
+                                                })()}
 
-                                                            {/* Departure Indicator - Shows where today starts from */}
-                                                            {(() => {
-                                                                if (dayIdx <= 0) return null;
-                                                                const prevDay = itinerary[dayIdx - 1];
-                                                                if (!prevDay || !prevDay.events) return null;
-                                                                const prevHotel = prevDay.events.filter(e => e.type === 'stay' || e.category === 'hotel').pop();
-                                                                if (!prevHotel) return null;
-                                                                const firstEvent = daySortedEvents[0];
-                                                                if (!firstEvent) return null;
-                                                                return (
-                                                                    <DepartureIndicator
-                                                                        prevHotel={prevHotel}
-                                                                        firstEvent={firstEvent}
-                                                                    />
-                                                                );
-                                                            })()}
+                                                {/* Event List */}
+                                                <div className="relative pb-12">
+                                                    {sortedEvents.map((event, index) => {
+                                                        const prevEvent = index > 0 ? sortedEvents[index - 1] : null;
+                                                        // For first event, use previous day hotel if exists
+                                                        const getRouteOrigin = () => {
+                                                            if (prevEvent) {
+                                                                return prevEvent.to || prevEvent.address || prevEvent.name;
+                                                            }
+                                                            if (dayIndex > 0) {
+                                                                const prevDay = itinerary[dayIndex - 1];
+                                                                const prevHotel = prevDay?.events.filter(e => e.category === 'hotel' || e.category === 'stay').pop();
+                                                                return prevHotel?.name || null;
+                                                            }
+                                                            return null;
+                                                        };
+                                                        const routeOrigin = getRouteOrigin();
+                                                        const nextEvent = index < sortedEvents.length - 1 ? sortedEvents[index + 1] : null;
+                                                        const durationToNext = getDurationMinutes(event, nextEvent);
 
-                                                            {/* Event List for this day */}
-                                                            <div className="relative pb-12">
-                                                                {daySortedEvents.map((event, index) => {
-                                                                    const prevEvent = index > 0 ? daySortedEvents[index - 1] : null;
-                                                                    // For first event, use previous day hotel if exists
-                                                                    const getRouteOrigin = () => {
-                                                                        if (prevEvent) {
-                                                                            return prevEvent.to || prevEvent.address || prevEvent.name;
-                                                                        }
-                                                                        if (dayIdx > 0) {
-                                                                            const prevDay = itinerary[dayIdx - 1];
-                                                                            const prevHotel = prevDay?.events.filter(e => e.category === 'hotel' || e.category === 'stay').pop();
-                                                                            return prevHotel?.name || null;
-                                                                        }
-                                                                        return null;
-                                                                    };
-                                                                    const routeOrigin = getRouteOrigin();
-                                                                    const nextEvent = index < daySortedEvents.length - 1 ? daySortedEvents[index + 1] : null;
-                                                                    const durationToNext = getDurationMinutes(event, nextEvent);
-
-                                                                    return (
-                                                                        <div key={event.id} className="relative">
-                                                                            {/* Expandable Event Card */}
-                                                                            <ExpandableEventCard
-                                                                                event={event}
-                                                                                isExpanded={expandedEventId === event.id}
-                                                                                onToggle={() => setExpandedEventId(
-                                                                                    expandedEventId === event.id ? null : event.id
-                                                                                )}
-                                                                                isEditMode={isEditMode}
-                                                                                onEdit={(e) => {
-                                                                                    setSelectedDayId(day.id);
-                                                                                    setEditItem(e);
-                                                                                    setModalOpen(true);
-                                                                                }}
-                                                                                onDelete={() => handleDeleteEvent(event.id)}
-                                                                                routeOrigin={routeOrigin}
-                                                                                previousDayHotel={prevDayHotel}
-                                                                            />
-                                                                            {nextEvent && (
-                                                                                <TimeConnector
-                                                                                    duration={durationToNext}
-                                                                                    isEditMode={isEditMode}
-                                                                                    onInsert={() => {
-                                                                                        setSelectedDayId(day.id);
-                                                                                        const midTime = getMidTime(event.endTime || event.time, nextEvent.time);
-                                                                                        setEditItem({ type: 'activity', category: 'sightseeing', status: 'planned', time: midTime, name: '' });
-                                                                                        setModalOpen(true);
-                                                                                    }}
-                                                                                    fromLocation={event.to || event.address || event.name}
-                                                                                    toLocation={nextEvent.type === 'transport' ? nextEvent.from : (nextEvent.to || nextEvent.name)}
-                                                                                />
-                                                                            )}
-                                                                        </div>
-                                                                    );
-                                                                })}
-
-                                                                {isEditMode && (
-                                                                    <button
-                                                                        onClick={() => {
-                                                                            setSelectedDayId(day.id);
-                                                                            const lastTime = daySortedEvents.length > 0 ? daySortedEvents[daySortedEvents.length - 1].time : '09:00';
-                                                                            const nextTime = toTimeStr(toMinutes(lastTime) + 60);
-                                                                            setEditItem({ type: 'activity', category: 'sightseeing', status: 'planned', time: nextTime, name: '' });
+                                                        return (
+                                                            <div key={event.id} className="relative">
+                                                                {/* Expandable Event Card */}
+                                                                <ExpandableEventCard
+                                                                    event={event}
+                                                                    isExpanded={expandedEventId === event.id}
+                                                                    onToggle={() => setExpandedEventId(
+                                                                        expandedEventId === event.id ? null : event.id
+                                                                    )}
+                                                                    isEditMode={isEditMode}
+                                                                    onEdit={(e) => {
+                                                                        setEditItem(e);
+                                                                        setModalOpen(true);
+                                                                    }}
+                                                                    onDelete={() => handleDeleteEvent(event.id)}
+                                                                    routeOrigin={routeOrigin}
+                                                                    previousDayHotel={(() => {
+                                                                        if (dayIndex <= 0) return null;
+                                                                        const prevDay = itinerary[dayIndex - 1];
+                                                                        return prevDay?.events.filter(e => e.category === 'hotel' || e.category === 'stay').pop();
+                                                                    })()}
+                                                                />
+                                                                {nextEvent && (
+                                                                    <TimeConnector
+                                                                        duration={durationToNext}
+                                                                        isEditMode={isEditMode}
+                                                                        onInsert={() => {
+                                                                            const midTime = getMidTime(event.endTime || event.time, nextEvent.time);
+                                                                            setEditItem({ type: 'activity', category: 'sightseeing', status: 'planned', time: midTime, name: '' });
                                                                             setModalOpen(true);
                                                                         }}
-                                                                        className="w-full mt-6 py-4 border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-2xl text-gray-400 hover:text-indigo-600 hover:border-indigo-400 transition-colors flex items-center justify-center gap-2 font-bold"
-                                                                    >
-                                                                        <Plus size={20} /> 予定を追加
-                                                                    </button>
+                                                                        fromLocation={event.to || event.address || event.name}
+                                                                        toLocation={nextEvent.type === 'transport' ? nextEvent.from : (nextEvent.to || nextEvent.name)}
+                                                                    />
                                                                 )}
                                                             </div>
-                                                        </div>
-                                                    );
-                                                })}
+                                                        );
+                                                    })}
+
+                                                    {isEditMode && (
+                                                        <button
+                                                            onClick={() => {
+                                                                const lastTime = sortedEvents.length > 0 ? sortedEvents[sortedEvents.length - 1].time : '09:00';
+                                                                const nextTime = toTimeStr(toMinutes(lastTime) + 60);
+                                                                setEditItem({ type: 'activity', category: 'sightseeing', status: 'planned', time: nextTime, name: '' });
+                                                                setModalOpen(true);
+                                                            }}
+                                                            className="w-full mt-6 py-4 border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-2xl text-gray-400 hover:text-indigo-600 hover:border-indigo-400 transition-colors flex items-center justify-center gap-2 font-bold"
+                                                        >
+                                                            <Plus size={20} /> 予定を追加
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

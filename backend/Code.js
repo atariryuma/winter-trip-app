@@ -1229,24 +1229,32 @@ function handleGetRouteMap(e) {
         }
     }
 
-    // 4. Generate Map Image (using cached or fresh polyline)
-    // Minimizes Directions API calls, uses Static Maps (cheaper/free)
-    const map = Maps.newStaticMap()
-        .setSize(400, 200)
-        .setLanguage('ja')
-        .setMapType(Maps.StaticMap.Type.ROADMAP);
+    // 4. Get or Generate Map Image
+    let base64Image = routeData.image;  // Check if image is already cached
 
-    if (routeData.polyline) {
-        map.addPath(routeData.polyline);
+    if (!base64Image) {
+        // Generate new map image only if not cached
+        const map = Maps.newStaticMap()
+            .setSize(400, 200)
+            .setLanguage('ja')
+            .setMapType(Maps.StaticMap.Type.ROADMAP);
+
+        if (routeData.polyline) {
+            map.addPath(routeData.polyline);
+        }
+
+        map.setMarkerStyle(Maps.StaticMap.MarkerSize.SMALL, Maps.StaticMap.Color.GREEN, 'A');
+        map.addMarker(origin);
+        map.setMarkerStyle(Maps.StaticMap.MarkerSize.SMALL, Maps.StaticMap.Color.RED, 'B');
+        map.addMarker(destination);
+
+        const blob = map.getBlob();
+        base64Image = 'data:image/png;base64,' + Utilities.base64Encode(blob.getBytes());
+
+        // Update sheet cache with generated image
+        routeData.image = base64Image;
+        saveToSheetCache(origin, destination, routeData);
     }
-
-    map.setMarkerStyle(Maps.StaticMap.MarkerSize.SMALL, Maps.StaticMap.Color.GREEN, 'A');
-    map.addMarker(origin);
-    map.setMarkerStyle(Maps.StaticMap.MarkerSize.SMALL, Maps.StaticMap.Color.RED, 'B');
-    map.addMarker(destination);
-
-    const blob = map.getBlob();
-    const base64Image = 'data:image/png;base64,' + Utilities.base64Encode(blob.getBytes());
 
     const result = {
         image: base64Image,
@@ -1269,9 +1277,9 @@ function getRouteCacheSheet() {
     let sheet = ss.getSheetByName('_RouteCache');
     if (!sheet) {
         sheet = ss.insertSheet('_RouteCache');
-        sheet.appendRow(['Origin', 'Destination', 'Duration', 'Distance', 'Polyline', 'UpdatedAt']);
+        // Added Image column for Static Maps caching
+        sheet.appendRow(['Origin', 'Destination', 'Duration', 'Distance', 'Polyline', 'Image', 'UpdatedAt']);
         sheet.setFrozenRows(1);
-        // Hide the sheet to avoid clutter
         sheet.hideSheet();
     }
     return sheet;
@@ -1281,14 +1289,14 @@ function getRouteFromSheetCache(origin, destination) {
     const sheet = getRouteCacheSheet();
     const data = sheet.getDataRange().getValues();
 
-    // Start from row 1 (skip header)
     for (let i = 1; i < data.length; i++) {
         const row = data[i];
         if (row[0] === origin && row[1] === destination) {
             return {
                 duration: row[2],
                 distance: row[3],
-                polyline: row[4]
+                polyline: row[4],
+                image: row[5] || null  // Return cached image if exists
             };
         }
     }
@@ -1297,22 +1305,22 @@ function getRouteFromSheetCache(origin, destination) {
 
 function saveToSheetCache(origin, destination, data) {
     const sheet = getRouteCacheSheet();
-    // Check if already exists to update instead of duplicate
     const rows = sheet.getDataRange().getValues();
     for (let i = 1; i < rows.length; i++) {
         if (rows[i][0] === origin && rows[i][1] === destination) {
-            // Update existing
-            sheet.getRange(i + 1, 3, 1, 4).setValues([[
+            // Update existing - now includes image
+            sheet.getRange(i + 1, 3, 1, 5).setValues([[
                 data.duration,
                 data.distance,
                 data.polyline,
+                data.image || '',
                 new Date()
             ]]);
             return;
         }
     }
-    // Append new
-    sheet.appendRow([origin, destination, data.duration, data.distance, data.polyline, new Date()]);
+    // Append new with image
+    sheet.appendRow([origin, destination, data.duration, data.distance, data.polyline, data.image || '', new Date()]);
 }
 
 // --- Place Cache Helpers (Persistent) ---

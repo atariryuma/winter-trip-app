@@ -25,21 +25,23 @@ const ExpandableEventCard = ({
     const [copied, setCopied] = useState(false);
     const contentRef = useRef(null);
     const cardRef = useRef(null);
+    const headerRef = useRef(null);
     const [contentHeight, setContentHeight] = useState(0);
+    const [headerTopBefore, setHeaderTopBefore] = useState(null);
 
-    // Scroll to center when expanded
+    // Position correction after expansion to keep header visible
     useEffect(() => {
-        if (isExpanded && cardRef.current) {
-            // Small delay to ensure the expansion animation has started and layout is calculating
-            setTimeout(() => {
-                cardRef.current.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'center',
-                    inline: 'nearest'
-                });
-            }, 300);
+        if (isExpanded && headerRef.current && headerTopBefore !== null) {
+            requestAnimationFrame(() => {
+                const headerRect = headerRef.current.getBoundingClientRect();
+                const diff = headerRect.top - headerTopBefore;
+                if (Math.abs(diff) > 5) {
+                    window.scrollBy({ top: diff, behavior: 'smooth' });
+                }
+                setHeaderTopBefore(null);
+            });
         }
-    }, [isExpanded]);
+    }, [isExpanded, headerTopBefore]);
 
     // Calculate content height for smooth animation - use large initial value for immediate expand
     useEffect(() => {
@@ -118,18 +120,23 @@ const ExpandableEventCard = ({
     return (
         <div
             ref={cardRef}
-            className={`relative overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]
+            className={`relative overflow-hidden transition-shadow duration-300 ease-out
                 rounded-2xl bg-white dark:bg-slate-800 shadow-sm border border-gray-200 dark:border-slate-700
-                ${isExpanded ? 'shadow-md' : ''}
-                ${isEditMode ? 'scale-[0.97]' : ''}`}
+                ${isExpanded ? 'shadow-md ring-1 ring-indigo-300 dark:ring-indigo-500' : ''}
+                ${isEditMode ? 'opacity-90' : ''}`}
         >
             {/* Header - Always Visible */}
             <div
+                ref={headerRef}
                 className="p-4 cursor-pointer"
                 onClick={() => {
                     if (isEditMode) {
                         onEdit?.(event);
                     } else {
+                        // Record header position before expansion
+                        if (!isExpanded && headerRef.current) {
+                            setHeaderTopBefore(headerRef.current.getBoundingClientRect().top);
+                        }
                         onToggle?.();
                     }
                 }}
@@ -204,14 +211,14 @@ const ExpandableEventCard = ({
                 )}
             </div>
 
-            {/* Expanded Content - Spring Animation */}
+            {/* Expanded Content - Downward expansion only */}
             <div
                 ref={contentRef}
-                className="overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+                className="overflow-hidden"
                 style={{
                     maxHeight: isExpanded ? `${contentHeight || 500}px` : '0px',
                     opacity: isExpanded ? 1 : 0,
-                    transform: isExpanded ? 'translateY(0)' : 'translateY(-10px)'
+                    transition: 'max-height 400ms cubic-bezier(0.4, 0, 0.2, 1), opacity 300ms ease-out'
                 }}
             >
                 <div className="px-4 pb-4 space-y-3 overflow-hidden">

@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import {
     Clock, Copy, CheckCircle,
     Plane, Train, Bus, Hotel, MapPin, Utensils, Ticket,
@@ -41,7 +41,9 @@ const parseRouteDetails = (details) => {
 
 const TicketCard = ({ event, isExpanded, onToggle, onEditClick }) => {
     const cardRef = useRef(null);
+    const headerRef = useRef(null);
     const [copied, setCopied] = useState(false);
+    const [headerTopBefore, setHeaderTopBefore] = useState(null);
     const CategoryIcon = getCategoryIcon(event.category, event.type);
     const daysUntil = getDaysUntil(event.date);
     const isPast = daysUntil < 0;
@@ -50,6 +52,20 @@ const TicketCard = ({ event, isExpanded, onToggle, onEditClick }) => {
     // Use from/to fields directly from event data
     const routeFrom = event.from || null;
     const routeTo = event.to || null;
+
+    // Position correction after expansion to keep header visible
+    useEffect(() => {
+        if (isExpanded && headerRef.current && headerTopBefore !== null) {
+            requestAnimationFrame(() => {
+                const headerRect = headerRef.current.getBoundingClientRect();
+                const diff = headerRect.top - headerTopBefore;
+                if (Math.abs(diff) > 5) {
+                    window.scrollBy({ top: diff, behavior: 'smooth' });
+                }
+                setHeaderTopBefore(null);
+            });
+        }
+    }, [isExpanded, headerTopBefore]);
 
     const handleCopy = (e) => {
         e.stopPropagation();
@@ -71,8 +87,11 @@ const TicketCard = ({ event, isExpanded, onToggle, onEditClick }) => {
     };
 
     const handleCardClick = () => {
-        // Scroll to center first, then toggle
-        if (!isExpanded && cardRef.current) {
+        if (!isExpanded && cardRef.current && headerRef.current) {
+            // Record header position before expansion
+            const headerRect = headerRef.current.getBoundingClientRect();
+            setHeaderTopBefore(headerRect.top);
+            // Scroll to center first
             cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
             setTimeout(() => onToggle(), 300);
         } else {
@@ -84,13 +103,12 @@ const TicketCard = ({ event, isExpanded, onToggle, onEditClick }) => {
         <div
             ref={cardRef}
             onClick={handleCardClick}
-            className={`relative bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden w-full max-w-full cursor-pointer transition-all duration-300 ease-out ${isPast ? 'opacity-60 grayscale' : ''} ${isExpanded ? 'ring-2 ring-indigo-400 dark:ring-indigo-500 shadow-lg my-4 scale-[1.02]' : 'active:scale-[0.98] my-0 scale-100'}`}
-            style={{ transformOrigin: 'center center' }}
+            className={`relative bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden w-full max-w-full cursor-pointer transition-shadow duration-300 ease-out ${isPast ? 'opacity-60 grayscale' : ''} ${isExpanded ? 'ring-2 ring-indigo-400 dark:ring-indigo-500 shadow-lg' : 'active:scale-[0.98]'}`}
         >
             {/* Left Border Accent */}
             <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${isBooked ? 'bg-emerald-500' : 'bg-rose-400'}`} />
 
-            <div className="p-4 pl-5">
+            <div ref={headerRef} className="p-4 pl-5">
                 {/* Header: Date & Status */}
                 <div className="flex flex-wrap justify-between items-center mb-3 gap-y-2">
                     <div className="flex items-center gap-2">
@@ -134,8 +152,16 @@ const TicketCard = ({ event, isExpanded, onToggle, onEditClick }) => {
                     </div>
                 </div>
 
-                {/* Expanded Details */}
-                <div className={`overflow-hidden transition-all duration-300 ease-out ${isExpanded ? 'max-h-96 opacity-100 mt-4' : 'max-h-0 opacity-0 mt-0'}`}>
+                {/* Expanded Details - expands downward only */}
+                <div
+                    className="overflow-hidden"
+                    style={{
+                        maxHeight: isExpanded ? '500px' : '0px',
+                        opacity: isExpanded ? 1 : 0,
+                        marginTop: isExpanded ? '16px' : '0px',
+                        transition: 'max-height 400ms cubic-bezier(0.4, 0, 0.2, 1), opacity 300ms ease-out, margin-top 300ms ease-out'
+                    }}
+                >
                     {/* Route: From / To */}
                     {(routeFrom || routeTo) && (
                         <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-3 mb-3 space-y-2 border border-indigo-100 dark:border-indigo-800/30">

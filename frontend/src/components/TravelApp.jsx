@@ -51,8 +51,13 @@ const formatDuration = (minutes) => {
 };
 
 // TimeConnector component - shows line between cards with duration and insert button
-const TimeConnector = ({ duration, isEditMode, onInsert }) => {
+const TimeConnector = ({ duration, isEditMode, onInsert, fromLocation, toLocation }) => {
     const durationText = formatDuration(duration);
+
+    // Google Maps route URL
+    const routeUrl = fromLocation && toLocation
+        ? `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(fromLocation)}&destination=${encodeURIComponent(toLocation)}`
+        : null;
 
     // Margin status: determines color based on available time
     // Red: overlap or immediate (< 0), Orange: tight (0-14 min), Green: OK (15+ min)
@@ -84,6 +89,15 @@ const TimeConnector = ({ duration, isEditMode, onInsert }) => {
         return null;
     };
 
+    const badgeContent = (
+        <>
+            {getWarningIndicator()}
+            {marginStatus === 'overlap' ? `${Math.abs(duration)}分 重複` : durationText}
+        </>
+    );
+
+    const badgeClass = `text-sm font-bold px-2.5 py-1 rounded-full border shadow-sm flex items-center gap-1 ${getColorClasses()}`;
+
     return (
         <div className="flex items-center py-2 pl-6">
             {/* Vertical line with insert button */}
@@ -99,13 +113,23 @@ const TimeConnector = ({ duration, isEditMode, onInsert }) => {
                         </button>
                     )}
                 </div>
-                {/* Duration badge with margin warning - Fade out in edit mode */}
+                {/* Duration badge - Tap to open route, fade out in edit mode */}
                 {durationText && (
                     <div className={`absolute left-3 top-1/2 -translate-y-1/2 whitespace-nowrap transition-all duration-300 ${isEditMode ? 'opacity-0 translate-x-[-10px]' : 'opacity-100 translate-x-0'}`}>
-                        <span className={`text-sm font-bold px-2.5 py-1 rounded-full border shadow-sm flex items-center gap-1 ${getColorClasses()}`}>
-                            {getWarningIndicator()}
-                            {marginStatus === 'overlap' ? `${Math.abs(duration)}分 重複` : durationText}
-                        </span>
+                        {routeUrl ? (
+                            <a
+                                href={routeUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={`${badgeClass} active:scale-95 transition-transform`}
+                            >
+                                {badgeContent}
+                            </a>
+                        ) : (
+                            <span className={badgeClass}>
+                                {badgeContent}
+                            </span>
+                        )}
                     </div>
                 )}
             </div>
@@ -388,21 +412,23 @@ export default function TravelApp() {
     const [mapModalQuery, setMapModalQuery] = useState(null);
 
 
-    // Interactive swipe navigation for mobile day switching
-    const [swipeOffset, setSwipeOffset] = useState(0);
-    const [isSwipeAnimating, setIsSwipeAnimating] = useState(false);
+    // Interactive swipe navigation for mobile day switching (page transition style)
+    const [viewportOffset, setViewportOffset] = useState(0);
+    const [isTransitioning, setIsTransitioning] = useState(false);
     const touchStartX = useRef(0);
     const touchStartY = useRef(0);
     const isSwiping = useRef(false);
+    const swipeContainerRef = useRef(null);
 
     const handleTouchStart = (e) => {
+        if (isTransitioning) return; // Ignore touches during transition
         touchStartX.current = e.touches[0].clientX;
         touchStartY.current = e.touches[0].clientY;
         isSwiping.current = false;
-        setIsSwipeAnimating(false);
     };
 
     const handleTouchMove = (e) => {
+        if (isTransitioning) return;
         const deltaX = e.touches[0].clientX - touchStartX.current;
         const deltaY = e.touches[0].clientY - touchStartY.current;
 
@@ -412,35 +438,53 @@ export default function TravelApp() {
         }
 
         if (isSwiping.current) {
-            // Dampen at edges
+            // Rubber band effect at edges
             let offset = deltaX;
             if ((dayIndex === 0 && deltaX > 0) || (dayIndex === itinerary.length - 1 && deltaX < 0)) {
                 offset = deltaX * 0.3; // Resistance at boundaries
             }
-            setSwipeOffset(offset);
+            setViewportOffset(offset);
         }
     };
 
     const handleTouchEnd = () => {
-        if (!isSwiping.current) {
-            setSwipeOffset(0);
+        if (!isSwiping.current || isTransitioning) {
+            setViewportOffset(0);
             return;
         }
 
-        setIsSwipeAnimating(true);
         const threshold = 75;
+        const viewWidth = swipeContainerRef.current?.offsetWidth || window.innerWidth;
 
-        if (swipeOffset < -threshold && dayIndex < itinerary.length - 1) {
-            // Swipe left -> next day
-            setSelectedDayId(itinerary[dayIndex + 1].id);
-        } else if (swipeOffset > threshold && dayIndex > 0) {
-            // Swipe right -> previous day
-            setSelectedDayId(itinerary[dayIndex - 1].id);
+        if (viewportOffset < -threshold && dayIndex < itinerary.length - 1) {
+            // Swipe left -> next day: slide out to left
+            setIsTransitioning(true);
+            setViewportOffset(-viewWidth);
+
+            setTimeout(() => {
+                setSelectedDayId(itinerary[dayIndex + 1].id);
+                setViewportOffset(0);
+                setIsTransitioning(false);
+            }, 350);
+
+        } else if (viewportOffset > threshold && dayIndex > 0) {
+            // Swipe right -> previous day: slide out to right
+            setIsTransitioning(true);
+            setViewportOffset(viewWidth);
+
+            setTimeout(() => {
+                setSelectedDayId(itinerary[dayIndex - 1].id);
+                setViewportOffset(0);
+                setIsTransitioning(false);
+            }, 350);
+
+        } else {
+            // Below threshold -> snap back
+            setIsTransitioning(true);
+            setViewportOffset(0);
+            setTimeout(() => setIsTransitioning(false), 350);
         }
 
-        // Spring back to 0
-        setSwipeOffset(0);
-        setTimeout(() => setIsSwipeAnimating(false), 300);
         isSwiping.current = false;
     };
 
@@ -956,15 +1000,17 @@ export default function TravelApp() {
                                             </div>
                                         </div>
 
-                                        {/* Mobile Events List - Swipeable with follow-finger */}
+                                        {/* Mobile Events List - Page transition style swipe */}
                                         <div
+                                            ref={swipeContainerRef}
                                             className="px-4 sm:px-6 space-y-6 pb-24"
                                             onTouchStart={handleTouchStart}
                                             onTouchMove={handleTouchMove}
                                             onTouchEnd={handleTouchEnd}
                                             style={{
-                                                transform: `translateX(${swipeOffset}px)`,
-                                                transition: isSwipeAnimating ? 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)' : 'none'
+                                                transform: `translateX(${viewportOffset}px)`,
+                                                transition: isTransitioning ? 'transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)' : 'none',
+                                                willChange: isTransitioning ? 'transform' : 'auto'
                                             }}
                                         >
                                             <DynamicSummary
@@ -1042,6 +1088,8 @@ export default function TravelApp() {
                                                                         setEditItem({ type: 'activity', category: 'sightseeing', status: 'planned', time: midTime, name: '' });
                                                                         setModalOpen(true);
                                                                     }}
+                                                                    fromLocation={event.to || event.address || event.name}
+                                                                    toLocation={nextEvent.type === 'transport' ? nextEvent.from : (nextEvent.to || nextEvent.name)}
                                                                 />
                                                             )}
                                                         </div>

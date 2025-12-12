@@ -1036,19 +1036,23 @@ export default function TravelApp() {
                                                                     return prevDay?.events.filter(e => e.category === 'hotel' || e.category === 'stay').pop();
                                                                 })()}
                                                             />
-                                                            {nextEvent && (
-                                                                <TimeConnector
-                                                                    duration={durationToNext}
-                                                                    isEditMode={isEditMode}
-                                                                    onInsert={() => {
-                                                                        const midTime = getMidTime(event.endTime || event.time, nextEvent.time);
-                                                                        setEditItem({ type: 'activity', category: 'sightseeing', status: 'planned', time: midTime, name: '' });
-                                                                        setModalOpen(true);
-                                                                    }}
-                                                                    fromLocation={event.to || event.address || event.name}
-                                                                    toLocation={nextEvent.type === 'transport' ? nextEvent.from : (nextEvent.to || nextEvent.name)}
-                                                                />
-                                                            )}
+                                                            {nextEvent && (() => {
+                                                                // Skip route calculation for flights (driving route doesn't apply)
+                                                                const skipRoute = event.category === 'flight' || nextEvent.category === 'flight';
+                                                                return (
+                                                                    <TimeConnector
+                                                                        duration={durationToNext}
+                                                                        isEditMode={isEditMode}
+                                                                        onInsert={() => {
+                                                                            const midTime = getMidTime(event.endTime || event.time, nextEvent.time);
+                                                                            setEditItem({ type: 'activity', category: 'sightseeing', status: 'planned', time: midTime, name: '' });
+                                                                            setModalOpen(true);
+                                                                        }}
+                                                                        fromLocation={skipRoute ? null : (event.to || event.address || event.name)}
+                                                                        toLocation={skipRoute ? null : (nextEvent.type === 'transport' ? nextEvent.from : (nextEvent.to || nextEvent.name))}
+                                                                    />
+                                                                );
+                                                            })()}
                                                         </div>
                                                     );
                                                 })}

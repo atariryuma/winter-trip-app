@@ -12,14 +12,16 @@ const DepartureIndicator = ({ prevHotel, firstEvent }) => {
 
     // Extract primitive values for optimization - only recalculates when these values change
     const origin = prevHotel?.name || null;
-    const destination = firstEvent
+    // Skip route calculation for flights (driving directions don't apply)
+    const isFlightFirst = firstEvent?.category === 'flight';
+    const destination = firstEvent && !isFlightFirst
         ? (firstEvent.type === 'transport' ? firstEvent.from : (firstEvent.to || firstEvent.name))
         : null;
     const firstEventTime = firstEvent?.time || null;
 
     // Fetch route duration only when origin/destination changes
     useEffect(() => {
-        // Reset if missing required data
+        // Reset if missing required data or if first event is a flight
         if (!origin || !destination) {
             setRouteDuration(null);
             return;

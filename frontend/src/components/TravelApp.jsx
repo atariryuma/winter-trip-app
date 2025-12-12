@@ -54,6 +54,36 @@ const formatDuration = (minutes) => {
 const TimeConnector = ({ duration, isEditMode, onInsert }) => {
     const durationText = formatDuration(duration);
 
+    // Margin status: determines color based on available time
+    // Red: overlap or immediate (< 0), Orange: tight (0-14 min), Green: OK (15+ min)
+    const getMarginStatus = () => {
+        if (duration === null || duration === undefined) return 'unknown';
+        if (duration < 0) return 'overlap';  // Events overlap
+        if (duration < 15) return 'tight';   // Less than 15 min gap
+        return 'ok';                          // Plenty of time
+    };
+
+    const marginStatus = getMarginStatus();
+
+    // Color classes based on margin status
+    const getColorClasses = () => {
+        switch (marginStatus) {
+            case 'overlap':
+                return 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-700';
+            case 'tight':
+                return 'text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/30 border-orange-200 dark:border-orange-700';
+            default:
+                return 'text-gray-500 dark:text-slate-400 bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700';
+        }
+    };
+
+    // Warning icon
+    const getWarningIndicator = () => {
+        if (marginStatus === 'overlap') return '⛔';
+        if (marginStatus === 'tight') return '⚠️';
+        return null;
+    };
+
     return (
         <div className="flex items-center py-2 pl-6">
             {/* Vertical line with insert button */}
@@ -69,11 +99,12 @@ const TimeConnector = ({ duration, isEditMode, onInsert }) => {
                         </button>
                     )}
                 </div>
-                {/* Duration badge - Fade out in edit mode */}
+                {/* Duration badge with margin warning - Fade out in edit mode */}
                 {durationText && (
                     <div className={`absolute left-3 top-1/2 -translate-y-1/2 whitespace-nowrap transition-all duration-300 ${isEditMode ? 'opacity-0 translate-x-[-10px]' : 'opacity-100 translate-x-0'}`}>
-                        <span className="text-sm font-bold text-gray-500 dark:text-slate-400 bg-white dark:bg-slate-800 px-2.5 py-1 rounded-full border border-gray-200 dark:border-slate-700 shadow-sm">
-                            {durationText}
+                        <span className={`text-sm font-bold px-2.5 py-1 rounded-full border shadow-sm flex items-center gap-1 ${getColorClasses()}`}>
+                            {getWarningIndicator()}
+                            {marginStatus === 'overlap' ? `${Math.abs(duration)}分 重複` : durationText}
                         </span>
                     </div>
                 )}
@@ -92,6 +123,18 @@ const DynamicSummary = ({ day, events, dayIdx, previousDayHotel, onEditPlanned, 
     const confirmedCount = events.filter(e => e.status === 'booked' || e.status === 'confirmed').length;
     const plannedCount = events.filter(e => e.status === 'planned' || e.status === 'suggested').length;
     const pendingBooking = events.filter(e => e.status === 'planned' && ['flight', 'train', 'hotel'].includes(e.category));
+
+    // Calculate time warnings: count schedule gaps < 15 min or overlaps
+    const sortedEvents = [...events].sort((a, b) => toMinutes(a.time) - toMinutes(b.time));
+    let timeWarningCount = 0;
+    for (let i = 0; i < sortedEvents.length - 1; i++) {
+        const currentEnd = sortedEvents[i].endTime || sortedEvents[i].time;
+        const nextStart = sortedEvents[i + 1].time;
+        if (currentEnd && nextStart) {
+            const gap = toMinutes(nextStart) - toMinutes(currentEnd);
+            if (gap < 15) timeWarningCount++;
+        }
+    }
 
     // Determine trip phase and next action
     const today = new Date();
@@ -163,6 +206,11 @@ const DynamicSummary = ({ day, events, dayIdx, previousDayHotel, onEditPlanned, 
                 </div>
                 {/* Status indicator & Delete button */}
                 <div className="flex items-center gap-2">
+                    {timeWarningCount > 0 && (
+                        <span className="px-2 py-0.5 rounded-full bg-red-400/30 text-red-100 text-[10px] font-bold flex items-center gap-1">
+                            ⚠️ {timeWarningCount}
+                        </span>
+                    )}
                     {confirmedCount > 0 && (
                         <span className="px-2 py-0.5 rounded-full bg-green-400/20 text-green-100 text-[10px] font-bold flex items-center gap-1">
                             <CheckCircle size={10} /> {confirmedCount}

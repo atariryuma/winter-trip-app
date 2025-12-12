@@ -390,6 +390,15 @@ const EditModal = ({ isOpen, onClose, item, onSave, onDelete, previousEvent, ava
                         onClick={() => {
                             const dataToSave = { ...formData };
 
+                            // Explicitly preserve empty strings for clearable fields
+                            // This ensures that clearing a field (making it blank) is saved properly
+                            const clearableFields = ['bookingRef', 'details', 'endTime', 'address'];
+                            clearableFields.forEach(field => {
+                                if (field in formData && (formData[field] === '' || formData[field] === undefined)) {
+                                    dataToSave[field] = '';  // Explicitly set empty string
+                                }
+                            });
+
                             // Handle transport event naming logic
                             if (isTransport) {
                                 // Use customName if provided, otherwise auto-generate from "from → to"

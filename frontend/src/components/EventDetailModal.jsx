@@ -247,28 +247,15 @@ const EventDetailModal = ({ event, onClose, onEdit, previousEvent, previousDayHo
 
                     {/* === PRIMARY ACTIONS === */}
                     <div className="px-4 pb-3">
-                        <div className="flex gap-2">
-                            <a
-                                href={mapsUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex-1 flex items-center justify-center gap-2 py-3 bg-indigo-600 text-white font-bold rounded-xl active:scale-[0.98] transition-transform"
-                            >
-                                <MapPin size={18} />
-                                マップ
-                            </a>
-                            {directionsUrl && (
-                                <a
-                                    href={directionsUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex-1 flex items-center justify-center gap-2 py-3 bg-green-600 text-white font-bold rounded-xl active:scale-[0.98] transition-transform"
-                                >
-                                    <Navigation size={18} />
-                                    ルート
-                                </a>
-                            )}
-                        </div>
+                        <a
+                            href={mapsUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full flex items-center justify-center gap-2 py-3 bg-indigo-600 text-white font-bold rounded-xl active:scale-[0.98] transition-transform"
+                        >
+                            <MapPin size={18} />
+                            マップで開く
+                        </a>
                     </div>
 
                     {/* === DETAILS (Progressive disclosure) === */}

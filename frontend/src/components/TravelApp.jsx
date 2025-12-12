@@ -50,60 +50,109 @@ const formatDuration = (minutes) => {
     return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
 };
 
-// TimeConnector component - shows line between cards with duration and insert button
+// TimeConnector component - shows travel margin between events
+// Uses cached route API to calculate: 余裕 = イベント間時間 - 移動時間
 const TimeConnector = ({ duration, isEditMode, onInsert, fromLocation, toLocation }) => {
-    const durationText = formatDuration(duration);
+    const [travelMinutes, setTravelMinutes] = useState(null);
+    const [loading, setLoading] = useState(false);
 
-    // Google Maps route URL
-    const routeUrl = fromLocation && toLocation
-        ? `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(fromLocation)}&destination=${encodeURIComponent(toLocation)}`
-        : null;
+    // Fetch travel time (uses localStorage cache, won't hit API repeatedly)
+    useEffect(() => {
+        if (!fromLocation?.trim() || !toLocation?.trim()) {
+            setTravelMinutes(null);
+            return;
+        }
 
-    // Margin status: determines color based on available time
-    // Red: overlap or immediate (< 0), Orange: tight (0-14 min), Green: OK (15+ min)
-    const getMarginStatus = () => {
+        const fetchTravelTime = async () => {
+            setLoading(true);
+            try {
+                const routeData = await server.getRouteMap(fromLocation, toLocation);
+                if (routeData?.duration) {
+                    // Parse Japanese duration (e.g., "1時間45分", "45分")
+                    let minutes = 0;
+                    const hourMatch = routeData.duration.match(/(\d+)\s*時間/);
+                    const minMatch = routeData.duration.match(/(\d+)\s*分/);
+                    if (hourMatch) minutes += parseInt(hourMatch[1], 10) * 60;
+                    if (minMatch) minutes += parseInt(minMatch[1], 10);
+                    // Fallback: try English format "45 mins"
+                    if (minutes === 0) {
+                        const numMatch = routeData.duration.match(/(\d+)/);
+                        if (numMatch) minutes = parseInt(numMatch[1], 10);
+                    }
+                    setTravelMinutes(minutes > 0 ? minutes : null);
+                }
+            } catch (err) {
+                console.error('Travel time fetch failed:', err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchTravelTime();
+    }, [fromLocation, toLocation]);
+
+    // Calculate margin: available time - travel time
+    const margin = travelMinutes !== null && duration !== null ? duration - travelMinutes : null;
+
+    // Determine status based on margin (or fallback to duration if no travel time)
+    const getStatus = () => {
         if (duration === null || duration === undefined) return 'unknown';
-        if (duration < 0) return 'overlap';  // Events overlap
-        if (duration < 15) return 'tight';   // Less than 15 min gap
-        return 'ok';                          // Plenty of time
+
+        if (travelMinutes !== null && margin !== null) {
+            // With travel time: check margin
+            if (margin < 0) return 'overlap';   // Not enough time to travel
+            if (margin < 10) return 'tight';    // Less than 10 min buffer
+            return 'ok';
+        }
+
+        // Fallback: use duration directly
+        if (duration < 0) return 'overlap';
+        if (duration < 15) return 'tight';
+        return 'ok';
     };
 
-    const marginStatus = getMarginStatus();
+    const status = getStatus();
 
-    // Color classes based on margin status
+    // Display text
+    const getText = () => {
+        if (loading) return '...';
+        if (duration === null || duration === undefined) return null;
+
+        if (travelMinutes !== null && margin !== null) {
+            // Show margin with travel context
+            if (margin < 0) return `⛔ ${Math.abs(margin)}分不足`;
+            if (margin < 10) return `⚡ 余裕${margin}分`;
+            return `✓ 余裕${margin}分`;
+        }
+
+        // Fallback: show raw duration
+        if (duration < 0) return `⛔ ${Math.abs(duration)}分 重複`;
+        return formatDuration(duration);
+    };
+
+    // Color classes
     const getColorClasses = () => {
-        switch (marginStatus) {
+        switch (status) {
             case 'overlap':
                 return 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-700';
             case 'tight':
                 return 'text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/30 border-orange-200 dark:border-orange-700';
+            case 'ok':
+                return 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-700';
             default:
                 return 'text-gray-500 dark:text-slate-400 bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700';
         }
     };
 
-    // Warning icon
-    const getWarningIndicator = () => {
-        if (marginStatus === 'overlap') return '⛔';
-        if (marginStatus === 'tight') return '⚠️';
-        return null;
-    };
-
-    const badgeContent = (
-        <>
-            {getWarningIndicator()}
-            {marginStatus === 'overlap' ? `${Math.abs(duration)}分 重複` : durationText}
-        </>
-    );
-
-    const badgeClass = `text-sm font-bold px-2.5 py-1 rounded-full border shadow-sm flex items-center gap-1 ${getColorClasses()}`;
+    const text = getText();
+    const routeUrl = fromLocation && toLocation
+        ? `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(fromLocation)}&destination=${encodeURIComponent(toLocation)}`
+        : null;
 
     return (
         <div className="flex items-center py-2 pl-6">
-            {/* Vertical line with insert button */}
             <div className="w-0.5 h-10 bg-gray-200 dark:bg-slate-700 relative">
-                {/* Insert button in edit mode - Pop animation */}
-                <div className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transition-all duration-300 cubic-bezier(0.175, 0.885, 0.32, 1.275) ${isEditMode ? 'opacity-100 scale-100 z-10' : 'opacity-0 scale-0 z-0 pointer-events-none'}`}>
+                {/* Insert button in edit mode */}
+                <div className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transition-all duration-300 ${isEditMode ? 'opacity-100 scale-100 z-10' : 'opacity-0 scale-0 pointer-events-none'}`}>
                     {onInsert && (
                         <button
                             onClick={onInsert}
@@ -113,21 +162,21 @@ const TimeConnector = ({ duration, isEditMode, onInsert, fromLocation, toLocatio
                         </button>
                     )}
                 </div>
-                {/* Duration badge - Tap to open route, fade out in edit mode */}
-                {durationText && (
+                {/* Margin badge - tap to open Google Maps route */}
+                {text && (
                     <div className={`absolute left-3 top-1/2 -translate-y-1/2 whitespace-nowrap transition-all duration-300 ${isEditMode ? 'opacity-0 translate-x-[-10px]' : 'opacity-100 translate-x-0'}`}>
                         {routeUrl ? (
                             <a
                                 href={routeUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className={`${badgeClass} active:scale-95 transition-transform`}
+                                className={`text-sm font-bold px-2.5 py-1 rounded-full border shadow-sm flex items-center gap-1 active:scale-95 transition-transform ${getColorClasses()}`}
                             >
-                                {badgeContent}
+                                {text}
                             </a>
                         ) : (
-                            <span className={badgeClass}>
-                                {badgeContent}
+                            <span className={`text-sm font-bold px-2.5 py-1 rounded-full border shadow-sm flex items-center gap-1 ${getColorClasses()}`}>
+                                {text}
                             </span>
                         )}
                     </div>
@@ -136,6 +185,7 @@ const TimeConnector = ({ duration, isEditMode, onInsert, fromLocation, toLocatio
         </div>
     );
 };
+
 
 // DynamicSummary Component - Moved outside to prevent re-renders on parent updates
 const DynamicSummary = ({ day, events, dayIdx, previousDayHotel, onEditPlanned, onDeleteDay, isEditMode }) => {

@@ -1122,7 +1122,7 @@ export default function TravelApp() {
                             <PullToRefresh onRefresh={() => fetchData(false)}>
                                 <main className="pt-[calc(4rem+env(safe-area-inset-top))] lg:pt-8 pb-32 lg:pb-8 pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] overflow-x-hidden">
                                     <div className="max-w-full lg:max-w-7xl 2xl:max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 2xl:px-12 overflow-x-hidden">
-                                        {activeTab === 'tickets' && <TicketList itinerary={itinerary} onForceReload={fetchData} isScrolled={isScrolled} onEventClick={(event) => { setEditItem(event); setEditDayIdx(event.dayIdx); setModalOpen(true); }} />}
+                                        {activeTab === 'tickets' && <TicketList itinerary={itinerary} onForceReload={fetchData} isScrolled={isScrolled} onEventClick={(event) => { setEditItem(event); setModalOpen(true); }} />}
                                         {activeTab === 'budget' && <BudgetView itinerary={itinerary} onForceReload={fetchData} isScrolled={isScrolled} />}
                                         {activeTab === 'packing' && <PackingList isScrolled={isScrolled} />}
                                     </div>

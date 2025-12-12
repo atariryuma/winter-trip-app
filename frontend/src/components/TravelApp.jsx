@@ -821,7 +821,7 @@ export default function TravelApp() {
                             } ${scrollDirection === 'down' && isScrolled ? '-translate-y-full' : 'translate-y-0'}`}
                     >
                         <div className="flex items-center justify-center h-14 relative px-4 sm:px-6 pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))] sm:pl-[calc(1.5rem+env(safe-area-inset-left))] sm:pr-[calc(1.5rem+env(safe-area-inset-right))]">
-                            <div className={`flex items-center gap-2 transition-opacity duration-300 ${isScrolled || activeTab !== 'timeline' ? 'opacity-100' : 'opacity-0'}`}>
+                            <div className={`flex items-center gap-2 transition-opacity duration-300 ${isScrolled ? 'opacity-100' : 'opacity-0'}`}>
                                 <div className="w-6 h-6 bg-indigo-600 rounded-md flex items-center justify-center shadow-sm">
                                     <Plane className="text-white transform -rotate-45" size={12} />
                                 </div>

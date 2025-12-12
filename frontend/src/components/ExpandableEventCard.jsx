@@ -128,7 +128,8 @@ const ExpandableEventCard = ({
                             cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         }
                         // 2. Wait for scroll to complete, then expand
-                        setTimeout(() => onToggle?.(), 300);
+                        // iOS HIG: 300-400ms delay for smooth transition
+                        setTimeout(() => onToggle?.(), 350);
                     } else {
                         // Collapse immediately
                         onToggle?.();
@@ -205,16 +206,16 @@ const ExpandableEventCard = ({
                 )}
             </div>
 
-            {/* Expanded Content - iOS HIG: 300-400ms with spring curve */}
+            {/* Expanded Content - iOS HIG Unified Animation */}
             <div
                 ref={contentRef}
                 className="overflow-hidden"
                 style={{
                     maxHeight: isExpanded ? `${contentHeight || 500}px` : '0px',
                     opacity: isExpanded ? 1 : 0,
-                    // iOS HIG recommends 300-400ms with spring/ease-out curve
-                    // Using slightly slower, softer animation for natural feel
-                    transition: 'max-height 400ms cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 300ms ease-out'
+                    // iOS critically damped spring (damping ratio 1.0)
+                    // 450ms for natural, unhurried expansion
+                    transition: 'max-height 450ms cubic-bezier(0.33, 1, 0.68, 1), opacity 350ms ease-out'
                 }}
             >
                 <div className="px-4 pb-4 space-y-3 overflow-hidden">

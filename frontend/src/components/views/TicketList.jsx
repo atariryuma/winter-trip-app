@@ -80,7 +80,8 @@ const TicketCard = ({ event, isExpanded, onToggle, onEditClick }) => {
                 cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
             // 2. Wait for scroll to complete, then expand
-            setTimeout(() => onToggle(), 300);
+            // iOS HIG: 300-400ms delay for smooth transition
+            setTimeout(() => onToggle(), 350);
         } else {
             // Collapse immediately
             onToggle();
@@ -140,15 +141,16 @@ const TicketCard = ({ event, isExpanded, onToggle, onEditClick }) => {
                     </div>
                 </div>
 
-                {/* Expanded Details - iOS HIG: 300-400ms with spring curve */}
+                {/* Expanded Details - iOS HIG Unified Animation */}
                 <div
                     className="overflow-hidden"
                     style={{
                         maxHeight: isExpanded ? '500px' : '0px',
                         opacity: isExpanded ? 1 : 0,
                         marginTop: isExpanded ? '16px' : '0px',
-                        // iOS HIG recommends 300-400ms with spring/ease-out curve
-                        transition: 'max-height 400ms cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 300ms ease-out, margin-top 300ms ease-out'
+                        // iOS critically damped spring (damping ratio 1.0)
+                        // 450ms for natural, unhurried expansion
+                        transition: 'max-height 450ms cubic-bezier(0.33, 1, 0.68, 1), opacity 350ms ease-out, margin-top 350ms ease-out'
                     }}
                 >
                     {/* Route: From / To */}

@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import {
     ChevronRight, Download, Upload, Clock, Moon,
-    FileText, CheckCircle, XCircle, Loader2, AlertTriangle, Trash2
+    FileText, CheckCircle, XCircle, Loader2, AlertTriangle, Trash2, LogOut
 } from 'lucide-react';
 import server from '../../api/gas';
 
-const SettingsView = ({ itinerary, isDarkMode, setIsDarkMode, lastUpdate, onDataRefresh }) => {
+const SettingsView = ({ itinerary, isDarkMode, setIsDarkMode, lastUpdate, onDataRefresh, onLogout }) => {
     const [uploadStatus, setUploadStatus] = useState(null);
     const [uploading, setUploading] = useState(false);
     const [cacheClearMessage, setCacheClearMessage] = useState(null);
@@ -186,6 +186,30 @@ const SettingsView = ({ itinerary, isDarkMode, setIsDarkMode, lastUpdate, onData
                     <span className="text-gray-700 dark:text-slate-200">GitHub</span>
                     <ChevronRight size={18} className="text-gray-300 dark:text-slate-500" />
                 </a>
+            </div>
+
+            {/* ログアウト - Logout */}
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden">
+                <button
+                    onClick={() => {
+                        if (window.confirm('ログアウトしますか？\n次回アクセス時にパスコードの入力が必要になります。')) {
+                            localStorage.removeItem('tripapp_authenticated');
+                            if (onLogout) onLogout();
+                        }
+                    }}
+                    className="w-full px-4 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-slate-700 active:bg-gray-100 dark:active:bg-slate-600 transition-colors touch-manipulation min-h-[56px]"
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-orange-50 dark:bg-orange-900/30 flex items-center justify-center">
+                            <LogOut size={18} className="text-orange-500" />
+                        </div>
+                        <div className="text-left">
+                            <span className="text-gray-700 dark:text-slate-200 font-medium block">Logout</span>
+                            <span className="text-xs text-gray-400 dark:text-slate-500">パスコード入力画面に戻る</span>
+                        </div>
+                    </div>
+                    <ChevronRight size={18} className="text-gray-300 dark:text-slate-500" />
+                </button>
             </div>
         </div>
     );

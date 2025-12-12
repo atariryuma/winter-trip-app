@@ -386,7 +386,8 @@ export default function TravelApp() {
     }, [itinerary]);
 
     useEffect(() => {
-        if (sessionStorage.getItem('trip_auth') === 'true') setAuth(true);
+        // Check for persistent auth (localStorage)
+        if (localStorage.getItem('tripapp_authenticated') === 'true') setAuth(true);
     }, []);
 
     useEffect(() => {
@@ -684,7 +685,7 @@ export default function TravelApp() {
             <LoginView
                 onLogin={() => {
                     setAuth(true);
-                    sessionStorage.setItem('trip_auth', 'true');
+                    localStorage.setItem('tripapp_authenticated', 'true');
                 }}
                 validatePasscode={server.validatePasscode}
                 yearRange={yearRange}
@@ -1091,6 +1092,7 @@ export default function TravelApp() {
                                         setIsDarkMode={setIsDarkMode}
                                         lastUpdate={lastUpdate}
                                         onDataRefresh={fetchData}
+                                        onLogout={() => setAuth(false)}
                                     />
                                 </div>
                             </main>

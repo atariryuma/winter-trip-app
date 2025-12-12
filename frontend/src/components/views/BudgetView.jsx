@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { DollarSign, Target, Wallet, PlusCircle, X, Check, AlertCircle, User, Trash2 } from 'lucide-react';
+import { DollarSign, Target, Wallet, PlusCircle, X, Check, User, Trash2 } from 'lucide-react';
 import server from '../../api/gas';
+import { useToast } from '../../context/ToastContext';
 
 // Preset amounts for quick selection
 const PRESET_AMOUNTS = [500, 1000, 2000, 3000, 5000, 10000, 20000];
@@ -58,8 +59,8 @@ const BudgetView = ({ itinerary, onForceReload, isScrolled }) => {
     const [payers, setPayers] = useState(loadPayers);
     const [newPayerName, setNewPayerName] = useState('');
     const [showNewPayerInput, setShowNewPayerInput] = useState(false);
-    const [conflictWarning, setConflictWarning] = useState(null);
     const [saving, setSaving] = useState(false);
+    const { showToast } = useToast();
 
     // Edit expense state
     const [editingExpense, setEditingExpense] = useState(null);
@@ -122,20 +123,13 @@ const BudgetView = ({ itinerary, onForceReload, isScrolled }) => {
         setSelectedPayer(null);
         setShowNewPayerInput(false);
         setNewPayerName('');
-        setConflictWarning(null);
         setEditingExpense(null);
     };
 
     // Handle event selection
     const handleSelectEvent = (event) => {
         if (event.hasPaid) {
-            setConflictWarning({
-                eventId: event.id,
-                existingAmount: event.budgetAmount,
-                existingPayer: event.budgetPaidBy
-            });
-        } else {
-            setConflictWarning(null);
+            showToast('warning', `既存の支払い ¥${event.budgetAmount} (${event.budgetPaidBy}) を上書きします`);
         }
         setSelectedEventId(event.id);
     };
@@ -390,16 +384,6 @@ const BudgetView = ({ itinerary, onForceReload, isScrolled }) => {
                                         <span className="w-5 h-5 bg-indigo-500 text-white rounded-full flex items-center justify-center text-[10px]">1</span>
                                         イベントを選択
                                     </div>
-
-                                    {conflictWarning && (
-                                        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl p-3 mb-3 flex items-start gap-2">
-                                            <AlertCircle size={16} className="text-amber-500 shrink-0 mt-0.5" />
-                                            <div className="text-xs text-amber-700 dark:text-amber-300">
-                                                <span className="font-bold">既存の支払いがあります:</span> ¥{conflictWarning.existingAmount} ({conflictWarning.existingPayer})
-                                                <br />上書きして更新されます。
-                                            </div>
-                                        </div>
-                                    )}
 
                                     <div className="max-h-48 overflow-y-auto space-y-2 bg-gray-50 dark:bg-slate-900 rounded-xl p-2">
                                         {allEvents.length === 0 ? (

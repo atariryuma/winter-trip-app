@@ -4,11 +4,12 @@ import {
     FileText, CheckCircle, XCircle, Loader2, AlertTriangle, Trash2, LogOut
 } from 'lucide-react';
 import server from '../../api/gas';
+import { useToast } from '../../context/ToastContext';
 
 const SettingsView = ({ itinerary, isDarkMode, setIsDarkMode, lastUpdate, onDataRefresh, onLogout, isScrolled }) => {
     const [uploadStatus, setUploadStatus] = useState(null);
     const [uploading, setUploading] = useState(false);
-    const [cacheClearMessage, setCacheClearMessage] = useState(null);
+    const { showToast } = useToast();
 
     // CSV Export - all itinerary data
     const handleExportCSV = () => {
@@ -141,8 +142,7 @@ const SettingsView = ({ itinerary, isDarkMode, setIsDarkMode, lastUpdate, onData
                     <button
                         onClick={() => {
                             const count = server.clearAllCaches();
-                            setCacheClearMessage(`Cleared ${count} cached items`);
-                            setTimeout(() => setCacheClearMessage(null), 3000);
+                            showToast('success', `Cleared ${count} cached items`);
                         }}
                         className="w-full px-4 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-slate-700 active:bg-gray-100 dark:active:bg-slate-600 transition-colors touch-manipulation min-h-[56px] border-t border-gray-100 dark:border-slate-700"
                     >
@@ -157,12 +157,6 @@ const SettingsView = ({ itinerary, isDarkMode, setIsDarkMode, lastUpdate, onData
                         </div>
                         <ChevronRight size={18} className="text-gray-300 dark:text-slate-500" />
                     </button>
-                    {cacheClearMessage && (
-                        <div className="px-4 py-2 flex items-center gap-2 text-sm bg-green-50 dark:bg-green-900/20 text-green-600">
-                            <CheckCircle size={14} />
-                            {cacheClearMessage}
-                        </div>
-                    )}
                 </div>
 
                 {/* Last Update - Always visible */}

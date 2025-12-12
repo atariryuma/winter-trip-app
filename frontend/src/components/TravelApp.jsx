@@ -526,6 +526,20 @@ export default function TravelApp() {
                 // Add new event using optimized API
                 await server.addEvent({ ...newItem, date: targetDay.date });
             }
+
+            // Cache invalidation: if location-related fields changed, invalidate old caches
+            if (isEdit && editItem) {
+                // Check if name/location changed
+                if (editItem.name !== newItem.name) {
+                    server.invalidateLocationCache(editItem.name);
+                }
+                if (editItem.to !== newItem.to) {
+                    server.invalidateLocationCache(editItem.to);
+                }
+                if (editItem.from !== newItem.from) {
+                    server.invalidateLocationCache(editItem.from);
+                }
+            }
         } catch (err) {
             console.error('Save error:', err);
             // Rollback UI on error

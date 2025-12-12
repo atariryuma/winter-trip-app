@@ -314,7 +314,64 @@ const server = {
                 else reject(new Error(json.error?.message || 'Failed to delete day'));
             })
             .catch(reject);
-    })
+    }),
+
+    // ============================================================================
+    // CACHE MANAGEMENT
+    // ============================================================================
+
+    /**
+     * Invalidate caches for a location (when location name changes)
+     * Call this when editing an event's name, to, or from fields
+     */
+    invalidateLocationCache: (location) => {
+        if (!location?.trim()) return;
+
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (!key) continue;
+
+            // Check if this cache key contains the location
+            if (key.startsWith('place_') || key.startsWith('staticmap_')) {
+                try {
+                    const encoded = key.split('_')[1];
+                    const decoded = decodeURIComponent(escape(atob(encoded)));
+                    if (decoded === location) keysToRemove.push(key);
+                } catch { /* ignore decode errors */ }
+            }
+
+            if (key.startsWith('routemap_')) {
+                try {
+                    const encoded = key.replace('routemap_', '');
+                    const decoded = decodeURIComponent(escape(atob(encoded)));
+                    if (decoded.includes(location)) keysToRemove.push(key);
+                } catch { /* ignore decode errors */ }
+            }
+        }
+
+        keysToRemove.forEach(key => localStorage.removeItem(key));
+        console.log(`Cache invalidated for "${location}": ${keysToRemove.length} items removed`);
+    },
+
+    /**
+     * Clear all app caches (for settings/emergency use)
+     */
+    clearAllCaches: () => {
+        const prefixes = ['place_', 'staticmap_', 'routemap_', 'autocomplete_'];
+        const keysToRemove = [];
+
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && prefixes.some(p => key.startsWith(p))) {
+                keysToRemove.push(key);
+            }
+        }
+
+        keysToRemove.forEach(key => localStorage.removeItem(key));
+        console.log(`All caches cleared: ${keysToRemove.length} items removed`);
+        return keysToRemove.length;
+    }
 };
 
 export default server;

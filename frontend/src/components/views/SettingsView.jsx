@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import {
     ChevronRight, Download, Upload, Clock, Moon,
-    FileText, CheckCircle, XCircle, Loader2, AlertTriangle
+    FileText, CheckCircle, XCircle, Loader2, AlertTriangle, Trash2
 } from 'lucide-react';
 import server from '../../api/gas';
 
 const SettingsView = ({ itinerary, isDarkMode, setIsDarkMode, lastUpdate, onDataRefresh }) => {
     const [uploadStatus, setUploadStatus] = useState(null);
     const [uploading, setUploading] = useState(false);
+    const [cacheClearMessage, setCacheClearMessage] = useState(null);
 
     // CSV Export - all itinerary data
     const handleExportCSV = () => {
@@ -134,6 +135,33 @@ const SettingsView = ({ itinerary, isDarkMode, setIsDarkMode, lastUpdate, onData
                             <span>Importing CSV will overwrite existing data</span>
                         </div>
                     </div>
+
+                    {/* Cache Clear */}
+                    <button
+                        onClick={() => {
+                            const count = server.clearAllCaches();
+                            setCacheClearMessage(`${count}件のキャッシュを削除しました`);
+                            setTimeout(() => setCacheClearMessage(null), 3000);
+                        }}
+                        className="w-full px-4 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-slate-700 active:bg-gray-100 dark:active:bg-slate-600 transition-colors touch-manipulation min-h-[56px] border-t border-gray-100 dark:border-slate-700"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-red-50 dark:bg-red-900/30 flex items-center justify-center">
+                                <Trash2 size={18} className="text-red-500" />
+                            </div>
+                            <div className="text-left">
+                                <span className="text-gray-700 dark:text-slate-200 font-medium block">Clear Cache</span>
+                                <span className="text-xs text-gray-400 dark:text-slate-500">Delete locally cached data</span>
+                            </div>
+                        </div>
+                        <ChevronRight size={18} className="text-gray-300 dark:text-slate-500" />
+                    </button>
+                    {cacheClearMessage && (
+                        <div className="px-4 py-2 flex items-center gap-2 text-sm bg-green-50 dark:bg-green-900/20 text-green-600">
+                            <CheckCircle size={14} />
+                            {cacheClearMessage}
+                        </div>
+                    )}
                 </div>
 
                 {/* Last Update - Always visible */}

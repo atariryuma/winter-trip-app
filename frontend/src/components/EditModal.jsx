@@ -136,7 +136,7 @@ const EditModal = ({ isOpen, onClose, item, onSave, onDelete, previousEvent, ava
 
     return (
         <div className="fixed inset-0 z-modal flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4" onClick={onClose}>
-            <div className="bg-white dark:bg-slate-800 w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[90vh] sm:max-h-[85vh] animate-slide-up-spring" onClick={e => e.stopPropagation()}>
+            <div className="bg-white dark:bg-slate-800 w-full max-w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[90vh] sm:max-h-[85vh] animate-slide-up-spring overflow-hidden" onClick={e => e.stopPropagation()}>
                 {/* Header */}
                 <div className="px-4 py-3 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center shrink-0">
                     <h3 className="font-bold text-lg text-gray-800 dark:text-slate-100">{item ? '予定を編集' : '新しい予定'}</h3>
@@ -148,13 +148,13 @@ const EditModal = ({ isOpen, onClose, item, onSave, onDelete, previousEvent, ava
                 {/* Form Content */}
                 <div className="p-4 overflow-y-auto overflow-x-hidden space-y-4 flex-1">
                     {/* Category & Status */}
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
+                    <div className="flex flex-wrap gap-3">
+                        <div className="flex-1 min-w-[120px]">
                             <label className="text-[10px] font-bold text-gray-400 uppercase mb-1.5 block">カテゴリ</label>
                             <select
                                 value={formData.category || ''}
                                 onChange={e => setFormData({ ...formData, category: e.target.value })}
-                                className="w-full p-3 bg-gray-50 dark:bg-slate-700 rounded-xl border-0 text-gray-800 dark:text-slate-100 text-sm font-medium"
+                                className="w-full p-2.5 bg-gray-50 dark:bg-slate-700 rounded-xl border-0 text-gray-800 dark:text-slate-100 text-sm font-medium"
                             >
                                 <option value="flight">✈️ 飛行機</option>
                                 <option value="train">🚄 電車</option>
@@ -164,12 +164,12 @@ const EditModal = ({ isOpen, onClose, item, onSave, onDelete, previousEvent, ava
                                 <option value="hotel">🏨 宿泊</option>
                             </select>
                         </div>
-                        <div>
+                        <div className="flex-1 min-w-[120px]">
                             <label className="text-[10px] font-bold text-gray-400 uppercase mb-1.5 block">ステータス</label>
                             <select
                                 value={formData.status || ''}
                                 onChange={e => setFormData({ ...formData, status: e.target.value })}
-                                className="w-full p-3 bg-gray-50 dark:bg-slate-700 rounded-xl border-0 text-gray-800 dark:text-slate-100 text-sm font-medium"
+                                className="w-full p-2.5 bg-gray-50 dark:bg-slate-700 rounded-xl border-0 text-gray-800 dark:text-slate-100 text-sm font-medium"
                             >
                                 <option value="planned">📋 計画中</option>
                                 <option value="confirmed">✅ 確定</option>

@@ -132,12 +132,14 @@ export default function PullToRefresh({
             </div>
 
             {/* Content with pull offset */}
+            {/* IMPORTANT: Only apply transform when actively pulling (pullDistance > 0)
+                CSS transform breaks position:sticky behavior in descendant elements */}
             <div
                 className="transition-transform duration-200 ease-out"
-                style={{
+                style={pullDistance > 0 ? {
                     transform: `translateY(${pullDistance}px)`,
                     transitionDuration: isPulling ? '0ms' : '300ms'
-                }}
+                } : undefined}
             >
                 {children}
             </div>

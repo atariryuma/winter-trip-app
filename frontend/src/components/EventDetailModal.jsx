@@ -57,7 +57,8 @@ const EventDetailModal = ({ event, onClose, onEdit, previousEvent, previousDayHo
             routeDestination: destination,
             placeQuery: destination
         };
-    }, [event?.type, event?.from, event?.to, event?.name, previousEvent?.to, previousEvent?.name, previousDayHotel?.name, previousDayHotel?.to]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- Intentionally use specific props instead of entire objects for performance
+    }, [event?.type, event?.category, event?.from, event?.to, event?.name, previousEvent?.to, previousEvent?.name, previousDayHotel?.name, previousDayHotel?.to]);
 
     // Fetch place info - only when placeQuery changes
     useEffect(() => {

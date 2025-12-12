@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useMemo, Suspense, lazy } from 'react';
-import ExpandableEventCard from './ExpandableEventCard';
+import React, { useState, useEffect, useMemo, useRef, Suspense, lazy } from 'react';
+import EventCard from './EventCard';
+
 import DepartureIndicator from './DepartureIndicator';
 import TimeConnector from './TimeConnector';
 import DynamicSummary from './DynamicSummary';
@@ -39,7 +40,7 @@ export default function TravelApp() {
     const [selectedDayId, setSelectedDayId] = useState(null);
     const [activeTab, setActiveTab] = useState('timeline');
     const [isEditMode, setIsEditMode] = useState(false);
-    const [expandedEventId, setExpandedEventId] = useState(null);
+
     const [scrollDirection, setScrollDirection] = useState('up');
     const [isScrolled, setIsScrolled] = useState(false);
     const [auth, setAuth] = useState(false);
@@ -52,6 +53,34 @@ export default function TravelApp() {
     const [lastUpdate, setLastUpdate] = useState(() => localStorage.getItem('lastUpdate') || null);
     const [mapModalOpen, setMapModalOpen] = useState(false);
     const [mapModalQuery, setMapModalQuery] = useState(null);
+    const [expandedEventId, setExpandedEventId] = useState(null);
+
+    // Refs for day tab auto-scroll (only on selection change, not every render)
+    const dayTabRefs = useRef({});
+    const dayTabContainerRef = useRef(null);
+    const prevSelectedDayId = useRef(null);
+
+    // Auto-scroll day tab into view only when selection changes
+    // Uses container scrollLeft instead of scrollIntoView to avoid page scroll interference
+    useEffect(() => {
+        if (selectedDayId && selectedDayId !== prevSelectedDayId.current) {
+            const tabEl = dayTabRefs.current[selectedDayId];
+            const container = dayTabContainerRef.current;
+            if (tabEl && container) {
+                // Calculate scroll position to center the tab
+                const tabLeft = tabEl.offsetLeft;
+                const tabWidth = tabEl.offsetWidth;
+                const containerWidth = container.offsetWidth;
+                const scrollTarget = tabLeft - (containerWidth / 2) + (tabWidth / 2);
+
+                container.scrollTo({
+                    left: scrollTarget,
+                    behavior: 'smooth'
+                });
+            }
+            prevSelectedDayId.current = selectedDayId;
+        }
+    }, [selectedDayId]);
 
     // Swipe navigation removed - using day tabs only for navigation
 
@@ -171,7 +200,19 @@ export default function TravelApp() {
 
         // Check if this is a move operation (date changed)
         const isMoving = newItem.newDate && newItem.newDate !== newItem.originalDate;
-        let targetDay, isEdit = !!editItem;
+        const isEdit = !!editItem;
+
+        // Determine targetDay BEFORE state update (from current itinerary)
+        const targetDay = isMoving
+            ? itinerary.find(d => d.date === newItem.newDate)
+            : itinerary.find(d => d.id === selectedDayId);
+
+        // Guard: ensure targetDay exists
+        if (!targetDay) {
+            console.error('targetDay not found', { isMoving, newDate: newItem.newDate, selectedDayId });
+            alert('対象の日程が見つかりません');
+            return;
+        }
 
         if (isMoving) {
             // Moving event to a different day
@@ -183,7 +224,6 @@ export default function TravelApp() {
                     }
                     // Add to new day
                     if (day.date === newItem.newDate) {
-                        targetDay = day;
                         // Remove move-related properties before adding
                         const cleanItem = { ...newItem };
                         delete cleanItem.newDate;
@@ -198,7 +238,6 @@ export default function TravelApp() {
             setItinerary(prev => {
                 return prev.map(day => {
                     if (day.id === selectedDayId) {
-                        targetDay = day;
                         let newEvents = isEdit
                             ? day.events.map(e => e.id === newItem.id ? newItem : e)
                             : [...day.events, { ...newItem, id: generateId(), type: getCategoryType(newItem.category) }];
@@ -228,23 +267,15 @@ export default function TravelApp() {
                     newEndTime: newItem.endTime
                 });
             } else if (isEdit) {
-                // Guard: ensure targetDay is set
-                if (!targetDay) {
-                    console.error('targetDay not found for edit operation');
-                    throw new Error('対象の日程が見つかりません');
-                }
                 // Update existing event using batch API (much faster than full save)
+                // Find original event name from previousItinerary for API lookup
+                const originalEvent = previousItinerary.find(d => d.id === selectedDayId)?.events.find(e => e.id === newItem.id);
                 await server.batchUpdateEvents([{
                     date: targetDay.date,
-                    eventId: targetDay.events.find(e => e.id === newItem.id)?.name || newItem.name, // Use original name if available
+                    eventId: originalEvent?.name || newItem.name,
                     eventData: newItem
                 }]);
             } else {
-                // Guard: ensure targetDay is set
-                if (!targetDay) {
-                    console.error('targetDay not found for add operation');
-                    throw new Error('対象の日程が見つかりません');
-                }
                 // Add new event using optimized API
                 await server.addEvent({ ...newItem, date: targetDay.date });
             }
@@ -405,7 +436,7 @@ export default function TravelApp() {
                     localStorage.setItem('tripapp_authenticated', 'true');
                 }}
                 validatePasscode={server.validatePasscode}
-                yearRange={yearRange}
+                yearRange={yearRange || undefined} // Pass undefined to use LoginView's default
             />
         );
     }
@@ -532,19 +563,14 @@ export default function TravelApp() {
                                         </div>
 
                                         {/* Sticky Date Tabs */}
-                                        <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-sticky-content bg-gray-100/95 dark:bg-slate-900/95 backdrop-blur-sm pt-2 pb-4 px-4 sm:px-6 border-b border-gray-200/50 dark:border-slate-800/50">
-                                            <div className="flex items-center gap-1 bg-white dark:bg-slate-800 rounded-xl p-1 shadow-sm border border-gray-200 dark:border-slate-700 transition-all duration-300 ease-out overflow-x-auto scrollbar-hide w-full">
+                                        <div className={`sticky z-sticky-content bg-gray-100/95 dark:bg-slate-900/95 backdrop-blur-sm pt-2 pb-4 px-4 sm:px-6 border-b border-gray-200/50 dark:border-slate-800/50 transition-all duration-300 ${scrollDirection === 'down' && isScrolled ? 'top-[env(safe-area-inset-top)]' : 'top-[calc(3.5rem+env(safe-area-inset-top))]'}`}>
+                                            <div ref={dayTabContainerRef} className="flex items-center gap-1 bg-white dark:bg-slate-800 rounded-xl p-1 shadow-sm border border-gray-200 dark:border-slate-700 transition-all duration-300 ease-out overflow-x-auto scrollbar-hide w-full">
                                                 {itinerary.map((day, idx) => {
                                                     const isSelected = selectedDayId === day.id;
                                                     return (
                                                         <button
                                                             key={day.id}
-                                                            ref={(el) => {
-                                                                // Auto scroll selected tab into view
-                                                                if (isSelected && el) {
-                                                                    el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-                                                                }
-                                                            }}
+                                                            ref={(el) => { dayTabRefs.current[day.id] = el; }}
                                                             onClick={() => setSelectedDayId(day.id)}
                                                             className={`flex-1 flex flex-col items-center justify-center py-2 px-2 rounded-lg transition-all duration-300 ease-out ${isSelected
                                                                 ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-white shadow-sm ring-1 ring-gray-100 dark:ring-slate-600"
@@ -637,13 +663,11 @@ export default function TravelApp() {
 
                                                     return (
                                                         <div key={event.id} className="relative">
-                                                            {/* Expandable Event Card */}
-                                                            <ExpandableEventCard
-                                                                event={event}
+                                                            {/* Event Card - expands in place */}
+                                                            <EventCard
+                                                                event={{ ...event, _routeOrigin: routeOrigin }}
                                                                 isExpanded={expandedEventId === event.id}
-                                                                onToggle={() => setExpandedEventId(
-                                                                    expandedEventId === event.id ? null : event.id
-                                                                )}
+                                                                onToggle={() => setExpandedEventId(expandedEventId === event.id ? null : event.id)}
                                                                 isEditMode={isEditMode}
                                                                 onEdit={(e) => {
                                                                     setEditItem(e);
@@ -651,11 +675,6 @@ export default function TravelApp() {
                                                                 }}
                                                                 onDelete={() => handleDeleteEvent(event.id)}
                                                                 routeOrigin={routeOrigin}
-                                                                previousDayHotel={(() => {
-                                                                    if (dayIndex <= 0) return null;
-                                                                    const prevDay = itinerary[dayIndex - 1];
-                                                                    return prevDay?.events.filter(e => e.category === 'hotel' || e.category === 'stay').pop();
-                                                                })()}
                                                             />
                                                             {nextEvent && (() => {
                                                                 // Skip route calculation for flights (driving route doesn't apply)
@@ -816,7 +835,7 @@ export default function TravelApp() {
                             <PullToRefresh onRefresh={() => fetchData(false)}>
                                 <main className="pt-[calc(4rem+env(safe-area-inset-top))] lg:pt-8 pb-32 lg:pb-8 pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] overflow-x-hidden">
                                     <div className="max-w-full lg:max-w-7xl 2xl:max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 2xl:px-12 overflow-x-hidden">
-                                        {activeTab === 'tickets' && <TicketList itinerary={itinerary} onForceReload={fetchData} isScrolled={isScrolled} onEventClick={(event) => { setEditItem(event); setModalOpen(true); }} />}
+                                        {activeTab === 'tickets' && <TicketList itinerary={itinerary} isScrolled={isScrolled} onEventClick={(e) => { setEditItem(e); setModalOpen(true); }} />}
                                         {activeTab === 'budget' && <BudgetView itinerary={itinerary} onForceReload={fetchData} isScrolled={isScrolled} />}
                                         {activeTab === 'packing' && <PackingList isScrolled={isScrolled} />}
                                     </div>
@@ -909,6 +928,7 @@ export default function TravelApp() {
                             </div>
                         )}
                     </Suspense>
+
 
                     <EditModal
                         isOpen={modalOpen}

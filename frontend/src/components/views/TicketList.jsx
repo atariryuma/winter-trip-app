@@ -49,8 +49,10 @@ const TicketCard = ({ event, isExpanded, onToggle, onEditClick }) => {
     const isBooked = !!(event.status === 'confirmed' || event.bookingRef);
 
     // Use from/to fields directly from event data
-    const routeFrom = event.from || null;
-    const routeTo = event.to || null;
+    // Note: Hotels/stays don't need departure/arrival display
+    const isStay = event.type === 'stay' || event.category === 'hotel';
+    const routeFrom = isStay ? null : (event.from || null);
+    const routeTo = isStay ? null : (event.to || null);
 
     // Note: Scroll correction removed - now using scrollIntoView center before expand
 

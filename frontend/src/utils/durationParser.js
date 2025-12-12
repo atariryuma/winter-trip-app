@@ -27,10 +27,11 @@ export const parseDurationToMinutes = (durationStr) => {
 
     // English/Generic format: "1 hour 30 mins", "90 mins"
     if (!matched) {
-        // Look for "hour" or "hr" - use word boundary to avoid matching partial words
-        const hourMatchEN = durationStr.match(/(\d+)\s*(?:hours?|hrs?|h)(?:\s|$)/i);
-        // Look for "min" or "m" - use negative lookahead to avoid matching "am", "pm", etc.
-        const minMatchEN = durationStr.match(/(\d+)\s*(?:minutes?|mins?|m(?![a-zA-Z]))/i);
+        // Look for "hour" or "hr" - use word boundary/end to avoid matching partial words
+        const hourMatchEN = durationStr.match(/(\d+)\s*(?:hours?|hrs?|h)(?:\s|$|[^a-zA-Z])/i);
+        // Look for "min" or "m" - use negative lookahead to avoid matching "am", "pm", "meters", etc.
+        // Also ensure "m" is at word boundary (followed by space, digit, end, or non-letter)
+        const minMatchEN = durationStr.match(/(\d+)\s*(?:minutes?|mins?|m(?![a-zA-Z]))(?:\s|$|[^a-zA-Z])?/i);
 
         if (hourMatchEN) {
             minutes += parseInt(hourMatchEN[1], 10) * 60;

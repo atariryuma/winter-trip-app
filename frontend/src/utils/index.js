@@ -41,9 +41,11 @@ export const getDurationMinutes = (currentEvent, nextEvent) => {
 
     let diff = toMinutes(nextStart) - toMinutes(currentEnd);
 
-    // Handle overnight edge case (e.g., 23:30 -> 00:30)
-    // If diff is extremely negative (more than 12 hours), treat as overnight
-    if (diff < -720) {
+    // Handle overnight edge case (e.g., 23:30 -> 00:30 = +60 min, not -1380 min)
+    // Heuristic: If diff is more negative than -6 hours, assume it's crossing midnight.
+    // This allows detecting actual overlaps of up to 6 hours while correctly handling
+    // overnight transitions. For travel apps, overlaps > 6 hours are extremely rare.
+    if (diff < -360) {
         diff += 24 * 60; // Add 24 hours
     }
 

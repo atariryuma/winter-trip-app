@@ -5,15 +5,10 @@ import { getIcon } from './common/IconHelper';
 import StatusBadge from './common/StatusBadge';
 
 /**
- * ExpandableEventCard - iOS HIG compliant expandable card
- * 
- * iOS Best Practices:
- * - Scroll to center before expanding (predictable position)
- * - Spring animation curve (0.5, 0.05, 0.2, 1) for natural feel
- * - Subtle scale feedback on interaction
- * - Smooth opacity transitions
+ * EventCard - Expandable event card with iOS spring animation
+ * Expands in-place to show full details (map, address, booking ref, route button)
  */
-const ExpandableEventCard = ({
+const EventCard = ({
     event,
     isExpanded,
     onToggle,
@@ -28,12 +23,9 @@ const ExpandableEventCard = ({
     const [copied, setCopied] = useState(false);
     const contentRef = useRef(null);
     const cardRef = useRef(null);
-    const headerRef = useRef(null);
     const [contentHeight, setContentHeight] = useState(0);
 
-    // Note: Scroll correction removed - now using scrollIntoView center before expand
-
-    // Calculate content height for smooth animation - use large initial value for immediate expand
+    // Calculate content height for smooth animation
     useEffect(() => {
         if (isExpanded) {
             // Set initial height immediately for fast expand
@@ -43,20 +35,20 @@ const ExpandableEventCard = ({
             // Then update with actual height when content is available
             if (contentRef.current) {
                 const newHeight = contentRef.current.scrollHeight;
-                if (newHeight > 400) {
-                    setContentHeight(newHeight);
+                if (newHeight > 0) {
+                    setContentHeight(Math.max(newHeight, 100));
                 }
             }
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isExpanded, placeInfo, staticMapImage]);
+    }, [isExpanded, placeInfo, staticMapImage, loadingMap]);
 
-    // Calculate query string outside useEffect for optimization
+    // Calculate query string for place lookup
     const placeQuery = event
         ? (event.type === 'transport' ? event.from : (event.to || event.name))
         : null;
 
-    // Fetch place info and map when expanded
+    // Fetch place info and map when expanded (lazy loading)
     useEffect(() => {
         if (!isExpanded || !placeQuery) {
             return;
@@ -79,21 +71,15 @@ const ExpandableEventCard = ({
         };
 
         fetchData();
-    }, [isExpanded, placeQuery]); // Only re-fetch when expanded state or query string changes
+    }, [isExpanded, placeQuery]);
 
-    // Route logic
-    // For transport: show route from previous location TO the departure station (event.from)
-    // For other events: show route from previous location to this event
+    // Route logic - Skip for flights (driving directions don't apply to air travel)
+    const isFlight = event?.category === 'flight';
     const getRouteDestination = () => event?.type === 'transport' ? event.from : (event?.to || event?.name);
-    const getEventRouteOrigin = () => routeOrigin; // Always use previous location as origin
-
     const routeDest = getRouteDestination();
-    const routeOrg = getEventRouteOrigin();
-
-    const directionsUrl = routeOrg && routeDest
-        ? `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(routeOrg)}&destination=${encodeURIComponent(routeDest)}`
+    const directionsUrl = !isFlight && routeOrigin && routeDest
+        ? `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(routeOrigin)}&destination=${encodeURIComponent(routeDest)}`
         : null;
-
     const mapsUrl = placeInfo?.mapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event?.name || '')}`;
 
     const copyBookingRef = (e) => {
@@ -102,6 +88,20 @@ const ExpandableEventCard = ({
             navigator.clipboard.writeText(event.bookingRef);
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
+        }
+    };
+
+    const handleCardClick = () => {
+        if (isEditMode) {
+            onEdit?.(event);
+        } else {
+            // Scroll to center before expanding (iOS-style)
+            if (!isExpanded && cardRef.current) {
+                cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                setTimeout(() => onToggle?.(), 150);
+            } else {
+                onToggle?.();
+            }
         }
     };
 
@@ -117,24 +117,8 @@ const ExpandableEventCard = ({
         >
             {/* Header - Always Visible */}
             <div
-                ref={headerRef}
                 className="p-4 cursor-pointer active:scale-[0.98] transition-transform duration-150"
-                onClick={() => {
-                    if (isEditMode) {
-                        onEdit?.(event);
-                    } else if (!isExpanded) {
-                        // 1. Scroll to center first
-                        if (cardRef.current) {
-                            cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        }
-                        // 2. Wait for scroll to complete, then expand
-                        // iOS HIG: 300-400ms delay for smooth transition
-                        setTimeout(() => onToggle?.(), 350);
-                    } else {
-                        // Collapse immediately
-                        onToggle?.();
-                    }
-                }}
+                onClick={handleCardClick}
             >
                 {/* Time + Category + Status Row */}
                 <div className="flex justify-between items-start mb-2">
@@ -189,12 +173,22 @@ const ExpandableEventCard = ({
                     {event.name}
                 </h3>
 
-                {/* Transport From/To */}
+                {/* Transport From/To - Timeline style */}
                 {event.type === 'transport' && (event.from || event.to) && (
-                    <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-slate-400 mb-2">
-                        <span>{event.from || '?'}</span>
-                        <ArrowRight size={12} className="shrink-0" />
-                        <span>{event.to || '?'}</span>
+                    <div className="p-2.5 bg-gray-50 dark:bg-slate-700/50 rounded-lg text-sm">
+                        <div className="flex">
+                            {/* Timeline dots and line */}
+                            <div className="flex flex-col items-center mr-3">
+                                <div className="w-2.5 h-2.5 rounded-full border-2 border-indigo-400 bg-white dark:bg-slate-800" />
+                                <div className="w-0.5 h-4 bg-indigo-300 dark:bg-indigo-600" />
+                                <div className="w-2.5 h-2.5 rounded-full bg-indigo-500" />
+                            </div>
+                            {/* Locations */}
+                            <div className="flex flex-col justify-between min-w-0">
+                                <span className="text-gray-600 dark:text-slate-300 truncate">{event.from || '?'}</span>
+                                <span className="font-bold text-gray-900 dark:text-white truncate">{event.to || '?'}</span>
+                            </div>
+                        </div>
                     </div>
                 )}
 
@@ -206,16 +200,15 @@ const ExpandableEventCard = ({
                 )}
             </div>
 
-            {/* Expanded Content - iOS HIG Unified Animation */}
+            {/* Expanded Content - iOS spring animation */}
             <div
                 ref={contentRef}
                 className="overflow-hidden"
                 style={{
                     maxHeight: isExpanded ? `${contentHeight || 500}px` : '0px',
                     opacity: isExpanded ? 1 : 0,
-                    // iOS critically damped spring (damping ratio 1.0)
-                    // 450ms for natural, unhurried expansion
-                    transition: 'max-height 450ms cubic-bezier(0.33, 1, 0.68, 1), opacity 350ms ease-out'
+                    // iOS spring curve: quick start, gentle settle
+                    transition: 'max-height 350ms cubic-bezier(0.2, 0.9, 0.3, 1), opacity 250ms ease-out'
                 }}
             >
                 <div className="px-4 pb-4 space-y-3 overflow-hidden">
@@ -269,9 +262,9 @@ const ExpandableEventCard = ({
                         </div>
                     )}
 
-                    {/* Route Button - Right aligned, DynamicSummary size */}
-                    {directionsUrl && (
-                        <div className="flex justify-end">
+                    {/* Action Buttons Row */}
+                    <div className="flex justify-end gap-2">
+                        {directionsUrl && (
                             <a
                                 href={directionsUrl}
                                 target="_blank"
@@ -282,12 +275,12 @@ const ExpandableEventCard = ({
                                 <Navigation size={14} />
                                 ルート
                             </a>
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </div>
             </div>
         </div>
     );
 };
 
-export default ExpandableEventCard;
+export default EventCard;

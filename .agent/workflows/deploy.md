@@ -2,16 +2,16 @@
 description: Build, Deploy to GAS, and Push to GitHub
 ---
 
-1. Build the frontend to ensure no starts
+1. Build the frontend to ensure no errors
    `npm run build --workspace=frontend`
 
 2. Push the backend code to Google Apps Script
    // turbo
    `cd backend && clasp push`
 
-3. Deploy a new version to Google Apps Script (Web App)
+3. Update the existing deployment to Google Apps Script (Web App)
    // turbo
-   `cd backend && clasp deploy`
+   `cd backend && clasp deploy -i AKfycbxdqZBzJm-TscH3ed7HsG9jBqK1hBQzCKqgJ1qngz42TERjOqju2jQqu3m1KRw49avX5Q -d "Update application"`
 
 4. Stage all changes for git
    // turbo

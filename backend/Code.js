@@ -393,12 +393,25 @@ function getItineraryData() {
         : [];
 
     // Helper: Get day of week from date string (M/D format)
+    // Uses same logic as frontend getTripDate for Winter Trip context
     const getDayOfWeek = (dateStr) => {
         const [month, day] = dateStr.split('/').map(Number);
         const now = new Date();
-        const year = now.getFullYear();
-        // Determine year: if month is past current month, use next year
-        const targetYear = (month < now.getMonth() + 1) ? year + 1 : year;
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth() + 1;
+
+        let targetYear = currentYear;
+
+        // Winter Trip Heuristics (Oct-Mar Season) - same as frontend
+        // Case 1: Currently Late Year (Oct-Dec), looking at Early Year date (Jan-Mar)
+        if (currentMonth >= 10 && month <= 3) {
+            targetYear = currentYear + 1;
+        }
+        // Case 2: Currently Early Year (Jan-Mar), looking at Late Year date (Oct-Dec)
+        else if (currentMonth <= 3 && month >= 10) {
+            targetYear = currentYear - 1;
+        }
+
         const date = new Date(targetYear, month - 1, day);
         const days = ['日', '月', '火', '水', '木', '金', '土'];
         return days[date.getDay()];
@@ -1527,11 +1540,11 @@ function handleUpdatePackingItem(e) {
 }
 
 function updatePackingItem(item) {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const ss = getSpreadsheet();
     let sheet = ss.getSheetByName(PACKING_SHEET);
 
     if (!sheet) {
-        getPackingList();
+        getPackingList(); // This creates the sheet
         sheet = ss.getSheetByName(PACKING_SHEET);
     }
 
@@ -1564,7 +1577,7 @@ function updatePackingItem(item) {
 }
 
 function deletePackingItem(id) {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const ss = getSpreadsheet();
     const sheet = ss.getSheetByName(PACKING_SHEET);
     if (!sheet) return;
 

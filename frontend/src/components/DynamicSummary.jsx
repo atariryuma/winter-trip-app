@@ -10,6 +10,46 @@ import {
 import { getIcon } from './common/IconHelper';
 import { getTripDate } from '../utils';
 
+// Helper: Build unique route locations from events and previous day hotel
+// Note: Flights are excluded as driving directions don't apply to air travel
+const buildRouteLocations = (events, previousDayHotel) => {
+    const allLocations = [];
+
+    // Add previous day hotel as starting point for Day 2+
+    if (previousDayHotel) {
+        const hotelName = previousDayHotel.name || previousDayHotel.to;
+        if (hotelName) allLocations.push(hotelName);
+    }
+
+    events.forEach(e => {
+        // Skip flights - driving directions don't apply to air travel
+        if (e.category === 'flight') return;
+
+        if (e.type === 'transport') {
+            if (e.from) allLocations.push(e.from);
+            if (e.to) allLocations.push(e.to);
+        } else {
+            const loc = e.to || e.name;
+            if (loc) allLocations.push(loc);
+        }
+    });
+
+    // Remove consecutive duplicates
+    return allLocations.filter((loc, i, arr) => i === 0 || loc !== arr[i - 1]);
+};
+
+// Helper: Generate Google Maps route URL from locations
+const buildGoogleMapsRouteUrl = (locations) => {
+    if (locations.length === 0) return 'https://www.google.com/maps';
+    if (locations.length === 1) {
+        return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(locations[0])}`;
+    }
+    const origin = encodeURIComponent(locations[0]);
+    const destination = encodeURIComponent(locations[locations.length - 1]);
+    const waypoints = locations.slice(1, -1).slice(0, 9).map(l => encodeURIComponent(l)).join('|');
+    return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}`;
+};
+
 const DynamicSummary = ({ day, events, dayIdx, previousDayHotel, onEditPlanned, onDeleteDay, isEditMode }) => {
     if (!day || !events) return null;
 
@@ -19,6 +59,10 @@ const DynamicSummary = ({ day, events, dayIdx, previousDayHotel, onEditPlanned, 
     const confirmedCount = events.filter(e => e.status === 'booked' || e.status === 'confirmed').length;
     const plannedCount = events.filter(e => e.status === 'planned' || e.status === 'suggested').length;
     const pendingBooking = events.filter(e => e.status === 'planned' && ['flight', 'train', 'hotel'].includes(e.category));
+
+    // Build route locations once (used for both display and link)
+    const routeLocations = buildRouteLocations(events, previousDayHotel);
+    const routeUrl = buildGoogleMapsRouteUrl(routeLocations);
 
     // Determine trip phase and next action
     const today = new Date();
@@ -148,54 +192,25 @@ const DynamicSummary = ({ day, events, dayIdx, previousDayHotel, onEditPlanned, 
             </div>
 
             {/* Day Route Display */}
-            {(() => {
-                // Build route locations list
-                const allLocations = [];
-
-                // Add previous day hotel as starting point for Day 2+
-                if (previousDayHotel) {
-                    const hotelName = previousDayHotel.name || previousDayHotel.to;
-                    if (hotelName) allLocations.push(hotelName);
-                }
-
-                events.forEach(e => {
-                    if (e.type === 'transport') {
-                        if (e.from) allLocations.push(e.from);
-                        if (e.to) allLocations.push(e.to);
-                    } else {
-                        const loc = e.to || e.name;
-                        if (loc) allLocations.push(loc);
-                    }
-                });
-
-                // Remove consecutive duplicates
-                const locations = allLocations.filter((loc, i, arr) =>
-                    i === 0 || loc !== arr[i - 1]
-                );
-
-                if (locations.length >= 2) {
-                    return (
-                        <div className="mb-3 py-2 px-3 bg-white/10 rounded-xl">
-                            <div className="flex items-center gap-1.5 text-xs text-white/90 flex-wrap">
-                                {locations.slice(0, 6).map((loc, i) => (
-                                    <React.Fragment key={i}>
-                                        <span className="font-medium truncate max-w-[80px]" title={loc}>
-                                            {loc.length > 10 ? loc.slice(0, 8) + '...' : loc}
-                                        </span>
-                                        {i < Math.min(locations.length - 1, 5) && (
-                                            <span className="text-white/50">→</span>
-                                        )}
-                                    </React.Fragment>
-                                ))}
-                                {locations.length > 6 && (
-                                    <span className="text-white/50">+{locations.length - 6}</span>
+            {routeLocations.length >= 2 && (
+                <div className="mb-3 py-2 px-3 bg-white/10 rounded-xl">
+                    <div className="flex items-center gap-1.5 text-xs text-white/90 flex-wrap">
+                        {routeLocations.slice(0, 6).map((loc, i) => (
+                            <React.Fragment key={i}>
+                                <span className="font-medium truncate max-w-[80px]" title={loc}>
+                                    {loc.length > 10 ? loc.slice(0, 8) + '...' : loc}
+                                </span>
+                                {i < Math.min(routeLocations.length - 1, 5) && (
+                                    <span className="text-white/50">→</span>
                                 )}
-                            </div>
-                        </div>
-                    );
-                }
-                return null;
-            })()}
+                            </React.Fragment>
+                        ))}
+                        {routeLocations.length > 6 && (
+                            <span className="text-white/50">+{routeLocations.length - 6}</span>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* Stats + Route Button */}
             <div className="flex items-center justify-between">
@@ -211,37 +226,7 @@ const DynamicSummary = ({ day, events, dayIdx, previousDayHotel, onEditPlanned, 
                 </div>
                 {/* Route Button */}
                 <a
-                    href={(() => {
-                        // Build locations list including previous day hotel
-                        const allLocations = [];
-
-                        // Add previous day hotel as starting point
-                        if (previousDayHotel) {
-                            const hotelName = previousDayHotel.name || previousDayHotel.to;
-                            if (hotelName) allLocations.push(hotelName);
-                        }
-
-                        events.forEach(e => {
-                            if (e.type === 'transport') {
-                                if (e.from) allLocations.push(e.from);
-                                if (e.to) allLocations.push(e.to);
-                            } else {
-                                const loc = e.to || e.name;
-                                if (loc) allLocations.push(loc);
-                            }
-                        });
-
-                        // Remove consecutive duplicates
-                        const locations = allLocations.filter((loc, i, arr) =>
-                            i === 0 || loc !== arr[i - 1]
-                        );
-                        if (locations.length === 0) return 'https://www.google.com/maps';
-                        if (locations.length === 1) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(locations[0])}`;
-                        const origin = encodeURIComponent(locations[0]);
-                        const destination = encodeURIComponent(locations[locations.length - 1]);
-                        const waypoints = locations.slice(1, -1).slice(0, 9).map(l => encodeURIComponent(l)).join('|');
-                        return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}`;
-                    })()}
+                    href={routeUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-1.5 px-3 py-2 bg-white/20 hover:bg-white/30 rounded-xl text-white text-xs font-bold transition-colors"

@@ -27,14 +27,27 @@ const getCategoryIcon = (category, type) => {
     return Ticket;
 };
 
-// Travel Wallet Card with Inline Expansion
-const TicketCard = ({ event, prevLocation, nextLocation, onEditClick }) => {
+// Helper: Parse route from details field (e.g., "中部国際空港 -> 名古屋駅")
+const parseRouteDetails = (details) => {
+    if (!details) return { from: null, to: null };
+    // Match patterns like "A -> B" or "A → B"
+    const match = details.match(/^(.+?)\s*(?:->|→)\s*(.+?)$/i);
+    if (match) {
+        return { from: match[1].trim(), to: match[2].trim() };
+    }
+    return { from: null, to: null };
+};
+
+const TicketCard = ({ event, onEditClick }) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const [copied, setCopied] = useState(false);
     const CategoryIcon = getCategoryIcon(event.category, event.type);
     const daysUntil = getDaysUntil(event.date);
     const isPast = daysUntil < 0;
     const isBooked = !!(event.status === 'confirmed' || event.bookingRef);
+
+    // Parse route from this event's details field
+    const { from: routeFrom, to: routeTo } = parseRouteDetails(event.details);
 
     const handleCopy = (e) => {
         e.stopPropagation();
@@ -108,33 +121,29 @@ const TicketCard = ({ event, prevLocation, nextLocation, onEditClick }) => {
 
                 {/* Expanded Details */}
                 <div className={`overflow-hidden transition-all duration-300 ease-out ${isExpanded ? 'max-h-96 opacity-100 mt-4' : 'max-h-0 opacity-0 mt-0'}`}>
-                    {/* Context: From / To */}
-                    <div className="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-3 mb-3 space-y-2">
-                        {prevLocation && (
-                            <div className="flex items-center gap-2 text-sm">
-                                <span className="text-[10px] font-bold text-slate-400 uppercase w-10 shrink-0">From</span>
-                                <Navigation size={12} className="text-indigo-500 rotate-180 shrink-0" />
-                                <span className="text-slate-600 dark:text-slate-300 font-medium truncate">{prevLocation}</span>
-                            </div>
-                        )}
-                        {nextLocation && (
-                            <div className="flex items-center gap-2 text-sm">
-                                <span className="text-[10px] font-bold text-slate-400 uppercase w-10 shrink-0">To</span>
-                                <Navigation size={12} className="text-emerald-500 shrink-0" />
-                                <span className="text-slate-600 dark:text-slate-300 font-medium truncate">{nextLocation}</span>
-                            </div>
-                        )}
-                        {!prevLocation && !nextLocation && (
-                            <p className="text-xs text-slate-400 text-center">前後のイベント情報がありません</p>
-                        )}
-                    </div>
-
-                    {/* Details */}
-                    {event.details && (
+                    {/* Route: From / To (from this event's details) */}
+                    {(routeFrom || routeTo) ? (
+                        <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-3 mb-3 space-y-2 border border-indigo-100 dark:border-indigo-800/30">
+                            {routeFrom && (
+                                <div className="flex items-center gap-2 text-sm">
+                                    <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase w-10 shrink-0">出発</span>
+                                    <Navigation size={12} className="text-indigo-500 rotate-180 shrink-0" />
+                                    <span className="text-indigo-700 dark:text-indigo-300 font-bold">{routeFrom}</span>
+                                </div>
+                            )}
+                            {routeTo && (
+                                <div className="flex items-center gap-2 text-sm">
+                                    <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase w-10 shrink-0">到着</span>
+                                    <Navigation size={12} className="text-emerald-500 shrink-0" />
+                                    <span className="text-emerald-700 dark:text-emerald-300 font-bold">{routeTo}</span>
+                                </div>
+                            )}
+                        </div>
+                    ) : event.details ? (
                         <div className="mb-3 px-1">
                             <p className="text-sm text-slate-600 dark:text-slate-400">{event.details}</p>
                         </div>
-                    )}
+                    ) : null}
 
                     {/* Booking Ref (if booked) */}
                     {isBooked && event.bookingRef && (

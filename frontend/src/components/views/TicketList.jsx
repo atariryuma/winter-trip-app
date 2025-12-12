@@ -84,7 +84,8 @@ const TicketCard = ({ event, isExpanded, onToggle, onEditClick }) => {
         <div
             ref={cardRef}
             onClick={handleCardClick}
-            className={`relative bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden transition-all duration-300 w-full max-w-full cursor-pointer ${isPast ? 'opacity-60 grayscale' : ''} ${isExpanded ? 'ring-2 ring-indigo-400 dark:ring-indigo-500 shadow-lg' : 'active:scale-[0.98]'}`}
+            className={`relative bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden w-full max-w-full cursor-pointer transition-all duration-300 ease-out ${isPast ? 'opacity-60 grayscale' : ''} ${isExpanded ? 'ring-2 ring-indigo-400 dark:ring-indigo-500 shadow-lg my-4 scale-[1.02]' : 'active:scale-[0.98] my-0 scale-100'}`}
+            style={{ transformOrigin: 'center center' }}
         >
             {/* Left Border Accent */}
             <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${isBooked ? 'bg-emerald-500' : 'bg-rose-400'}`} />

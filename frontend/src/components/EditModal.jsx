@@ -327,22 +327,24 @@ const EditModal = ({ isOpen, onClose, item, onSave, onDelete, previousEvent, ava
 
                     {/* Time */}
                     <div className="flex flex-wrap gap-3">
-                        <div className="flex-1 min-w-[120px]">
+                        <div className="flex-1 min-w-0">
                             <label className="text-[10px] font-bold text-gray-400 uppercase mb-1.5 block">開始</label>
                             <input
                                 type="time"
                                 value={formData.time || ''}
                                 onChange={e => setFormData({ ...formData, time: e.target.value })}
                                 className="w-full p-2.5 bg-gray-50 dark:bg-slate-700 rounded-xl text-gray-800 dark:text-slate-100 text-base font-medium"
+                                style={{ WebkitAppearance: 'none', appearance: 'none', minWidth: 0 }}
                             />
                         </div>
-                        <div className="flex-1 min-w-[120px]">
+                        <div className="flex-1 min-w-0">
                             <label className="text-[10px] font-bold text-gray-400 uppercase mb-1.5 block">終了</label>
                             <input
                                 type="time"
                                 value={formData.endTime || ''}
                                 onChange={e => setFormData({ ...formData, endTime: e.target.value })}
                                 className="w-full p-2.5 bg-gray-50 dark:bg-slate-700 rounded-xl text-gray-800 dark:text-slate-100 text-base font-medium"
+                                style={{ WebkitAppearance: 'none', appearance: 'none', minWidth: 0 }}
                             />
                         </div>
                     </div>

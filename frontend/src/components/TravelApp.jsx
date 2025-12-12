@@ -137,9 +137,6 @@ const TimeConnector = ({ duration, isEditMode, onInsert, fromLocation, toLocatio
     };
 
     const text = getText();
-    const routeUrl = fromLocation && toLocation
-        ? `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(fromLocation)}&destination=${encodeURIComponent(toLocation)}`
-        : null;
 
     return (
         <div className="flex items-center py-2 pl-6">
@@ -155,23 +152,12 @@ const TimeConnector = ({ duration, isEditMode, onInsert, fromLocation, toLocatio
                         </button>
                     )}
                 </div>
-                {/* Margin badge - tap to open Google Maps route */}
+                {/* Duration badge - no link, just display */}
                 {text && (
                     <div className={`absolute left-3 top-1/2 -translate-y-1/2 whitespace-nowrap transition-all duration-300 ${isEditMode ? 'opacity-0 translate-x-[-10px]' : 'opacity-100 translate-x-0'}`}>
-                        {routeUrl ? (
-                            <a
-                                href={routeUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className={`text-sm font-bold px-2.5 py-1 rounded-full border shadow-sm flex items-center gap-1 active:scale-95 transition-transform ${getColorClasses()}`}
-                            >
-                                {text}
-                            </a>
-                        ) : (
-                            <span className={`text-sm font-bold px-2.5 py-1 rounded-full border shadow-sm flex items-center gap-1 ${getColorClasses()}`}>
-                                {text}
-                            </span>
-                        )}
+                        <span className={`text-sm font-bold px-2.5 py-1 rounded-full border shadow-sm flex items-center gap-1 ${getColorClasses()}`}>
+                            {text}
+                        </span>
                     </div>
                 )}
             </div>

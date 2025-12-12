@@ -1,8 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 import {
     Clock, Copy, CheckCircle,
     Plane, Train, Bus, Hotel, MapPin, Utensils, Ticket,
-    AlertTriangle, ExternalLink, Edit3, ChevronDown, ChevronUp, Navigation
+    AlertTriangle, ExternalLink, Edit3, Navigation
 } from 'lucide-react';
 
 // Helper: Calculate days until event
@@ -39,8 +39,8 @@ const parseRouteDetails = (details) => {
     return { from: null, to: null };
 };
 
-const TicketCard = ({ event, onEditClick }) => {
-    const [isExpanded, setIsExpanded] = useState(false);
+const TicketCard = ({ event, isExpanded, onToggle, onEditClick }) => {
+    const cardRef = useRef(null);
     const [copied, setCopied] = useState(false);
     const CategoryIcon = getCategoryIcon(event.category, event.type);
     const daysUntil = getDaysUntil(event.date);
@@ -62,7 +62,6 @@ const TicketCard = ({ event, onEditClick }) => {
 
     const handleSearch = (e) => {
         e.stopPropagation();
-        // Build search query with route info for better results
         const parts = [event.name];
         if (routeFrom) parts.push(routeFrom);
         if (routeTo) parts.push(routeTo);
@@ -71,11 +70,20 @@ const TicketCard = ({ event, onEditClick }) => {
         window.open(`https://www.google.com/search?q=${query}`, '_blank');
     };
 
-    const toggleExpand = () => setIsExpanded(!isExpanded);
+    const handleCardClick = () => {
+        // Scroll to center first, then toggle
+        if (!isExpanded && cardRef.current) {
+            cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(() => onToggle(), 300);
+        } else {
+            onToggle();
+        }
+    };
 
     return (
         <div
-            onClick={toggleExpand}
+            ref={cardRef}
+            onClick={handleCardClick}
             className={`relative bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden transition-all duration-300 w-full max-w-full cursor-pointer ${isPast ? 'opacity-60 grayscale' : ''} ${isExpanded ? 'ring-2 ring-indigo-400 dark:ring-indigo-500 shadow-lg' : 'active:scale-[0.98]'}`}
         >
             {/* Left Border Accent */}
@@ -94,7 +102,7 @@ const TicketCard = ({ event, onEditClick }) => {
                             </span>
                         )}
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-1.5 shrink-0">
                         {isBooked ? (
                             <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
                                 <CheckCircle size={14} />
@@ -106,7 +114,6 @@ const TicketCard = ({ event, onEditClick }) => {
                                 <span className="text-[10px] font-black uppercase tracking-wider">未予約</span>
                             </div>
                         )}
-                        {isExpanded ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
                     </div>
                 </div>
 
@@ -301,6 +308,9 @@ export default function TicketList({ itinerary, isScrolled, onEventClick }) {
 
     const { transport, stay, allFlat = [] } = processedEvents;
 
+    // Accordion state - only one card expanded at a time
+    const [expandedId, setExpandedId] = useState(null);
+
     // Stats
     const pendingItems = allFlat.filter(e => !e.isBooked && (['flight', 'train', 'bus', 'hotel'].includes(e.category) || e.type === 'stay' || e.type === 'transport'));
     const totalPending = pendingItems.length;
@@ -336,12 +346,12 @@ export default function TicketList({ itinerary, isScrolled, onEventClick }) {
                 <div className="animate-slide-up-fade" style={{ animationDelay: '0ms' }}>
                     <SectionHeader title="交通機関" icon={Train} count={transport.length} />
                     <div className="space-y-3">
-                        {transport.map((event, i) => (
+                        {transport.map((event) => (
                             <TicketCard
-                                key={`transport-${i}`}
+                                key={event.id}
                                 event={event}
-                                prevLocation={event.prevLocation}
-                                nextLocation={event.nextLocation}
+                                isExpanded={expandedId === event.id}
+                                onToggle={() => setExpandedId(expandedId === event.id ? null : event.id)}
                                 onEditClick={onEventClick}
                             />
                         ))}
@@ -354,12 +364,12 @@ export default function TicketList({ itinerary, isScrolled, onEventClick }) {
                 <div className="animate-slide-up-fade" style={{ animationDelay: '100ms' }}>
                     <SectionHeader title="宿泊施設" icon={Hotel} count={stay.length} />
                     <div className="space-y-3">
-                        {stay.map((event, i) => (
+                        {stay.map((event) => (
                             <TicketCard
-                                key={`stay-${i}`}
+                                key={event.id}
                                 event={event}
-                                prevLocation={event.prevLocation}
-                                nextLocation={event.nextLocation}
+                                isExpanded={expandedId === event.id}
+                                onToggle={() => setExpandedId(expandedId === event.id ? null : event.id)}
                                 onEditClick={onEventClick}
                             />
                         ))}

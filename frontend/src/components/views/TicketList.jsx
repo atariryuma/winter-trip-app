@@ -30,8 +30,9 @@ const getCategoryIcon = (category, type) => {
 // Helper: Parse route from details field (e.g., "中部国際空港 -> 名古屋駅")
 const parseRouteDetails = (details) => {
     if (!details) return { from: null, to: null };
-    // Match patterns like "A -> B" or "A → B"
-    const match = details.match(/^(.+?)\s*(?:->|→)\s*(.+?)$/i);
+    // Match patterns like "A -> B" or "A -> B (extra info)"
+    // Capture from start until ->, then capture destination (stop at optional parentheses)
+    const match = details.match(/^(.+?)\s*(?:->|→)\s*([^(]+)/i);
     if (match) {
         return { from: match[1].trim(), to: match[2].trim() };
     }
@@ -46,8 +47,9 @@ const TicketCard = ({ event, onEditClick }) => {
     const isPast = daysUntil < 0;
     const isBooked = !!(event.status === 'confirmed' || event.bookingRef);
 
-    // Parse route from this event's details field
-    const { from: routeFrom, to: routeTo } = parseRouteDetails(event.details);
+    // Use from/to fields directly from event data
+    const routeFrom = event.from || null;
+    const routeTo = event.to || null;
 
     const handleCopy = (e) => {
         e.stopPropagation();

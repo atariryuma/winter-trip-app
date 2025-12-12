@@ -202,7 +202,7 @@ const BudgetView = ({ itinerary, onForceReload, isScrolled }) => {
             resetQuickAdd();
         } catch (error) {
             console.error('Save error:', error);
-            alert('保存に失敗しました: ' + error.message);
+            showToast('error', '保存に失敗しました: ' + error.message);
         } finally {
             setSaving(false);
         }
@@ -248,7 +248,7 @@ const BudgetView = ({ itinerary, onForceReload, isScrolled }) => {
             resetQuickAdd();
         } catch (error) {
             console.error('Delete error:', error);
-            alert('削除に失敗しました: ' + error.message);
+            showToast('error', '削除に失敗しました: ' + error.message);
         } finally {
             setSaving(false);
         }

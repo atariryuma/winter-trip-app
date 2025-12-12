@@ -6,6 +6,7 @@ import {
     ShoppingBag, Gift, DollarSign, User, Users
 } from 'lucide-react';
 import server from '../../api/gas';
+import { useToast } from '../../context/ToastContext';
 
 // Packing categories
 const PACKING_CATEGORIES = [
@@ -46,6 +47,7 @@ export default function PackingList({ isScrolled }) {
 
     // Lock to prevent double-toggle race condition
     const toggleLock = useRef(new Set());
+    const { showToast } = useToast();
 
     // Save shopping list to localStorage
     useEffect(() => {
@@ -148,7 +150,7 @@ export default function PackingList({ isScrolled }) {
             setIsAddModalOpen(false);
         } catch (err) {
             console.error('Add failed:', err);
-            alert('追加に失敗しました');
+            showToast('error', '追加に失敗しました');
         } finally {
             setSubmitting(false);
         }

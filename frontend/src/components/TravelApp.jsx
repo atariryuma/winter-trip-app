@@ -19,7 +19,7 @@ import PullToRefresh from './common/PullToRefresh';
 import EditModal from './EditModal';
 import LoginView from './views/LoginView';
 import server from '../api/gas';
-import { ToastProvider } from '../context/ToastContext';
+import { ToastProvider, useToast } from '../context/ToastContext';
 
 // Lazy load view components
 const TicketList = lazy(() => import('./views/TicketList'));
@@ -55,6 +55,7 @@ export default function TravelApp() {
     const [mapModalOpen, setMapModalOpen] = useState(false);
     const [mapModalQuery, setMapModalQuery] = useState(null);
     const [expandedEventId, setExpandedEventId] = useState(null);
+    const { showToast } = useToast();
 
     // Refs for day tab auto-scroll (only on selection change, not every render)
     const dayTabRefs = useRef({});
@@ -298,7 +299,7 @@ export default function TravelApp() {
             console.error('Save error:', err);
             // Rollback UI on error
             setItinerary(previousItinerary);
-            alert('保存に失敗しました。変更を元に戻しました。');
+            showToast('error', '保存に失敗しました。変更を元に戻しました。');
         } finally {
             setSaving(false);
         }
@@ -336,7 +337,7 @@ export default function TravelApp() {
                 console.error('Delete error:', err);
                 // Rollback UI on error
                 setItinerary(previousItinerary);
-                alert('削除に失敗しました。変更を元に戻しました。');
+                showToast('error', '削除に失敗しました。変更を元に戻しました。');
             } finally {
                 setSaving(false);
             }
@@ -367,7 +368,7 @@ export default function TravelApp() {
             console.error('Delete day error:', err);
             // Rollback UI on error
             setItinerary(previousItinerary);
-            alert('日程の削除に失敗しました。変更を元に戻しました。');
+            showToast('error', '日程の削除に失敗しました。変更を元に戻しました。');
         } finally {
             setSaving(false);
         }

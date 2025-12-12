@@ -534,16 +534,16 @@ function saveItineraryData(data) {
 
             eventsData.push([
                 day.date,
-                event.type,
-                event.category,
-                event.name,
-                event.time || '',
-                event.endTime || '',
-                event.from || event.place || '',
-                event.to || '',
-                event.status || 'planned',
-                event.bookingRef || '',
-                event.details || '',
+                event.type !== undefined ? event.type : '',
+                event.category !== undefined ? event.category : '',
+                event.name !== undefined ? event.name : '',
+                event.time !== undefined ? event.time : '',
+                event.endTime !== undefined ? event.endTime : '',
+                event.from !== undefined ? event.from : (event.place !== undefined ? event.place : ''),
+                event.to !== undefined ? event.to : '',
+                event.status !== undefined ? event.status : 'planned',
+                event.bookingRef !== undefined ? event.bookingRef : '',
+                event.details !== undefined ? event.details : '',
                 budget
             ]);
         });
@@ -831,19 +831,20 @@ function handleBatchUpdateEvents(e) {
                     ? `${eventData.budgetAmount}/${eventData.budgetPaidBy || ''}`
                     : '';
 
+                // Use !== undefined check for all fields to allow clearing with empty strings
                 allData[rowIndex] = [
                     date,
-                    eventData.type || allData[rowIndex][1],
-                    eventData.category || allData[rowIndex][2],
-                    eventData.name || allData[rowIndex][3],
-                    eventData.time || allData[rowIndex][4],
-                    eventData.endTime || allData[rowIndex][5],
-                    eventData.from || eventData.place || allData[rowIndex][6],
-                    eventData.to || allData[rowIndex][7],
-                    eventData.status || allData[rowIndex][8],
+                    eventData.type !== undefined ? eventData.type : allData[rowIndex][1],
+                    eventData.category !== undefined ? eventData.category : allData[rowIndex][2],
+                    eventData.name !== undefined ? eventData.name : allData[rowIndex][3],
+                    eventData.time !== undefined ? eventData.time : allData[rowIndex][4],
+                    eventData.endTime !== undefined ? eventData.endTime : allData[rowIndex][5],
+                    eventData.from !== undefined ? eventData.from : (eventData.place !== undefined ? eventData.place : allData[rowIndex][6]),
+                    eventData.to !== undefined ? eventData.to : allData[rowIndex][7],
+                    eventData.status !== undefined ? eventData.status : allData[rowIndex][8],
                     eventData.bookingRef !== undefined ? eventData.bookingRef : allData[rowIndex][9],
                     eventData.details !== undefined ? eventData.details : allData[rowIndex][10],
-                    budget || allData[rowIndex][11]
+                    budget !== undefined ? budget : allData[rowIndex][11]
                 ];
                 updateCount++;
                 modified = true;
@@ -887,18 +888,19 @@ function handleAddEvent(e) {
             ? `${eventData.budgetAmount}/${eventData.budgetPaidBy || ''}`
             : '';
 
+        // For new events, use default empty string but preserve explicit values
         const rowData = [
             date,
-            eventData.type || '',
-            eventData.category || '',
-            eventData.name || '',
-            eventData.time || '',
-            eventData.endTime || '',
-            eventData.from || eventData.place || '',
-            eventData.to || '',
-            eventData.status || 'planned',
-            eventData.bookingRef || '',
-            eventData.details || '',
+            eventData.type !== undefined ? eventData.type : '',
+            eventData.category !== undefined ? eventData.category : '',
+            eventData.name !== undefined ? eventData.name : '',
+            eventData.time !== undefined ? eventData.time : '',
+            eventData.endTime !== undefined ? eventData.endTime : '',
+            eventData.from !== undefined ? eventData.from : (eventData.place !== undefined ? eventData.place : ''),
+            eventData.to !== undefined ? eventData.to : '',
+            eventData.status !== undefined ? eventData.status : 'planned',
+            eventData.bookingRef !== undefined ? eventData.bookingRef : '',
+            eventData.details !== undefined ? eventData.details : '',
             budget
         ];
 

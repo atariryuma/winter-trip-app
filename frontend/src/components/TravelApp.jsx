@@ -388,26 +388,60 @@ export default function TravelApp() {
     const [mapModalQuery, setMapModalQuery] = useState(null);
 
 
-    // Swipe navigation for mobile day switching
+    // Interactive swipe navigation for mobile day switching
+    const [swipeOffset, setSwipeOffset] = useState(0);
+    const [isSwipeAnimating, setIsSwipeAnimating] = useState(false);
     const touchStartX = useRef(0);
     const touchStartY = useRef(0);
+    const isSwiping = useRef(false);
+
     const handleTouchStart = (e) => {
         touchStartX.current = e.touches[0].clientX;
         touchStartY.current = e.touches[0].clientY;
+        isSwiping.current = false;
+        setIsSwipeAnimating(false);
     };
-    const handleTouchEnd = (e) => {
-        const deltaX = e.changedTouches[0].clientX - touchStartX.current;
-        const deltaY = e.changedTouches[0].clientY - touchStartY.current;
-        // Only trigger if horizontal swipe is dominant and > 75px
-        if (Math.abs(deltaX) > 75 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
-            if (deltaX < 0 && dayIndex < itinerary.length - 1) {
-                // Swipe left -> next day
-                setSelectedDayId(itinerary[dayIndex + 1].id);
-            } else if (deltaX > 0 && dayIndex > 0) {
-                // Swipe right -> previous day
-                setSelectedDayId(itinerary[dayIndex - 1].id);
-            }
+
+    const handleTouchMove = (e) => {
+        const deltaX = e.touches[0].clientX - touchStartX.current;
+        const deltaY = e.touches[0].clientY - touchStartY.current;
+
+        // Start tracking if horizontal is dominant
+        if (!isSwiping.current && Math.abs(deltaX) > 10 && Math.abs(deltaX) > Math.abs(deltaY)) {
+            isSwiping.current = true;
         }
+
+        if (isSwiping.current) {
+            // Dampen at edges
+            let offset = deltaX;
+            if ((dayIndex === 0 && deltaX > 0) || (dayIndex === itinerary.length - 1 && deltaX < 0)) {
+                offset = deltaX * 0.3; // Resistance at boundaries
+            }
+            setSwipeOffset(offset);
+        }
+    };
+
+    const handleTouchEnd = () => {
+        if (!isSwiping.current) {
+            setSwipeOffset(0);
+            return;
+        }
+
+        setIsSwipeAnimating(true);
+        const threshold = 75;
+
+        if (swipeOffset < -threshold && dayIndex < itinerary.length - 1) {
+            // Swipe left -> next day
+            setSelectedDayId(itinerary[dayIndex + 1].id);
+        } else if (swipeOffset > threshold && dayIndex > 0) {
+            // Swipe right -> previous day
+            setSelectedDayId(itinerary[dayIndex - 1].id);
+        }
+
+        // Spring back to 0
+        setSwipeOffset(0);
+        setTimeout(() => setIsSwipeAnimating(false), 300);
+        isSwiping.current = false;
     };
 
     // Scroll detection for immersive mode
@@ -922,11 +956,16 @@ export default function TravelApp() {
                                             </div>
                                         </div>
 
-                                        {/* Mobile Events List - Swipeable */}
+                                        {/* Mobile Events List - Swipeable with follow-finger */}
                                         <div
                                             className="px-4 sm:px-6 space-y-6 pb-24"
                                             onTouchStart={handleTouchStart}
+                                            onTouchMove={handleTouchMove}
                                             onTouchEnd={handleTouchEnd}
+                                            style={{
+                                                transform: `translateX(${swipeOffset}px)`,
+                                                transition: isSwipeAnimating ? 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)' : 'none'
+                                            }}
                                         >
                                             <DynamicSummary
                                                 day={selectedDay}

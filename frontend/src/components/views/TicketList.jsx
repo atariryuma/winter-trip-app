@@ -62,7 +62,12 @@ const TicketCard = ({ event, onEditClick }) => {
 
     const handleSearch = (e) => {
         e.stopPropagation();
-        const query = encodeURIComponent(`${event.name} 予約`);
+        // Build search query with route info for better results
+        const parts = [event.name];
+        if (routeFrom) parts.push(routeFrom);
+        if (routeTo) parts.push(routeTo);
+        parts.push('予約');
+        const query = encodeURIComponent(parts.join(' '));
         window.open(`https://www.google.com/search?q=${query}`, '_blank');
     };
 

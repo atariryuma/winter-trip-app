@@ -146,7 +146,7 @@ const EditModal = ({ isOpen, onClose, item, onSave, onDelete, previousEvent, ava
                 </div>
 
                 {/* Form Content */}
-                <div className="p-4 overflow-y-auto space-y-4 flex-1">
+                <div className="p-4 overflow-y-auto overflow-x-hidden space-y-4 flex-1">
                     {/* Category & Status */}
                     <div className="grid grid-cols-2 gap-3">
                         <div>
@@ -327,22 +327,22 @@ const EditModal = ({ isOpen, onClose, item, onSave, onDelete, previousEvent, ava
 
                     {/* Time */}
                     <div className="grid grid-cols-2 gap-3">
-                        <div>
+                        <div className="min-w-0">
                             <label className="text-[10px] font-bold text-gray-400 uppercase mb-1.5 block">開始</label>
                             <input
                                 type="time"
                                 value={formData.time || ''}
                                 onChange={e => setFormData({ ...formData, time: e.target.value })}
-                                className="w-full p-3 bg-gray-50 dark:bg-slate-700 rounded-xl text-gray-800 dark:text-slate-100 text-base font-medium"
+                                className="w-full p-3 bg-gray-50 dark:bg-slate-700 rounded-xl text-gray-800 dark:text-slate-100 text-base font-medium min-w-0"
                             />
                         </div>
-                        <div>
+                        <div className="min-w-0">
                             <label className="text-[10px] font-bold text-gray-400 uppercase mb-1.5 block">終了</label>
                             <input
                                 type="time"
                                 value={formData.endTime || ''}
                                 onChange={e => setFormData({ ...formData, endTime: e.target.value })}
-                                className="w-full p-3 bg-gray-50 dark:bg-slate-700 rounded-xl text-gray-800 dark:text-slate-100 text-base font-medium"
+                                className="w-full p-3 bg-gray-50 dark:bg-slate-700 rounded-xl text-gray-800 dark:text-slate-100 text-base font-medium min-w-0"
                             />
                         </div>
                     </div>

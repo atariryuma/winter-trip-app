@@ -295,7 +295,7 @@ const server = {
         const params = new URLSearchParams();
         params.append('action', 'moveEvent');
         params.append('eventData', JSON.stringify(eventData));
-        fetch(`${API_URL}?${params.toString()}`)
+        fetchWithRetry(`${API_URL}?${params.toString()}`)
             .then(res => res.json())
             .then(json => {
                 if (json.status === 'success') resolve(json.data);
@@ -307,7 +307,7 @@ const server = {
     // Delete all events for a specific date (day deletion)
     deleteEventsByDate: (date) => new Promise((resolve, reject) => {
         const params = new URLSearchParams({ action: 'deleteEventsByDate', date });
-        fetch(`${API_URL}?${params.toString()}`)
+        fetchWithRetry(`${API_URL}?${params.toString()}`)
             .then(res => res.json())
             .then(json => {
                 if (json.status === 'success') resolve(json.data);

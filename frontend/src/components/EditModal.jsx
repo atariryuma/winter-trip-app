@@ -29,6 +29,8 @@ const EditModal = ({ isOpen, onClose, item, onSave, onDelete, previousEvent, ava
     const autoFrom = previousEvent?.to || previousEvent?.address || previousEvent?.name || '';
 
     useEffect(() => {
+        if (!isOpen) return;
+
         if (item) {
             // For transport events, separate customName from auto-generated name
             const isItemTransport = ['flight', 'train', 'bus'].includes(item.category);
@@ -39,7 +41,6 @@ const EditModal = ({ isOpen, onClose, item, onSave, onDelete, previousEvent, ava
                 ? item.name
                 : '';
 
-            // eslint-disable-next-line react-hooks/set-state-in-effect
             setFormData({
                 ...item,
                 from: item.from || autoFrom,
@@ -59,7 +60,19 @@ const EditModal = ({ isOpen, onClose, item, onSave, onDelete, previousEvent, ava
         setSelectedDate(currentDate || '');
         setSuggestions([]);
         setShowSuggestions(false);
-    }, [item, isOpen, currentDate, autoFrom]);
+        // We intentionally omit item, currentDate, autoFrom to prevents form resets during editing
+        // Re-initialization should only happen when the modal is opened or the target item fundamentally changes
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen, item?.name, item?.time, item?.category]); // Only re-init if specific identifier properties change
+
+    // Cleanup timeout on unmount to prevent memory leaks
+    useEffect(() => {
+        return () => {
+            if (suggestionsTimeoutRef.current) {
+                clearTimeout(suggestionsTimeoutRef.current);
+            }
+        };
+    }, []);
 
     const isTransport = ['flight', 'train', 'bus'].includes(formData.category);
 

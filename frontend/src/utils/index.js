@@ -21,3 +21,65 @@ export const getMidTime = (t1, t2) => {
     const mid = (m1 + diff / 2) % (24 * 60);
     return toTimeStr(Math.floor(mid));
 };
+
+export { parseDurationToMinutes } from './durationParser';
+
+export const formatDuration = (minutes) => {
+    if (minutes === null || minutes === undefined) return null;
+    if (minutes < 0) return null; // Overlap
+    if (minutes === 0) return 'Next';
+    if (minutes < 60) return `${minutes}m`;
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+};
+
+export const getDurationMinutes = (currentEvent, nextEvent) => {
+    const currentEnd = currentEvent.endTime || currentEvent.time;
+    const nextStart = nextEvent?.time;
+    if (!currentEnd || !nextStart) return null;
+
+    let diff = toMinutes(nextStart) - toMinutes(currentEnd);
+
+    // Handle overnight edge case (e.g., 23:30 -> 00:30)
+    // If diff is extremely negative (more than 12 hours), treat as overnight
+    if (diff < -720) {
+        diff += 24 * 60; // Add 24 hours
+    }
+
+    return diff;
+};
+
+// Date/Year Utilities
+/**
+ * Calculates the correct year for a given date string (MM/DD) based on the current date context.
+ * Assumes "Winter Trip" context: 
+ * - If current month is Oct-Dec, dates in Jan-Mar are Next Year.
+ * - If current month is Jan-Mar, dates in Oct-Dec are Previous Year.
+ * - Otherwise (Standard), Month >= Current Month is Current Year, else Next Year (naive future).
+ */
+export const getTripDate = (dateStr) => {
+    const [month, day] = dateStr.split('/').map(Number);
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+
+    let targetYear = currentYear;
+
+    // Winter Trip Heuristics (Oct-Mar Season)
+    // Case 1: Currently Late Year (Oct-Dec), looking at Early Year date (Jan-Mar)
+    if (currentMonth >= 10 && month <= 3) {
+        targetYear = currentYear + 1;
+    }
+    // Case 2: Currently Early Year (Jan-Mar), looking at Late Year date (Oct-Dec)
+    else if (currentMonth <= 3 && month >= 10) {
+        targetYear = currentYear - 1;
+    }
+
+    // Create UTC date to avoid timezone shifts affecting the day
+    return new Date(targetYear, month - 1, day);
+};
+
+export const getTripYear = (dateStr) => {
+    return getTripDate(dateStr).getFullYear();
+};

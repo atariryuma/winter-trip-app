@@ -1,15 +1,16 @@
-import React, { useState, useEffect, useMemo, useRef, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useMemo, Suspense, lazy } from 'react';
 import ExpandableEventCard from './ExpandableEventCard';
 import DepartureIndicator from './DepartureIndicator';
+import TimeConnector from './TimeConnector';
+import DynamicSummary from './DynamicSummary';
 import {
-    Calendar, Map, Settings as SettingsIcon,
-    Plane, Train, Bus, Hotel, MapPin, Utensils, Ticket,
-    Plus, ArrowRight, Wallet, CheckCircle,
-    X, Edit3, Save, Navigation, Package, ChevronRight, Trash2
+    Calendar, Settings as SettingsIcon,
+    Plane, MapPin, Ticket,
+    Plus, ArrowRight, Wallet,
+    X, Edit3, Save, Package
 } from 'lucide-react';
 import { initialItinerary } from '../data/initialData';
-import { generateId, toMinutes, toTimeStr, getMidTime } from '../utils';
-import { getIcon } from './common/IconHelper';
+import { generateId, toMinutes, toTimeStr, getMidTime, getDurationMinutes, getTripDate, getTripYear } from '../utils';
 import StatusBadge from './common/StatusBadge';
 import LoadingSpinner from './common/LoadingSpinner';
 import ReloadPrompt from './common/ReloadPrompt';
@@ -31,388 +32,7 @@ const getCategoryType = (category) => {
     return 'activity';
 };
 
-// Helper: Calculate duration between two events in minutes
-const getDurationMinutes = (currentEvent, nextEvent) => {
-    const currentEnd = currentEvent.endTime || currentEvent.time;
-    const nextStart = nextEvent?.time;
-    if (!currentEnd || !nextStart) return null;
-    return toMinutes(nextStart) - toMinutes(currentEnd);
-};
 
-// Helper: Format duration for display
-const formatDuration = (minutes) => {
-    if (minutes === null || minutes === undefined) return null;
-    if (minutes < 0) return null; // Overlap
-    if (minutes === 0) return 'Next';
-    if (minutes < 60) return `${minutes}m`;
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
-};
-
-// TimeConnector component - shows travel margin between events
-// Uses cached route API to calculate: 余裕 = イベント間時間 - 移動時間
-const TimeConnector = ({ duration, isEditMode, onInsert, fromLocation, toLocation }) => {
-    const [travelMinutes, setTravelMinutes] = useState(null);
-    const [loading, setLoading] = useState(false);
-
-    // Fetch travel time (uses localStorage cache, won't hit API repeatedly)
-    useEffect(() => {
-        if (!fromLocation?.trim() || !toLocation?.trim()) {
-            setTravelMinutes(null);
-            return;
-        }
-
-        const fetchTravelTime = async () => {
-            setLoading(true);
-            try {
-                const routeData = await server.getRouteMap(fromLocation, toLocation);
-                if (routeData?.duration) {
-                    // Parse Japanese duration (e.g., "1時間45分", "45分")
-                    let minutes = 0;
-                    const hourMatch = routeData.duration.match(/(\d+)\s*時間/);
-                    const minMatch = routeData.duration.match(/(\d+)\s*分/);
-                    if (hourMatch) minutes += parseInt(hourMatch[1], 10) * 60;
-                    if (minMatch) minutes += parseInt(minMatch[1], 10);
-                    // Fallback: try English format "45 mins"
-                    if (minutes === 0) {
-                        const numMatch = routeData.duration.match(/(\d+)/);
-                        if (numMatch) minutes = parseInt(numMatch[1], 10);
-                    }
-                    setTravelMinutes(minutes > 0 ? minutes : null);
-                }
-            } catch (err) {
-                console.error('Travel time fetch failed:', err);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchTravelTime();
-    }, [fromLocation, toLocation]);
-
-    // Calculate margin: available time - travel time
-    const margin = travelMinutes !== null && duration !== null ? duration - travelMinutes : null;
-
-    // Determine status based on margin (or fallback to duration if no travel time)
-    const getStatus = () => {
-        if (duration === null || duration === undefined) return 'unknown';
-
-        if (travelMinutes !== null && margin !== null) {
-            // With travel time: check margin
-            if (margin < 0) return 'overlap';   // Not enough time to travel
-            if (margin < 10) return 'tight';    // Less than 10 min buffer
-            return 'ok';
-        }
-
-        // Fallback: use duration directly
-        if (duration < 0) return 'overlap';
-        if (duration < 15) return 'tight';
-        return 'ok';
-    };
-
-    const status = getStatus();
-
-    // Display text - always show raw duration, color indicates margin status
-    // Add warning icons for problem statuses
-    const getText = () => {
-        if (loading) return '...';
-        if (duration === null || duration === undefined) return null;
-
-        const durationText = formatDuration(duration);
-
-        // Add icons based on status
-        if (status === 'overlap') {
-            // Show negative margin in consistent format
-            const overlapMins = Math.abs(margin !== null ? margin : duration);
-            return `⛔ -${formatDuration(overlapMins)}`;
-        }
-        if (status === 'tight') return `⚠️ ${durationText}`;
-        return durationText;  // ok status - no icon
-    };
-
-    // Color classes
-    const getColorClasses = () => {
-        switch (status) {
-            case 'overlap':
-                return 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-700';
-            case 'tight':
-                return 'text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/30 border-orange-200 dark:border-orange-700';
-            case 'ok':
-                return 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-700';
-            default:
-                return 'text-gray-500 dark:text-slate-400 bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700';
-        }
-    };
-
-    const text = getText();
-
-    return (
-        <div className="flex items-center py-2 pl-6">
-            <div className="w-0.5 h-10 bg-gray-200 dark:bg-slate-700 relative">
-                {/* Insert button in edit mode */}
-                <div className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transition-all duration-300 ${isEditMode ? 'opacity-100 scale-100 z-10' : 'opacity-0 scale-0 pointer-events-none'}`}>
-                    {onInsert && (
-                        <button
-                            onClick={onInsert}
-                            className="w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-indigo-700 active:scale-95 transition-transform"
-                        >
-                            <Plus size={14} />
-                        </button>
-                    )}
-                </div>
-                {/* Duration badge - no link, just display */}
-                {text && (
-                    <div className={`absolute left-3 top-1/2 -translate-y-1/2 whitespace-nowrap transition-all duration-300 ${isEditMode ? 'opacity-0 translate-x-[-10px]' : 'opacity-100 translate-x-0'}`}>
-                        <span className={`text-sm font-bold px-2.5 py-1 rounded-full border shadow-sm flex items-center gap-1 ${getColorClasses()}`}>
-                            {text}
-                        </span>
-                    </div>
-                )}
-            </div>
-        </div>
-    );
-};
-
-
-// DynamicSummary Component - Moved outside to prevent re-renders on parent updates
-const DynamicSummary = ({ day, events, dayIdx, previousDayHotel, onEditPlanned, onDeleteDay, isEditMode }) => {
-    if (!day || !events) return null;
-
-    // Calculate from Events data only
-    const spotCount = events.filter(e => e.type !== 'transport').length;
-    const moveCount = events.filter(e => e.type === 'transport').length;
-    const confirmedCount = events.filter(e => e.status === 'booked' || e.status === 'confirmed').length;
-    const plannedCount = events.filter(e => e.status === 'planned' || e.status === 'suggested').length;
-    const pendingBooking = events.filter(e => e.status === 'planned' && ['flight', 'train', 'hotel'].includes(e.category));
-    // Note: Time warnings (overlap/tight) are handled by TimeConnector component
-    // which uses cached API data for accurate travel time calculation
-
-    // Determine trip phase and next action
-    const today = new Date();
-    const [month, dayNum] = day.date.split('/').map(Number);
-    const tripDate = new Date(today.getFullYear(), month - 1, dayNum);
-    const daysUntil = Math.ceil((tripDate - today) / (1000 * 60 * 60 * 24));
-    const isTripDay = daysUntil === 0;
-    const isPast = daysUntil < 0;
-
-    // Generate next action message
-    const getNextAction = () => {
-        if (isPast) {
-            return { icon: <CheckCircle size={18} />, text: '完了した日程', sub: '' };
-        }
-
-        if (isTripDay) {
-            // During trip - show next event
-            const now = new Date();
-            const currentHour = now.getHours();
-            const currentMin = now.getMinutes();
-            const nextEvent = events.find(e => {
-                if (!e.time) return false;
-                const [h, m] = e.time.split(':').map(Number);
-                return h > currentHour || (h === currentHour && m > currentMin);
-            });
-            if (nextEvent) {
-                const categoryLabel = { flight: '搭乗', train: '乗車', bus: '乗車', hotel: 'チェックイン', meal: '食事', sightseeing: '観光' }[nextEvent.category] || '予定';
-                return {
-                    icon: getIcon(nextEvent.category, nextEvent.type, { size: 18, className: 'text-white/80' }),
-                    text: `${nextEvent.time} ${categoryLabel}`,
-                    sub: nextEvent.name
-                };
-            }
-            return { icon: <CheckCircle size={18} />, text: '本日の予定は完了', sub: '' };
-        }
-
-        // Planning phase - show booking action
-        if (pendingBooking.length > 0) {
-            const urgent = pendingBooking[0];
-            const categoryLabel = { flight: '航空券', train: '電車', hotel: 'ホテル' }[urgent.category] || '予約';
-            return {
-                icon: <Ticket size={18} />,
-                text: `${categoryLabel}の予約が必要`,
-                sub: urgent.name
-            };
-        }
-
-        if (plannedCount > 0) {
-            return { icon: <Edit3 size={18} />, text: `${plannedCount}件の計画を確認`, sub: '', editable: true };
-        }
-
-        return { icon: <CheckCircle size={18} />, text: '準備完了', sub: `${daysUntil}日後に出発` };
-    };
-
-    const nextAction = getNextAction();
-    const firstPlannedEvent = events.find(e => e.status === 'planned' || e.status === 'suggested');
-
-    return (
-        <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-2xl p-5 mb-6 shadow-lg">
-            {/* Day Header */}
-            <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                    <span className="px-3 py-1.5 rounded-xl bg-white/20 text-white text-sm font-black">
-                        DAY {dayIdx + 1}
-                    </span>
-                    <span className="text-sm font-bold text-white/80">
-                        {day.date}
-                    </span>
-                </div>
-                {/* Status indicator & Delete button */}
-                <div className="flex items-center gap-2">
-                    {confirmedCount > 0 && (
-                        <span className="px-2 py-0.5 rounded-full bg-green-400/20 text-green-100 text-[10px] font-bold flex items-center gap-1">
-                            <CheckCircle size={10} /> {confirmedCount}
-                        </span>
-                    )}
-                    {plannedCount > 0 && (
-                        <span className="px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-100 text-[10px] font-bold">
-                            計画中 {plannedCount}
-                        </span>
-                    )}
-                    {/* Delete Day Button - Animated */}
-                    {onDeleteDay && (
-                        <div className={`overflow-hidden transition-all duration-500 ease-out ${isEditMode ? 'w-8 opacity-100 scale-100' : 'w-0 opacity-0 scale-90 pointer-events-none'}`}>
-                            <button
-                                onClick={() => onDeleteDay(day.date, dayIdx)}
-                                className="p-1.5 rounded-lg bg-red-500/30 hover:bg-red-500/50 text-red-100 transition-colors whitespace-nowrap"
-                                title="この日を削除"
-                            >
-                                <Trash2 size={14} />
-                            </button>
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            {/* Next Action - Main focus (Clickable if editable) */}
-            <div
-                className={`flex items-center gap-3 mb-3 ${nextAction.editable ? 'cursor-pointer hover:bg-white/10 -mx-2 px-2 py-2 rounded-xl transition-colors' : ''}`}
-                onClick={() => {
-                    if (nextAction.editable && firstPlannedEvent && onEditPlanned) {
-                        onEditPlanned(firstPlannedEvent);
-                    }
-                }}
-            >
-                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white">
-                    {nextAction.icon}
-                </div>
-                <div className="flex-1 min-w-0">
-                    <h2 className="text-lg font-black text-white leading-tight">
-                        {nextAction.text}
-                    </h2>
-                    {nextAction.sub && (
-                        <p className="text-sm text-white/70 truncate">{nextAction.sub}</p>
-                    )}
-                </div>
-                {nextAction.editable && (
-                    <ChevronRight size={20} className="text-white/60" />
-                )}
-            </div>
-
-            {/* Day Route Display */}
-            {(() => {
-                // Build route locations list
-                const allLocations = [];
-
-                // Add previous day hotel as starting point for Day 2+
-                if (previousDayHotel) {
-                    const hotelName = previousDayHotel.name || previousDayHotel.to;
-                    if (hotelName) allLocations.push(hotelName);
-                }
-
-                events.forEach(e => {
-                    if (e.type === 'transport') {
-                        if (e.from) allLocations.push(e.from);
-                        if (e.to) allLocations.push(e.to);
-                    } else {
-                        const loc = e.to || e.name;
-                        if (loc) allLocations.push(loc);
-                    }
-                });
-
-                // Remove consecutive duplicates
-                const locations = allLocations.filter((loc, i, arr) =>
-                    i === 0 || loc !== arr[i - 1]
-                );
-
-                if (locations.length >= 2) {
-                    return (
-                        <div className="mb-3 py-2 px-3 bg-white/10 rounded-xl">
-                            <div className="flex items-center gap-1.5 text-xs text-white/90 flex-wrap">
-                                {locations.slice(0, 6).map((loc, i) => (
-                                    <React.Fragment key={i}>
-                                        <span className="font-medium truncate max-w-[80px]" title={loc}>
-                                            {loc.length > 10 ? loc.slice(0, 8) + '...' : loc}
-                                        </span>
-                                        {i < Math.min(locations.length - 1, 5) && (
-                                            <span className="text-white/50">→</span>
-                                        )}
-                                    </React.Fragment>
-                                ))}
-                                {locations.length > 6 && (
-                                    <span className="text-white/50">+{locations.length - 6}</span>
-                                )}
-                            </div>
-                        </div>
-                    );
-                }
-                return null;
-            })()}
-
-            {/* Stats + Route Button */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-6 text-sm">
-                    <div className="flex items-center gap-2 text-white">
-                        <span className="text-xl font-black">{spotCount}</span>
-                        <span className="text-xs text-white/70">スポット</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-white">
-                        <span className="text-xl font-black">{moveCount}</span>
-                        <span className="text-xs text-white/70">移動</span>
-                    </div>
-                </div>
-                {/* Route Button */}
-                <a
-                    href={(() => {
-                        // Build locations list including previous day hotel
-                        const allLocations = [];
-
-                        // Add previous day hotel as starting point
-                        if (previousDayHotel) {
-                            const hotelName = previousDayHotel.name || previousDayHotel.to;
-                            if (hotelName) allLocations.push(hotelName);
-                        }
-
-                        events.forEach(e => {
-                            if (e.type === 'transport') {
-                                if (e.from) allLocations.push(e.from);
-                                if (e.to) allLocations.push(e.to);
-                            } else {
-                                const loc = e.to || e.name;
-                                if (loc) allLocations.push(loc);
-                            }
-                        });
-
-                        // Remove consecutive duplicates
-                        const locations = allLocations.filter((loc, i, arr) =>
-                            i === 0 || loc !== arr[i - 1]
-                        );
-                        if (locations.length === 0) return 'https://www.google.com/maps';
-                        if (locations.length === 1) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(locations[0])}`;
-                        const origin = encodeURIComponent(locations[0]);
-                        const destination = encodeURIComponent(locations[locations.length - 1]);
-                        const waypoints = locations.slice(1, -1).slice(0, 9).map(l => encodeURIComponent(l)).join('|');
-                        return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}`;
-                    })()}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 px-3 py-2 bg-white/20 hover:bg-white/30 rounded-xl text-white text-xs font-bold transition-colors"
-                >
-                    <Navigation size={14} />
-                    ルート
-                </a>
-            </div>
-        </div>
-    );
-};
 
 export default function TravelApp() {
     const [itinerary, setItinerary] = useState([]);
@@ -471,13 +91,8 @@ export default function TravelApp() {
 
     const yearRange = useMemo(() => {
         if (itinerary.length === 0) return '';
-        const parseDate = (dateStr) => {
-            const [month] = dateStr.split('/').map(Number);
-            const baseYear = new Date().getFullYear();
-            return month >= 10 ? baseYear : baseYear + 1;
-        };
-        const firstYear = parseDate(itinerary[0].date);
-        const lastYear = parseDate(itinerary[itinerary.length - 1].date);
+        const firstYear = getTripYear(itinerary[0].date);
+        const lastYear = getTripYear(itinerary[itinerary.length - 1].date);
         return firstYear === lastYear ? `${firstYear}` : `${firstYear}-${lastYear}`;
     }, [itinerary]);
 
@@ -613,6 +228,11 @@ export default function TravelApp() {
                     newEndTime: newItem.endTime
                 });
             } else if (isEdit) {
+                // Guard: ensure targetDay is set
+                if (!targetDay) {
+                    console.error('targetDay not found for edit operation');
+                    throw new Error('対象の日程が見つかりません');
+                }
                 // Update existing event using batch API (much faster than full save)
                 await server.batchUpdateEvents([{
                     date: targetDay.date,
@@ -620,6 +240,11 @@ export default function TravelApp() {
                     eventData: newItem
                 }]);
             } else {
+                // Guard: ensure targetDay is set
+                if (!targetDay) {
+                    console.error('targetDay not found for add operation');
+                    throw new Error('対象の日程が見つかりません');
+                }
                 // Add new event using optimized API
                 await server.addEvent({ ...newItem, date: targetDay.date });
             }
@@ -720,12 +345,8 @@ export default function TravelApp() {
         if (itinerary.length === 0) return;
 
         const lastDay = itinerary[itinerary.length - 1];
-        const [month, day] = lastDay.date.split('/').map(Number);
-
-        // Create date object for the last day
-        const currentYear = new Date().getFullYear();
-        const baseYear = month >= 10 ? currentYear : currentYear + 1;
-        const lastDate = new Date(baseYear, month - 1, day);
+        // Create date object for the last day using standardized logic
+        const lastDate = getTripDate(lastDay.date);
 
         // Add one day
         const newDate = new Date(lastDate);

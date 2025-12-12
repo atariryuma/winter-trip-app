@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Clock } from 'lucide-react';
 import server from '../api/gas';
+import { parseDurationToMinutes } from '../utils';
 
 /**
  * DepartureIndicator - Shows previous day hotel and recommended departure time
@@ -27,37 +28,39 @@ const DepartureIndicator = ({ prevHotel, firstEvent }) => {
             return;
         }
 
+        let isCancelled = false;
+
         const fetchRouteDuration = async () => {
             setLoading(true);
             try {
                 const routeData = await server.getRouteMap(origin, destination);
-                if (routeData?.duration) {
-                    // Parse Japanese duration (e.g., "1時間45分", "45分", "1 時間 30 分")
-                    let totalMinutes = 0;
-                    const hourMatch = routeData.duration.match(/(\d+)\s*時間/);
-                    const minMatch = routeData.duration.match(/(\d+)\s*分/);
-
-                    if (hourMatch) totalMinutes += parseInt(hourMatch[1], 10) * 60;
-                    if (minMatch) totalMinutes += parseInt(minMatch[1], 10);
-
-                    // Fallback: try to parse English format like "45 mins"
-                    if (totalMinutes === 0) {
-                        const numMatch = routeData.duration.match(/(\d+)/);
-                        if (numMatch) totalMinutes = parseInt(numMatch[1], 10);
-                    }
+                // Only update state if this effect hasn't been superseded
+                if (!isCancelled && routeData?.duration) {
+                    const totalMinutes = parseDurationToMinutes(routeData.duration) || 0;
 
                     if (totalMinutes > 0) {
                         setRouteDuration(totalMinutes);
+                    } else {
+                        setRouteDuration(null);
                     }
                 }
             } catch (err) {
-                console.error('Failed to fetch route duration:', err);
+                if (!isCancelled) {
+                    console.error('Failed to fetch route duration:', err);
+                }
             } finally {
-                setLoading(false);
+                if (!isCancelled) {
+                    setLoading(false);
+                }
             }
         };
 
         fetchRouteDuration();
+
+        // Cleanup: prevent state updates from stale requests
+        return () => {
+            isCancelled = true;
+        };
     }, [origin, destination]); // Only re-fetch when origin/destination strings change
 
     // Calculate recommended departure time - only recalculates when time or duration changes
@@ -85,6 +88,7 @@ const DepartureIndicator = ({ prevHotel, firstEvent }) => {
 
         return `${String(depHours).padStart(2, '0')}:${String(depMins).padStart(2, '0')}`;
     }, [firstEventTime, routeDuration]);
+
     const isWarning = recommendedTime === '前日泊推奨';
 
     if (!prevHotel) return null;

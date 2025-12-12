@@ -154,7 +154,7 @@ const EditModal = ({ isOpen, onClose, item, onSave, onDelete, previousEvent, ava
                             <select
                                 value={formData.category || ''}
                                 onChange={e => setFormData({ ...formData, category: e.target.value })}
-                                className="w-full p-2.5 bg-gray-50 dark:bg-slate-700 rounded-xl border-0 text-gray-800 dark:text-slate-100 text-sm font-medium"
+                                className="w-full p-3 bg-gray-50 dark:bg-slate-700 rounded-xl border-0 text-gray-800 dark:text-slate-100 text-sm font-medium"
                             >
                                 <option value="flight">✈️ 飛行機</option>
                                 <option value="train">🚄 電車</option>
@@ -169,7 +169,7 @@ const EditModal = ({ isOpen, onClose, item, onSave, onDelete, previousEvent, ava
                             <select
                                 value={formData.status || ''}
                                 onChange={e => setFormData({ ...formData, status: e.target.value })}
-                                className="w-full p-2.5 bg-gray-50 dark:bg-slate-700 rounded-xl border-0 text-gray-800 dark:text-slate-100 text-sm font-medium"
+                                className="w-full p-3 bg-gray-50 dark:bg-slate-700 rounded-xl border-0 text-gray-800 dark:text-slate-100 text-sm font-medium"
                             >
                                 <option value="planned">📋 計画中</option>
                                 <option value="confirmed">✅ 確定</option>
@@ -333,7 +333,7 @@ const EditModal = ({ isOpen, onClose, item, onSave, onDelete, previousEvent, ava
                                 type="time"
                                 value={formData.time || ''}
                                 onChange={e => setFormData({ ...formData, time: e.target.value })}
-                                className="w-full p-2.5 bg-gray-50 dark:bg-slate-700 rounded-xl text-gray-800 dark:text-slate-100 text-base font-medium"
+                                className="w-full p-3 bg-gray-50 dark:bg-slate-700 rounded-xl text-gray-800 dark:text-slate-100 text-base font-medium"
                                 style={{ WebkitAppearance: 'none', appearance: 'none', minWidth: 0 }}
                             />
                         </div>
@@ -343,7 +343,7 @@ const EditModal = ({ isOpen, onClose, item, onSave, onDelete, previousEvent, ava
                                 type="time"
                                 value={formData.endTime || ''}
                                 onChange={e => setFormData({ ...formData, endTime: e.target.value })}
-                                className="w-full p-2.5 bg-gray-50 dark:bg-slate-700 rounded-xl text-gray-800 dark:text-slate-100 text-base font-medium"
+                                className="w-full p-3 bg-gray-50 dark:bg-slate-700 rounded-xl text-gray-800 dark:text-slate-100 text-base font-medium"
                                 style={{ WebkitAppearance: 'none', appearance: 'none', minWidth: 0 }}
                             />
                         </div>

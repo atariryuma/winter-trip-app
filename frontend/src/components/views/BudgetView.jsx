@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { DollarSign, Target, Wallet, PlusCircle, X, Check, AlertCircle, User } from 'lucide-react';
+import { DollarSign, Target, Wallet, PlusCircle, X, Check, AlertCircle, User, Trash2 } from 'lucide-react';
 import server from '../../api/gas';
 
 // Preset amounts for quick selection
@@ -167,7 +167,7 @@ const BudgetView = ({ itinerary, onForceReload, isScrolled }) => {
     // Get final amount
     const finalAmount = showCustomInput ? parseInt(customAmount) || 0 : selectedAmount;
 
-    // Save payment
+    // Save payment using optimized batch update
     const handleSavePayment = async () => {
         if (!selectedEventId || !finalAmount || !selectedPayer) return;
 
@@ -190,24 +190,15 @@ const BudgetView = ({ itinerary, onForceReload, isScrolled }) => {
                 throw new Error('Event not found');
             }
 
-            // Update the event with payment info
-            const updatedItinerary = itinerary.map(day => {
-                if (day.id !== targetDay.id) return day;
-                return {
-                    ...day,
-                    events: day.events.map(e => {
-                        if (e.id !== selectedEventId) return e;
-                        return {
-                            ...e,
-                            budgetAmount: finalAmount.toString(),
-                            budgetPaidBy: selectedPayer
-                        };
-                    })
-                };
-            });
-
-            // Save to server
-            await server.saveData(updatedItinerary);
+            // Use optimized batch update instead of full saveData
+            await server.batchUpdateEvents([{
+                date: targetDay.date,
+                eventId: targetEvent.name,
+                eventData: {
+                    budgetAmount: finalAmount.toString(),
+                    budgetPaidBy: selectedPayer
+                }
+            }]);
 
             // Refresh data
             if (onForceReload) await onForceReload();
@@ -218,6 +209,52 @@ const BudgetView = ({ itinerary, onForceReload, isScrolled }) => {
         } catch (error) {
             console.error('Save error:', error);
             alert('保存に失敗しました: ' + error.message);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    // Delete payment
+    const handleDeletePayment = async () => {
+        if (!selectedEventId) return;
+
+        setSaving(true);
+        try {
+            let targetDay = null;
+            let targetEvent = null;
+
+            for (const day of itinerary) {
+                const event = day.events.find(e => e.id === selectedEventId);
+                if (event) {
+                    targetDay = day;
+                    targetEvent = event;
+                    break;
+                }
+            }
+
+            if (!targetDay || !targetEvent) {
+                throw new Error('Event not found');
+            }
+
+            // Clear budget fields using batch update
+            await server.batchUpdateEvents([{
+                date: targetDay.date,
+                eventId: targetEvent.name,
+                eventData: {
+                    budgetAmount: '',
+                    budgetPaidBy: ''
+                }
+            }]);
+
+            // Refresh data
+            if (onForceReload) await onForceReload();
+
+            // Close and reset
+            setShowAddPayment(false);
+            resetQuickAdd();
+        } catch (error) {
+            console.error('Delete error:', error);
+            alert('削除に失敗しました: ' + error.message);
         } finally {
             setSaving(false);
         }
@@ -373,7 +410,7 @@ const BudgetView = ({ itinerary, onForceReload, isScrolled }) => {
                                                     key={event.id}
                                                     onClick={() => handleSelectEvent(event)}
                                                     className={`w-full text-left p-3 rounded-lg transition-all ${selectedEventId === event.id
-                                                        ? 'bg-indigo-500 text-white'
+                                                        ? 'bg-indigo-100 dark:bg-indigo-900/40 ring-2 ring-indigo-500 text-indigo-700 dark:text-indigo-300'
                                                         : event.hasPaid
                                                             ? 'bg-gray-100 dark:bg-slate-700 text-gray-400 dark:text-slate-500'
                                                             : 'bg-white dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-slate-700'
@@ -381,14 +418,17 @@ const BudgetView = ({ itinerary, onForceReload, isScrolled }) => {
                                                 >
                                                     <div className="flex items-center gap-2">
                                                         <span>{getCategoryEmoji(event.category)}</span>
-                                                        <span className="font-bold text-sm truncate flex-1">{event.name}</span>
+                                                        <span className={`font-bold text-sm truncate flex-1 ${selectedEventId === event.id ? 'text-indigo-700 dark:text-indigo-300' : ''}`}>{event.name}</span>
                                                         {event.hasPaid && (
-                                                            <span className="text-[10px] bg-gray-200 dark:bg-slate-600 px-2 py-0.5 rounded">
+                                                            <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${selectedEventId === event.id
+                                                                ? 'bg-indigo-500 text-white'
+                                                                : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'
+                                                                }`}>
                                                                 ¥{event.budgetAmount}
                                                             </span>
                                                         )}
                                                     </div>
-                                                    <div className={`text-[10px] mt-1 ${selectedEventId === event.id ? 'text-white/70' : 'text-gray-400'}`}>
+                                                    <div className={`text-[10px] mt-1 ${selectedEventId === event.id ? 'text-indigo-500 dark:text-indigo-400' : 'text-gray-400'}`}>
                                                         {event.date} • {event.category}
                                                     </div>
                                                 </button>
@@ -509,20 +549,32 @@ const BudgetView = ({ itinerary, onForceReload, isScrolled }) => {
                                             <div className="font-black text-xl text-emerald-600">¥{finalAmount.toLocaleString()}</div>
                                         </div>
 
-                                        <button
-                                            onClick={handleSavePayment}
-                                            disabled={saving}
-                                            className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-300 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all active:scale-[0.98]"
-                                        >
-                                            {saving ? (
-                                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                            ) : (
-                                                <>
-                                                    <Check size={20} />
-                                                    保存する
-                                                </>
+                                        <div className="flex gap-3">
+                                            {/* Delete button - icon only (matches EditModal pattern) */}
+                                            {editingExpense && (
+                                                <button
+                                                    onClick={handleDeletePayment}
+                                                    disabled={saving}
+                                                    className="p-3 bg-red-50 dark:bg-red-900/30 text-red-500 rounded-xl hover:bg-red-100 dark:hover:bg-red-900/50 active:scale-95 transition-all disabled:opacity-50"
+                                                >
+                                                    <Trash2 size={20} />
+                                                </button>
                                             )}
-                                        </button>
+                                            <button
+                                                onClick={handleSavePayment}
+                                                disabled={saving}
+                                                className="flex-1 bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-300 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all active:scale-[0.98]"
+                                            >
+                                                {saving ? (
+                                                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                ) : (
+                                                    <>
+                                                        <Check size={18} />
+                                                        保存する
+                                                    </>
+                                                )}
+                                            </button>
+                                        </div>
                                     </div>
                                 ) : (
                                     <div className="text-center text-gray-400 text-sm py-2">

@@ -69,22 +69,53 @@ export default function PackingList({ isScrolled }) {
         }
     };
 
-    // Packing item handlers
-    const handleToggleCheck = async (item) => {
-        const updatedItem = { ...item, isChecked: !item.isChecked };
-        setItems(prev => prev.map(i => i.id === item.id ? updatedItem : i));
+    // Debounced batch update for packing items
+    const pendingUpdates = useRef(new Map());
+    const debounceTimer = useRef(null);
+
+    const flushPendingUpdates = async () => {
+        if (pendingUpdates.current.size === 0) return;
+
+        const updates = Array.from(pendingUpdates.current.values());
+        pendingUpdates.current.clear();
 
         try {
-            await server.updatePackingItem({
-                ...updatedItem,
-                isShared: String(updatedItem.isShared || false),
-                isChecked: String(updatedItem.isChecked)
-            });
+            await server.batchUpdatePackingItems(updates.map(item => ({
+                ...item,
+                isShared: String(item.isShared || false),
+                isChecked: String(item.isChecked)
+            })));
         } catch (err) {
-            console.error('Update failed:', err);
-            setItems(prev => prev.map(i => i.id === item.id ? item : i));
+            console.error('Batch update failed:', err);
+            // Refetch on error to sync state
+            fetchItems();
         }
     };
+
+    // Packing item handlers - optimistic update with debounced batch sync
+    const handleToggleCheck = (item) => {
+        const updatedItem = { ...item, isChecked: !item.isChecked };
+
+        // Optimistic update (instant UI)
+        setItems(prev => prev.map(i => i.id === item.id ? updatedItem : i));
+
+        // Queue for batch update
+        pendingUpdates.current.set(item.id, updatedItem);
+
+        // Debounce: flush after 1 second of inactivity
+        if (debounceTimer.current) clearTimeout(debounceTimer.current);
+        debounceTimer.current = setTimeout(flushPendingUpdates, 1000);
+    };
+
+    // Flush on unmount
+    useEffect(() => {
+        return () => {
+            if (debounceTimer.current) {
+                clearTimeout(debounceTimer.current);
+                flushPendingUpdates();
+            }
+        };
+    }, []);
 
     const handleDelete = async (id) => {
         if (!window.confirm('削除しますか？')) return;

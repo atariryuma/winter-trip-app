@@ -54,24 +54,24 @@ const TicketCard = ({ event }) => {
     };
 
     return (
-        <div className={`relative bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden transition-all duration-200 active:scale-[0.98] ${isPast ? 'opacity-60 grayscale' : ''}`}>
+        <div className={`relative bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden transition-all duration-200 active:scale-[0.98] w-full max-w-full ${isPast ? 'opacity-60 grayscale' : ''}`}>
             {/* Left Border Accent based on Booked Status */}
             <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${isBooked ? 'bg-emerald-500' : 'bg-rose-400'}`} />
 
             <div className="p-4 pl-5">
                 {/* Header: Date & Status */}
-                <div className="flex justify-between items-center mb-3">
+                <div className="flex flex-wrap justify-between items-center mb-3 gap-y-2">
                     <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
                             {event.date} ({event.dayOfWeek})
                         </span>
                         {!isPast && daysUntil <= 3 && (
-                            <span className="px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold">
+                            <span className="px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold whitespace-nowrap">
                                 {daysUntil === 0 ? '今日' : daysUntil === 1 ? '明日' : `${daysUntil}日後`}
                             </span>
                         )}
                     </div>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 shrink-0">
                         {isBooked ? (
                             <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
                                 <CheckCircle size={14} className="fill-emerald-100 dark:fill-emerald-900/20" />
@@ -89,16 +89,16 @@ const TicketCard = ({ event }) => {
                 {/* Main Content */}
                 <div className="flex justify-between items-start gap-3 mb-4">
                     <div className="flex-1 min-w-0">
-                        <h3 className="text-lg font-black text-slate-900 dark:text-white leading-tight mb-1">
+                        <h3 className="text-lg font-black text-slate-900 dark:text-white leading-tight mb-1 break-words">
                             {event.name}
                         </h3>
-                        <div className="flex items-center gap-1.5 text-sm font-medium text-slate-500 dark:text-slate-400">
-                            <Clock size={14} strokeWidth={2.5} className="text-slate-400" />
-                            {event.time}
+                        <div className="flex flex-wrap items-center gap-1.5 text-sm font-medium text-slate-500 dark:text-slate-400">
+                            <Clock size={14} strokeWidth={2.5} className="text-slate-400 shrink-0" />
+                            <span className="whitespace-nowrap">{event.time}</span>
                             {['flight', 'train', 'bus'].includes(event.category) && event.details && (
                                 <>
                                     <span className="text-slate-300">•</span>
-                                    <span className="truncate">{event.details}</span>
+                                    <span className="truncate min-w-0 max-w-[150px] sm:max-w-xs">{event.details}</span>
                                 </>
                             )}
                         </div>

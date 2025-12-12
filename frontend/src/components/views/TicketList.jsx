@@ -53,17 +53,19 @@ const TicketCard = ({ event, isExpanded, onToggle, onEditClick }) => {
     const routeFrom = event.from || null;
     const routeTo = event.to || null;
 
-    // Position correction after expansion to keep header visible
+    // Simple post-expansion scroll correction to keep header visible
     useEffect(() => {
         if (isExpanded && headerRef.current && headerTopBefore !== null) {
-            requestAnimationFrame(() => {
-                const headerRect = headerRef.current.getBoundingClientRect();
-                const diff = headerRect.top - headerTopBefore;
+            // Wait for expansion animation to start, then correct position
+            const timer = setTimeout(() => {
+                if (!headerRef.current) return;
+                const diff = headerRef.current.getBoundingClientRect().top - headerTopBefore;
                 if (Math.abs(diff) > 5) {
                     window.scrollBy({ top: diff, behavior: 'smooth' });
                 }
                 setHeaderTopBefore(null);
-            });
+            }, 100);  // Wait for animation to begin
+            return () => clearTimeout(timer);
         }
     }, [isExpanded, headerTopBefore]);
 
@@ -87,17 +89,11 @@ const TicketCard = ({ event, isExpanded, onToggle, onEditClick }) => {
     };
 
     const handleCardClick = () => {
-        if (!isExpanded && cardRef.current && headerRef.current) {
-            // iOS-style: Record position, scroll to center, then expand
-            const headerRect = headerRef.current.getBoundingClientRect();
-            setHeaderTopBefore(headerRect.top);
-            cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            // Delay matches ExpandableEventCard (250ms)
-            setTimeout(() => onToggle(), 250);
-        } else {
-            // Collapse immediately
-            onToggle();
+        // Record header position before toggle (for scroll correction)
+        if (!isExpanded && headerRef.current) {
+            setHeaderTopBefore(headerRef.current.getBoundingClientRect().top);
         }
+        onToggle();  // Toggle immediately
     };
 
     return (

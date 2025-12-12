@@ -31,23 +31,19 @@ const ExpandableEventCard = ({
     const headerRef = useRef(null);
     const [contentHeight, setContentHeight] = useState(0);
     const [headerTopBefore, setHeaderTopBefore] = useState(null);
-    const [isAnimating, setIsAnimating] = useState(false);
 
-    // iOS-style: Scroll to keep header visible after expansion
+    // Simple post-expansion scroll correction to keep header visible
     useEffect(() => {
         if (isExpanded && headerRef.current && headerTopBefore !== null) {
-            // Wait for animation to start, then correct position
+            // Wait for expansion animation to start, then correct position
             const timer = setTimeout(() => {
-                requestAnimationFrame(() => {
-                    const headerRect = headerRef.current.getBoundingClientRect();
-                    const diff = headerRect.top - headerTopBefore;
-                    if (Math.abs(diff) > 5) {
-                        window.scrollBy({ top: diff, behavior: 'smooth' });
-                    }
-                    setHeaderTopBefore(null);
-                    setIsAnimating(false);
-                });
-            }, 50);
+                if (!headerRef.current) return;
+                const diff = headerRef.current.getBoundingClientRect().top - headerTopBefore;
+                if (Math.abs(diff) > 5) {
+                    window.scrollBy({ top: diff, behavior: 'smooth' });
+                }
+                setHeaderTopBefore(null);
+            }, 100);  // Wait for animation to begin
             return () => clearTimeout(timer);
         }
     }, [isExpanded, headerTopBefore]);
@@ -137,23 +133,16 @@ const ExpandableEventCard = ({
             {/* Header - Always Visible */}
             <div
                 ref={headerRef}
-                className={`p-4 cursor-pointer transition-transform duration-150 ${isAnimating ? 'scale-[0.98]' : 'active:scale-[0.98]'}`}
+                className="p-4 cursor-pointer active:scale-[0.98] transition-transform duration-150"
                 onClick={() => {
                     if (isEditMode) {
                         onEdit?.(event);
-                    } else if (!isExpanded) {
-                        // iOS-style: Record position, scroll to center, then expand
-                        if (cardRef.current && headerRef.current) {
-                            setHeaderTopBefore(headerRef.current.getBoundingClientRect().top);
-                            setIsAnimating(true);
-                            // Scroll card to center of viewport
-                            cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            // Delay expand until scroll completes
-                            setTimeout(() => onToggle?.(), 250);
-                        }
                     } else {
-                        // Collapse immediately
-                        onToggle?.();
+                        // Record header position before toggle (for scroll correction)
+                        if (!isExpanded && headerRef.current) {
+                            setHeaderTopBefore(headerRef.current.getBoundingClientRect().top);
+                        }
+                        onToggle?.();  // Toggle immediately
                     }
                 }}
             >

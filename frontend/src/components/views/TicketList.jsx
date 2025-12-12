@@ -1,9 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { createPortal } from 'react-dom';
 import {
-    Clock, Copy, Search, CheckCircle,
+    Clock, Copy, CheckCircle,
     Plane, Train, Bus, Hotel, MapPin, Utensils, Ticket,
-    AlertCircle, X, Maximize2, Minimize2
+    AlertTriangle, Calendar as CalendarIcon
 } from 'lucide-react';
 
 // Helper: Calculate days until event
@@ -37,8 +36,8 @@ const getCategoryIcon = (category, type) => {
     return Ticket;
 };
 
-// Simple Ticket Card
-const SimpleTicketCard = ({ event, isBooked, onSearchClick }) => {
+// Premium Ticket Card
+const TicketCard = ({ event, isBooked }) => {
     const [copied, setCopied] = useState(false);
     const CategoryIcon = getCategoryIcon(event.category, event.type);
     const daysUntil = getDaysUntil(event.date);
@@ -54,130 +53,87 @@ const SimpleTicketCard = ({ event, isBooked, onSearchClick }) => {
     };
 
     return (
-        <div className={`bg-white dark:bg-slate-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-slate-700 ${isPast ? 'opacity-60 grayscale' : ''}`}>
-            <div className="flex items-start gap-4">
-                {/* Date Box */}
-                <div className="flex flex-col items-center justify-center w-14 h-14 bg-gray-50 dark:bg-slate-700 rounded-xl shrink-0">
-                    <span className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase">{event.dayOfWeek}</span>
-                    <span className="text-lg font-black text-gray-800 dark:text-white leading-none mt-0.5">{event.date.split('/')[1]}</span>
+        <div className={`group relative bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden transition-all duration-200 hover:shadow-md ${isPast ? 'opacity-60 grayscale' : ''}`}>
+
+            <div className="p-4 sm:p-5">
+                {/* Header */}
+                <div className="flex justify-between items-start mb-4">
+                    <div className="flex-1 min-w-0 pr-4">
+                        <div className="flex items-center gap-2 mb-2">
+                            {isBooked ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
+                                    <CheckCircle size={10} strokeWidth={3} />
+                                    Confirmed
+                                </span>
+                            ) : (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300">
+                                    <AlertTriangle size={10} strokeWidth={3} />
+                                    Not Booked
+                                </span>
+                            )}
+                            {!isPast && (
+                                <span className="text-[10px] font-bold text-gray-400 dark:text-slate-500 flex items-center gap-1">
+                                    • {daysUntil === 0 ? 'Today' : daysUntil === 1 ? 'Tomorrow' : `${daysUntil} days left`}
+                                </span>
+                            )}
+                        </div>
+                        <h3 className="font-bold text-lg text-slate-900 dark:text-white leading-tight break-words">
+                            {event.name}
+                        </h3>
+                    </div>
+                    {/* Category Icon Badge */}
+                    <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-50 dark:bg-slate-700/50 text-gray-500 dark:text-slate-400 shrink-0">
+                        <CategoryIcon size={18} />
+                    </div>
                 </div>
 
-                {/* Content */}
-                <div className="flex-1 min-w-0 py-1">
-                    <div className="flex items-center gap-2 mb-1">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isBooked
-                            ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400'
-                            : 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400'
-                            }`}>
-                            {isBooked ? '予約済み' : '未予約'}
-                        </span>
-                        {!isPast && (
-                            <span className="text-xs text-gray-400 dark:text-slate-500 flex items-center gap-1">
-                                <Clock size={10} />
-                                {daysUntil === 0 ? '今日' : daysUntil === 1 ? '明日' : `${daysUntil}日後`}
-                            </span>
-                        )}
+                {/* Info Grid */}
+                <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-sm text-slate-600 dark:text-slate-400 mb-5 pl-1">
+                    <div className="flex items-center gap-2.5">
+                        <CalendarIcon size={15} className="text-indigo-500/70 dark:text-indigo-400/70 shrink-0" />
+                        <span className="font-medium">{event.date} <span className="text-xs text-slate-400 font-normal">({event.dayOfWeek})</span></span>
                     </div>
-                    <h3 className="font-bold text-gray-800 dark:text-white text-base break-words">{event.name}</h3>
-                    <div className="flex items-center gap-1.5 mt-1 text-sm text-gray-500 dark:text-slate-400">
-                        {React.createElement(CategoryIcon, { size: 14 })}
-                        <span className="break-words">{event.details || event.category}</span>
+                    <div className="flex items-center gap-2.5">
+                        <Clock size={15} className="text-indigo-500/70 dark:text-indigo-400/70 shrink-0" />
+                        <span className="font-medium">{event.time}</span>
                     </div>
-
-                    {/* Actions */}
-                    <div className="mt-4 flex gap-2">
-                        {isBooked ? (
-                            <button
-                                onClick={handleCopy}
-                                className="flex-1 flex items-center justify-center gap-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 py-2.5 rounded-xl font-bold text-sm active:scale-95 transition-transform"
-                            >
-                                <span className="font-mono">{event.bookingRef}</span>
-                                {copied ? <CheckCircle size={14} /> : <Copy size={14} />}
-                            </button>
-                        ) : (
-                            <button
-                                onClick={() => onSearchClick(event)}
-                                className="flex-1 flex items-center justify-center gap-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 py-2.5 rounded-xl font-bold text-sm active:scale-95 transition-transform"
-                            >
-                                <Search size={14} />
-                                予約を探す
-                            </button>
-                        )}
+                    <div className="flex items-center gap-2.5 col-span-2">
+                        <MapPin size={15} className="text-indigo-500/70 dark:text-indigo-400/70 shrink-0" />
+                        <span className="truncate font-medium">{event.details || event.category}</span>
                     </div>
                 </div>
+
+                {/* Footer / Actions */}
+                {isBooked ? (
+                    <button
+                        onClick={handleCopy}
+                        className="w-full group/btn flex items-center justify-between bg-slate-50 dark:bg-slate-700/30 hover:bg-slate-100 dark:hover:bg-slate-700/50 border border-slate-100 dark:border-slate-700 rounded-xl px-4 py-3 transition-all active:scale-[0.99]"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="p-1.5 bg-white dark:bg-slate-700 rounded-md shadow-sm group-hover/btn:scale-110 transition-transform duration-200">
+                                <Ticket size={14} className="text-indigo-500 dark:text-indigo-400" />
+                            </div>
+                            <div className="flex flex-col items-start gap-0.5">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">Booking ID</span>
+                                <span className="font-mono text-sm font-bold text-slate-700 dark:text-slate-200 leading-none">{event.bookingRef}</span>
+                            </div>
+                        </div>
+                        <div className={`transition-all duration-300 ${copied ? 'scale-110 text-emerald-500' : 'text-slate-300 group-hover/btn:text-slate-500'}`}>
+                            {copied ? <CheckCircle size={20} /> : <Copy size={20} />}
+                        </div>
+                    </button>
+                ) : (
+                    <div className="w-full bg-rose-50/50 dark:bg-rose-900/10 border border-dashed border-rose-200 dark:border-rose-800/30 rounded-xl p-3 flex items-center justify-center gap-2">
+                        <AlertTriangle size={15} className="text-rose-500" />
+                        <span className="text-xs font-bold text-rose-600 dark:text-rose-400">Booking required for this event</span>
+                    </div>
+                )}
             </div>
         </div>
     );
 };
 
-// Search Modal Component - iOS Bottom Sheet Style
-const SearchModal = ({ event, onClose }) => {
-    const [isMaximized, setIsMaximized] = useState(false);
-
-    if (!event) return null;
-
-    const searchQuery = `${event.name}の予約の取り方を旅行者向けに教えてください`;
-    const searchUrl = `https://www.google.com/search?igu=1&q=${encodeURIComponent(searchQuery)}`;
-
-    const handleTouch = () => {
-        if (!isMaximized) setIsMaximized(true);
-    };
-
-    return createPortal(
-        <div className="fixed inset-0 z-modal flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4" onClick={onClose}>
-            <div
-                className={`bg-white dark:bg-slate-800 w-full shadow-2xl flex flex-col animate-slide-up-spring transition-all duration-300 ${isMaximized
-                    ? 'h-[100dvh] rounded-none'
-                    : 'max-h-[90vh] h-[85vh] sm:h-[75vh] rounded-t-3xl sm:rounded-3xl sm:max-w-lg'
-                    }`}
-                onClick={e => e.stopPropagation()}
-            >
-                {/* Grabber (mobile only) */}
-                {!isMaximized && (
-                    <div className="flex justify-center pt-3 pb-1 sm:hidden shrink-0">
-                        <div className="w-9 h-1 bg-gray-300 dark:bg-slate-600 rounded-full" />
-                    </div>
-                )}
-
-                {/* Header */}
-                <div className={`shrink-0 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between gap-3 ${isMaximized ? 'px-3 py-2' : 'px-4 py-3'}`}>
-                    <h3 className={`font-bold text-gray-800 dark:text-white truncate ${isMaximized ? 'text-sm' : 'text-base'}`}>
-                        {event.name} の予約
-                    </h3>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                        <button
-                            onClick={() => setIsMaximized(!isMaximized)}
-                            className="p-2 bg-gray-100 dark:bg-slate-700 rounded-xl text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
-                        >
-                            {isMaximized ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-                        </button>
-                        <button
-                            onClick={onClose}
-                            className="p-2 bg-gray-100 dark:bg-slate-700 rounded-xl text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
-                        >
-                            <X size={16} />
-                        </button>
-                    </div>
-                </div>
-
-                {/* Search iframe */}
-                <div className="flex-1 min-h-0" onTouchStart={handleTouch} onMouseDown={handleTouch}>
-                    <iframe
-                        src={searchUrl}
-                        title="Google Search"
-                        className="w-full h-full border-0"
-                        sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-                    />
-                </div>
-            </div>
-        </div>,
-        document.body
-    );
-};
-
 export default function TicketList({ itinerary, isScrolled }) {
-    const [searchEvent, setSearchEvent] = useState(null);
-
     // Process events
     const processedEvents = useMemo(() => {
         if (!itinerary) return [];
@@ -241,18 +197,18 @@ export default function TicketList({ itinerary, isScrolled }) {
             {/* Header / Stats - Sticky */}
             <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-sticky-content bg-gray-100/95 dark:bg-slate-900/95 backdrop-blur-sm -mx-4 px-4 sm:-mx-6 sm:px-6 py-2">
                 <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide lg:overflow-visible">
-                    <div className="flex-none w-32 lg:flex-1 bg-white dark:bg-slate-800 rounded-2xl p-4 border border-gray-100 dark:border-slate-700 shadow-sm">
-                        <div className="text-gray-400 dark:text-slate-500 text-xs font-bold mb-1">未予約</div>
+                    <div className="flex-none w-32 lg:flex-1 bg-white dark:bg-slate-800 rounded-2xl p-4 border border-gray-100 dark:border-slate-700 shadow-sm transition-all hover:shadow-md">
+                        <div className="text-gray-400 dark:text-slate-500 text-xs font-bold mb-1 uppercase tracking-wide">Unbooked</div>
                         <div className="flex items-end gap-1">
                             <span className="text-3xl font-black text-rose-500">{totalPending}</span>
-                            <span className="text-sm font-bold text-gray-400 mb-1">件</span>
+                            <span className="text-sm font-bold text-gray-400 mb-1">items</span>
                         </div>
                     </div>
-                    <div className="flex-none w-32 lg:flex-1 bg-white dark:bg-slate-800 rounded-2xl p-4 border border-gray-100 dark:border-slate-700 shadow-sm">
-                        <div className="text-gray-400 dark:text-slate-500 text-xs font-bold mb-1">予約済み</div>
+                    <div className="flex-none w-32 lg:flex-1 bg-white dark:bg-slate-800 rounded-2xl p-4 border border-gray-100 dark:border-slate-700 shadow-sm transition-all hover:shadow-md">
+                        <div className="text-gray-400 dark:text-slate-500 text-xs font-bold mb-1 uppercase tracking-wide">Ready</div>
                         <div className="flex items-end gap-1">
                             <span className="text-3xl font-black text-emerald-500">{totalBooked}</span>
-                            <span className="text-sm font-bold text-gray-400 mb-1">件</span>
+                            <span className="text-sm font-bold text-gray-400 mb-1">items</span>
                         </div>
                     </div>
                 </div>
@@ -260,39 +216,25 @@ export default function TicketList({ itinerary, isScrolled }) {
 
             {/* Day Groups */}
             {groupedByDay.map(day => (
-                <div key={day.date} className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm overflow-hidden">
+                <div key={day.date} className="space-y-3">
                     {/* Day Header */}
-                    <div className="px-4 py-3 bg-gray-50 dark:bg-slate-700/50 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <span className="px-2.5 py-1 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 text-xs font-black rounded-lg">
-                                DAY {day.dayIdx}
-                            </span>
-                            <span className="font-bold text-gray-800 dark:text-white text-sm">
-                                {day.date} <span className="text-gray-400 dark:text-slate-500 font-normal">({day.dayOfWeek})</span>
-                            </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs">
-                            {day.pending > 0 && (
-                                <span className="px-2 py-0.5 bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-full font-bold">
-                                    未予約 {day.pending}
-                                </span>
-                            )}
-                            {day.booked > 0 && (
-                                <span className="px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full font-bold">
-                                    確定 {day.booked}
-                                </span>
-                            )}
-                        </div>
+                    <div className="flex items-center gap-3 px-1 pt-2">
+                        <span className="px-2.5 py-1 bg-indigo-600 text-white text-[10px] font-black rounded-full shadow-sm">
+                            DAY {day.dayIdx}
+                        </span>
+                        <span className="font-bold text-slate-700 dark:text-slate-300 text-sm">
+                            {day.date} <span className="opacity-60 font-normal">({day.dayOfWeek})</span>
+                        </span>
+                        <div className="h-px flex-1 bg-gray-200 dark:bg-slate-700 ml-2" />
                     </div>
 
                     {/* Day Events */}
-                    <div className="divide-y divide-gray-50 dark:divide-slate-700">
+                    <div className="space-y-3">
                         {day.events.map((event, i) => (
-                            <SimpleTicketCard
+                            <TicketCard
                                 key={`${day.date}-${i}`}
                                 event={event}
                                 isBooked={event.isBooked}
-                                onSearchClick={setSearchEvent}
                             />
                         ))}
                     </div>
@@ -301,15 +243,13 @@ export default function TicketList({ itinerary, isScrolled }) {
 
             {/* Empty State */}
             {processedEvents.length === 0 && (
-                <div className="text-center py-20 bg-white dark:bg-slate-800 rounded-3xl border border-dashed border-gray-200 dark:border-slate-700">
-                    <Ticket className="mx-auto text-gray-300 mb-3" size={48} />
-                    <p className="text-gray-400 font-bold">チケット情報がありません</p>
+                <div className="text-center py-20 bg-white/50 dark:bg-slate-800/50 rounded-3xl border border-dashed border-gray-200 dark:border-slate-700">
+                    <div className="w-16 h-16 bg-gray-100 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Ticket className="text-gray-300 dark:text-slate-500" size={24} />
+                    </div>
+                    <h3 className="text-slate-900 dark:text-white font-bold mb-1">No Tickets Found</h3>
+                    <p className="text-gray-400 text-sm">チケット情報がありません</p>
                 </div>
-            )}
-
-            {/* Search Modal */}
-            {searchEvent && (
-                <SearchModal event={searchEvent} onClose={() => setSearchEvent(null)} />
             )}
         </div>
     );

@@ -202,7 +202,8 @@ export default function TravelApp() {
 
         // Check if this is a move operation (date changed)
         const isMoving = newItem.newDate && newItem.newDate !== newItem.originalDate;
-        const isEdit = !!editItem;
+        // Check if this is an edit (editItem has an id that exists in current itinerary)
+        const isEdit = editItem?.id && itinerary.some(day => day.events.some(e => e.id === editItem.id));
 
         // Determine targetDay BEFORE state update (from current itinerary)
         const targetDay = isMoving

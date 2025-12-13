@@ -128,9 +128,11 @@ const DynamicSummary = ({ day, events, dayIdx, previousDayHotel, onEditPlanned, 
     const firstPlannedEvent = events.find(e => e.status === 'planned' || e.status === 'suggested');
 
     return (
-        <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-2xl p-5 mb-6 shadow-lg">
+        <div className="bg-gradient-to-br from-indigo-600 to-violet-700 dark:from-indigo-900 dark:to-slate-800 rounded-2xl p-5 mb-6 shadow-xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl" />
+
             {/* Day Header */}
-            <div className="flex items-center justify-between mb-4">
+            <div className="relative z-content flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                     <span className="px-3 py-1.5 rounded-xl bg-white/20 text-white text-sm font-black">
                         DAY {dayIdx + 1}
@@ -168,7 +170,7 @@ const DynamicSummary = ({ day, events, dayIdx, previousDayHotel, onEditPlanned, 
 
             {/* Next Action - Main focus (Clickable if editable) */}
             <div
-                className={`flex items-center gap-3 mb-3 ${nextAction.editable ? 'cursor-pointer hover:bg-white/10 -mx-2 px-2 py-2 rounded-xl transition-colors' : ''}`}
+                className={`relative z-content flex items-center gap-3 mb-3 ${nextAction.editable ? 'cursor-pointer hover:bg-white/10 -mx-2 px-2 py-2 rounded-xl transition-colors' : ''}`}
                 onClick={() => {
                     if (nextAction.editable && firstPlannedEvent && onEditPlanned) {
                         onEditPlanned(firstPlannedEvent);
@@ -193,7 +195,7 @@ const DynamicSummary = ({ day, events, dayIdx, previousDayHotel, onEditPlanned, 
 
             {/* Day Route Display */}
             {routeLocations.length >= 2 && (
-                <div className="mb-3 py-2 px-3 bg-white/10 rounded-xl">
+                <div className="relative z-content mb-3 py-2 px-3 bg-white/10 rounded-xl">
                     <div className="flex items-center gap-1.5 text-xs text-white/90 flex-wrap">
                         {routeLocations.slice(0, 6).map((loc, i) => (
                             <React.Fragment key={i}>
@@ -213,7 +215,7 @@ const DynamicSummary = ({ day, events, dayIdx, previousDayHotel, onEditPlanned, 
             )}
 
             {/* Stats + Route Button */}
-            <div className="flex items-center justify-between">
+            <div className="relative z-content flex items-center justify-between">
                 <div className="flex items-center gap-6 text-sm">
                     <div className="flex items-center gap-2 text-white">
                         <span className="text-xl font-black">{spotCount}</span>

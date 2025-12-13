@@ -212,6 +212,10 @@ const BudgetView = ({ itinerary, onForceReload, isScrolled }) => {
     const handleDeletePayment = async () => {
         if (!selectedEventId) return;
 
+        // 2-step confirmation
+        if (!window.confirm('この支払い情報を削除しますか？')) return;
+        if (!window.confirm('本当に削除しますか？\nこの操作は取り消せません。')) return;
+
         setSaving(true);
         try {
             let targetDay = null;

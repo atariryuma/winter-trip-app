@@ -5,7 +5,7 @@ import { viteSingleFile } from "vite-plugin-singlefile"
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), viteSingleFile()],
-  base: './',
+  base: '/winter-trip-app/',
   server: {
     port: 3000
   },

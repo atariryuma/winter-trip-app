@@ -80,15 +80,19 @@ const ToastContainer = ({ toasts, onDismiss }) => {
 export const ToastProvider = ({ children }) => {
     const [toasts, setToasts] = useState([]);
 
-    const showToast = useCallback((type, message, duration = 3000) => {
+    const showToast = useCallback((type, message, duration) => {
         const id = Date.now().toString();
         setToasts(prev => [...prev, { id, type, message }]);
 
+        // Default duration based on type: error=5s, warning=4s, success/info=3s
+        const defaultDuration = type === 'error' ? 5000 : type === 'warning' ? 4000 : 3000;
+        const actualDuration = duration !== undefined ? duration : defaultDuration;
+
         // Auto dismiss
-        if (duration > 0) {
+        if (actualDuration > 0) {
             setTimeout(() => {
                 setToasts(prev => prev.filter(t => t.id !== id));
-            }, duration);
+            }, actualDuration);
         }
 
         return id;

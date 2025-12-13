@@ -203,7 +203,7 @@ const TicketCard = ({ event, isExpanded, onToggle, onEditClick }) => {
                         <div className="flex gap-2">
                             <button
                                 onClick={handleSearch}
-                                className="flex-1 flex items-center justify-center gap-1.5 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-xl px-3 py-2.5 border border-indigo-100 dark:border-indigo-800/30 font-bold text-xs hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors"
+                                className="flex-1 flex items-center justify-center gap-1.5 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded-xl px-3 py-2.5 border border-amber-100 dark:border-amber-800/30 font-bold text-xs hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors"
                             >
                                 <ExternalLink size={14} />
                                 予約を探す

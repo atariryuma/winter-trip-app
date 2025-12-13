@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowRight, MapPin, Navigation, Copy, Check, Trash2, Ticket } from 'lucide-react';
+import { ArrowRight, MapPin, Navigation, Copy, Check, Trash2, ExternalLink } from 'lucide-react';
 import server from '../api/gas';
 import { getIcon } from './common/IconHelper';
 import StatusBadge from './common/StatusBadge';
@@ -280,18 +280,23 @@ const EventCard = ({
 
                     {/* Action Buttons Row */}
                     <div className="flex justify-end gap-2">
-                        {/* 予約ボタン - 交通機関 かつ 未予約の場合 */}
+                        {/* 予約を探すボタン - 交通機関 かつ 未予約の場合 */}
                         {['flight', 'bus', 'train'].includes(event.category) &&
                          ['suggested', 'planned'].includes(event.status) && (
                             <button
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    onEdit?.(event);
+                                    const parts = [event.name];
+                                    if (event.from) parts.push(event.from);
+                                    if (event.to) parts.push(event.to);
+                                    parts.push('予約');
+                                    const query = encodeURIComponent(parts.join(' '));
+                                    window.open(`https://www.google.com/search?q=${query}`, '_blank');
                                 }}
                                 className="inline-flex items-center gap-1.5 px-3 py-2 bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 text-amber-600 dark:text-amber-400 rounded-xl text-xs font-bold transition-colors"
                             >
-                                <Ticket size={14} />
-                                予約
+                                <ExternalLink size={14} />
+                                予約を探す
                             </button>
                         )}
                         {directionsUrl && (

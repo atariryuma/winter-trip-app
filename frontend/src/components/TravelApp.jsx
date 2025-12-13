@@ -513,8 +513,8 @@ export default function TravelApp() {
             </aside>
 
             {/* ========== MAIN CONTENT AREA ========== */}
-            <div className="lg:pl-64 flex-1 min-h-screen pb-24 lg:pb-0">
-                <div className="w-full h-full">
+            <div className="lg:pl-64 flex-1 min-h-screen pb-24 lg:pb-0 overflow-x-hidden">
+                <div className="w-full h-full overflow-x-hidden">
 
                     {/* Mobile Header (Fixed) - Hidden in landscape */}
                     <header
@@ -718,7 +718,7 @@ export default function TravelApp() {
                                     </div>
 
                                     {/* ===== DESKTOP VIEW (Multi-Column Layout) ===== */}
-                                    <div className="hidden lg:block">
+                                    <div className="hidden lg:block overflow-hidden">
                                         {/* Header */}
                                         <div className="px-8 pb-4">
                                             <div className="flex items-center justify-between">

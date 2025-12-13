@@ -65,14 +65,19 @@ const EditModal = ({ isOpen, onClose, item, onSave, onDelete, previousEvent, ava
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isOpen, item?.name, item?.time, item?.category]); // Only re-init if specific identifier properties change
 
-    // Cleanup timeout on unmount to prevent memory leaks
+    // Cleanup timeout on unmount or when modal closes to prevent memory leaks
     useEffect(() => {
+        if (!isOpen && suggestionsTimeoutRef.current) {
+            clearTimeout(suggestionsTimeoutRef.current);
+            suggestionsTimeoutRef.current = null;
+        }
         return () => {
             if (suggestionsTimeoutRef.current) {
                 clearTimeout(suggestionsTimeoutRef.current);
+                suggestionsTimeoutRef.current = null;
             }
         };
-    }, []);
+    }, [isOpen]);
 
     const isTransport = ['flight', 'train', 'bus'].includes(formData.category);
 

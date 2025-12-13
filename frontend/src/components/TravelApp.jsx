@@ -5,9 +5,9 @@ import TimeConnector from './TimeConnector';
 import DynamicSummary from './DynamicSummary';
 import {
     Calendar, Settings as SettingsIcon,
-    Plane, MapPin, Ticket,
+    Plane, Ticket,
     Plus, Wallet,
-    X, Edit3, Save, Package
+    Edit3, Save, Package
 } from 'lucide-react';
 import { generateId, toMinutes, toTimeStr, getMidTime, getDurationMinutes, getTripDate, getTripYear } from '../utils';
 import LoadingSpinner from './common/LoadingSpinner';
@@ -18,7 +18,7 @@ import LoginView from './views/LoginView';
 import server from '../api/gas';
 import { useToast } from '../context/ToastContext';
 import { useScrollState, useDayTabScroll, useAuth, useDarkMode, useSidebar } from '../hooks';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, MapPin } from 'lucide-react';
 
 // Lazy load view components
 const TicketList = lazy(() => import('./views/TicketList'));
@@ -162,11 +162,14 @@ export default function TravelApp() {
             ? itinerary.find(d => d.date === newItem.newDate)
             : itinerary.find(d => d.id === selectedDayId);
 
-        if (!targetDay) {
+        if (!targetDay?.date) {
             console.error('targetDay not found', { isMoving, newDate: newItem.newDate, selectedDayId });
             showToast('error', '対象の日程が見つかりません');
             return;
         }
+
+        // Cache targetDay.date for use in async operations (prevents stale reference issues)
+        const targetDayDate = targetDay.date;
 
         // Optimistic UI update
         if (isMoving) {
@@ -216,12 +219,12 @@ export default function TravelApp() {
             } else if (isEdit) {
                 const originalEvent = previousItinerary.find(d => d.id === selectedDayId)?.events.find(e => e.id === newItem.id);
                 await server.batchUpdateEvents([{
-                    date: targetDay.date,
+                    date: targetDayDate,
                     eventId: originalEvent?.name || newItem.name,
                     eventData: newItem,
                 }]);
             } else {
-                await server.addEvent({ ...newItem, date: targetDay.date });
+                await server.addEvent({ ...newItem, date: targetDayDate });
             }
 
             // Cache invalidation for location changes

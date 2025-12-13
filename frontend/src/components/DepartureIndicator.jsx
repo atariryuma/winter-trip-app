@@ -25,28 +25,28 @@ const DepartureIndicator = ({ prevHotel, firstEvent }) => {
         // Reset if missing required data or if first event is a flight
         if (!origin || !destination) {
             setRouteDuration(null);
+            setLoading(false);
             return;
         }
 
         let isCancelled = false;
+        setLoading(true);
 
         const fetchRouteDuration = async () => {
-            setLoading(true);
             try {
                 const routeData = await server.getRouteMap(origin, destination);
-                // Only update state if this effect hasn't been superseded
-                if (!isCancelled && routeData?.duration) {
-                    const totalMinutes = parseDurationToMinutes(routeData.duration) || 0;
+                if (isCancelled) return;
 
-                    if (totalMinutes > 0) {
-                        setRouteDuration(totalMinutes);
-                    } else {
-                        setRouteDuration(null);
-                    }
+                if (routeData?.duration) {
+                    const totalMinutes = parseDurationToMinutes(routeData.duration) || 0;
+                    setRouteDuration(totalMinutes > 0 ? totalMinutes : null);
+                } else {
+                    setRouteDuration(null);
                 }
             } catch (err) {
                 if (!isCancelled) {
                     console.error('Failed to fetch route duration:', err);
+                    setRouteDuration(null);
                 }
             } finally {
                 if (!isCancelled) {

@@ -11,25 +11,28 @@ const TimeConnector = ({ duration, isEditMode, onInsert, fromLocation, toLocatio
     useEffect(() => {
         if (!fromLocation?.trim() || !toLocation?.trim()) {
             setTravelMinutes(null);
+            setLoading(false);
             return;
         }
 
         let isCancelled = false;
+        setLoading(true);
 
         const fetchTravelTime = async () => {
-            setLoading(true);
             try {
                 const routeData = await server.getRouteMap(fromLocation, toLocation);
-                // Only update state if this effect hasn't been superseded
-                if (!isCancelled && routeData?.duration) {
+                if (isCancelled) return;
+
+                if (routeData?.duration) {
                     const minutes = parseDurationToMinutes(routeData.duration);
                     setTravelMinutes(minutes > 0 ? minutes : null);
-                } else if (!isCancelled) {
+                } else {
                     setTravelMinutes(null);
                 }
             } catch (err) {
                 if (!isCancelled) {
                     console.error('Travel time fetch failed:', err);
+                    setTravelMinutes(null);
                 }
             } finally {
                 if (!isCancelled) {

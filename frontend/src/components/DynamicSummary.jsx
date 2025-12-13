@@ -65,17 +65,18 @@ const DynamicSummary = ({ day, events, dayIdx, previousDayHotel, onEditPlanned, 
     const routeUrl = buildGoogleMapsRouteUrl(routeLocations);
 
     // Determine trip phase and next action
-    const today = new Date();
     // Use centralized year calculation logic from utils
     const tripDate = getTripDate(day.date);
 
-    // Reset times to compare dates only
-    today.setHours(0, 0, 0, 0);
-    tripDate.setHours(0, 0, 0, 0);
+    // Create fresh Date objects to avoid mutating shared references
+    const todayMidnight = new Date();
+    todayMidnight.setHours(0, 0, 0, 0);
 
-    const daysUntil = Math.ceil((tripDate - today) / (1000 * 60 * 60 * 24));
+    const tripDateMidnight = new Date(tripDate);
+    tripDateMidnight.setHours(0, 0, 0, 0);
 
-    // Note: JS Date subtraction gives milliseconds.
+    const daysUntil = Math.ceil((tripDateMidnight - todayMidnight) / (1000 * 60 * 60 * 24));
+
     const isTripDay = daysUntil === 0;
     const isPast = daysUntil < 0;
 

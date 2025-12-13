@@ -9,6 +9,10 @@
   font-weight: 400;
   color-scheme: light dark;
 
+  /* Layout constants */
+  --header-height: 3.5rem;                          /* 56px - Mobile header height */
+  --desktop-header-offset: 280px;                   /* Desktop: title + summary section height */
+
   /* Light mode colors */
   --bg-primary: #F0F2F5;
   --bg-card: #FFFFFF;
@@ -49,11 +53,6 @@ html {
   overflow-x: hidden;
   /* Disable browser native pull-to-refresh */
   overscroll-behavior-y: contain;
-}
-
-/* Safe area for mobile bottom nav */
-.safe-area-pb {
-  padding-bottom: env(safe-area-inset-bottom);
 }
 
 /* Touch-friendly element defaults */
@@ -210,48 +209,10 @@ body {
   outline: none;
 }
 
-/* ==========================================================================
-   COMPONENT UTILITY CLASSES
-   ========================================================================== */
-@layer components {
-
-  /* 再利用可能なカードベース */
-  .card-base {
-    @apply bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl shadow-sm;
-  }
-
-  /* 入力フィールドベース */
-  .input-base {
-    @apply h-12 px-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl text-gray-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all;
-  }
-
-  /* プライマリーボタン */
-  .btn-primary {
-    @apply min-h-[44px] px-6 py-3 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold rounded-xl transition-colors shadow-lg shadow-indigo-500/20 active:scale-[0.98] touch-manipulation;
-  }
-
-  /* セカンダリーボタン */
-  .btn-secondary {
-    @apply min-h-[44px] px-6 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-200 font-bold rounded-xl transition-colors touch-manipulation;
-  }
-}
 
 /* ==========================================================================
    MOBILE UX IMPROVEMENTS
    ========================================================================== */
-
-/* Sticky Header Fix for iOS Safari */
-.sticky-header {
-  position: sticky;
-  top: 0;
-  /* z-index removed - use Tailwind z-sticky class instead */
-  /* GPU acceleration to prevent iOS Safari "jumping" effect */
-  transform: translateZ(0);
-  -webkit-transform: translateZ(0);
-  will-change: transform;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-}
 
 /* ==========================================================================
    LANDSCAPE MODE STYLES (Mobile Only)
@@ -267,13 +228,6 @@ body {
   /* Hide footer/bottom nav in landscape */
   .landscape-hide-footer {
     display: none !important;
-  }
-
-  /* Main content takes full height in landscape */
-  .landscape-fullscreen {
-    min-height: 100dvh !important;
-    padding-top: 0 !important;
-    padding-bottom: 0 !important;
   }
 }
 

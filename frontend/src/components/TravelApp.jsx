@@ -17,7 +17,8 @@ import EditModal from './EditModal';
 import LoginView from './views/LoginView';
 import server from '../api/gas';
 import { useToast } from '../context/ToastContext';
-import { useScrollState, useDayTabScroll, useAuth, useDarkMode } from '../hooks';
+import { useScrollState, useDayTabScroll, useAuth, useDarkMode, useSidebar } from '../hooks';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 // Lazy load view components
 const TicketList = lazy(() => import('./views/TicketList'));
@@ -38,6 +39,7 @@ export default function TravelApp() {
     const { auth, login, logout } = useAuth();
     const { isDarkMode, setIsDarkMode } = useDarkMode();
     const { showToast } = useToast();
+    const { isCollapsed: isSidebarCollapsed, toggle: toggleSidebar } = useSidebar();
 
     // Itinerary state - kept in component for now to minimize risk
     const [itinerary, setItinerary] = useState([]);
@@ -409,20 +411,51 @@ export default function TravelApp() {
                 </div>
             )}
 
-            {/* Sidebar (Desktop) */}
+            {/* Sidebar (Desktop/Tablet) - Collapsible */}
             <aside
-                className={`hidden lg:flex flex-col w-64 h-screen fixed left-0 top-0 border-r border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 z-fixed transition-transform duration-300 ${scrollDirection === 'down' ? '-translate-x-full' : 'translate-x-0'}`}
+                className={`hidden lg:flex flex-col h-screen fixed left-0 top-0 border-r border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 z-fixed transition-all duration-200 ease-out ${
+                    isSidebarCollapsed ? 'w-16' : 'w-64'
+                }`}
             >
-                <div className="p-8">
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-md">
+                {/* Header with Toggle */}
+                <div className={`flex items-center justify-between border-b border-gray-200 dark:border-slate-800 ${isSidebarCollapsed ? 'p-3' : 'p-4'}`}>
+                    <div className={`flex items-center ${isSidebarCollapsed ? 'justify-center w-full' : 'gap-3'}`}>
+                        <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-md flex-shrink-0">
                             <Plane className="text-white transform -rotate-45" size={16} />
                         </div>
-                        <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">TripPlanner</h1>
+                        <h1 className={`text-xl font-bold text-slate-900 dark:text-white tracking-tight whitespace-nowrap overflow-hidden transition-all duration-200 ${
+                            isSidebarCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'
+                        }`}>
+                            TripPlanner
+                        </h1>
                     </div>
+                    {/* Collapse Toggle Button - Top Position (Best Practice) */}
+                    {!isSidebarCollapsed && (
+                        <button
+                            onClick={toggleSidebar}
+                            title="サイドバーを折りたたむ"
+                            className="p-2 rounded-lg text-gray-400 dark:text-slate-500 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-600 dark:hover:text-slate-300 transition-all"
+                        >
+                            <ChevronLeft size={18} />
+                        </button>
+                    )}
                 </div>
 
-                <nav className="px-4 space-y-1 flex-1">
+                {/* Expand Button (Collapsed State) */}
+                {isSidebarCollapsed && (
+                    <div className="px-2 py-2">
+                        <button
+                            onClick={toggleSidebar}
+                            title="サイドバーを展開"
+                            className="w-full flex items-center justify-center p-3 rounded-xl text-gray-400 dark:text-slate-500 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-600 dark:hover:text-slate-300 transition-all"
+                        >
+                            <ChevronRight size={18} />
+                        </button>
+                    </div>
+                )}
+
+                {/* Navigation */}
+                <nav className={`flex-1 space-y-1 ${isSidebarCollapsed ? 'px-2' : 'px-3'}`}>
                     {[
                         { id: 'timeline', icon: Calendar, label: 'Timeline' },
                         { id: 'packing', icon: Package, label: 'Lists' },
@@ -433,36 +466,54 @@ export default function TravelApp() {
                         <button
                             key={item.id}
                             onClick={() => setActiveTab(item.id)}
-                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium text-sm ${activeTab === item.id
+                            title={isSidebarCollapsed ? item.label : undefined}
+                            className={`w-full flex items-center rounded-xl transition-all duration-200 font-medium text-sm ${
+                                isSidebarCollapsed ? 'justify-center p-3' : 'gap-3 px-4 py-3'
+                            } ${activeTab === item.id
                                 ? 'bg-gray-100 text-slate-900 dark:bg-slate-800 dark:text-white'
                                 : 'text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800'
                             }`}
                         >
-                            <item.icon size={18} strokeWidth={activeTab === item.id ? 2.5 : 2} />
-                            {item.label}
+                            <item.icon size={20} strokeWidth={activeTab === item.id ? 2.5 : 2} className="flex-shrink-0" />
+                            <span className={`whitespace-nowrap overflow-hidden transition-all duration-200 ${
+                                isSidebarCollapsed ? 'w-0 opacity-0' : 'w-auto opacity-100'
+                            }`}>
+                                {item.label}
+                            </span>
                         </button>
                     ))}
                 </nav>
 
+                {/* Edit Mode Button (Timeline only) */}
                 {activeTab === 'timeline' && (
-                    <div className="p-4 border-t border-gray-200 dark:border-slate-800">
+                    <div className={`border-t border-gray-200 dark:border-slate-800 ${isSidebarCollapsed ? 'p-2' : 'p-3'}`}>
                         <button
                             onClick={() => setIsEditMode(!isEditMode)}
-                            className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-bold text-sm transition-all ${
+                            title={isSidebarCollapsed ? (isEditMode ? '編集を保存' : '編集モード') : undefined}
+                            className={`w-full flex items-center rounded-xl font-bold text-sm transition-all ${
+                                isSidebarCollapsed ? 'justify-center p-3' : 'justify-center gap-2 px-4 py-3'
+                            } ${
                                 isEditMode
                                     ? 'bg-indigo-600 text-white shadow-lg'
                                     : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700'
                             }`}
                         >
                             {isEditMode ? <Save size={18} /> : <Edit3 size={18} />}
-                            {isEditMode ? '編集を保存' : '編集モード'}
+                            <span className={`whitespace-nowrap overflow-hidden transition-all duration-200 ${
+                                isSidebarCollapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100'
+                            }`}>
+                                {isEditMode ? '編集を保存' : '編集モード'}
+                            </span>
                         </button>
                     </div>
                 )}
+
             </aside>
 
             {/* Main Content */}
-            <div className="lg:pl-64 flex-1 min-h-screen pb-24 lg:pb-0 overflow-x-hidden">
+            <div className={`flex-1 min-h-screen pb-24 lg:pb-0 overflow-x-hidden transition-all duration-200 ease-out ${
+                isSidebarCollapsed ? 'lg:pl-16' : 'lg:pl-64'
+            }`}>
                 <div className="w-full h-full overflow-x-hidden">
 
                     {/* Mobile Header */}
@@ -514,8 +565,8 @@ export default function TravelApp() {
                                             </div>
                                         </div>
 
-                                        {/* Day Tabs */}
-                                        <div className={`sticky z-sticky-content bg-gray-100/95 dark:bg-slate-900/95 backdrop-blur-sm pt-2 pb-4 px-4 sm:px-6 border-b border-gray-200/50 dark:border-slate-800/50 transition-all duration-300 ${scrollDirection === 'down' && isScrolled ? 'top-[env(safe-area-inset-top)]' : 'top-[calc(3.5rem+env(safe-area-inset-top))]'}`}>
+                                        {/* Day Tabs - z-header (10) to stay below mobile header (z-sticky: 20) */}
+                                        <div className={`sticky z-header bg-gray-100/95 dark:bg-slate-900/95 backdrop-blur-sm pt-2 pb-4 px-4 sm:px-6 border-b border-gray-200/50 dark:border-slate-800/50 transition-all duration-300 ${scrollDirection === 'down' && isScrolled ? 'top-[env(safe-area-inset-top)]' : 'top-[calc(var(--header-height)+env(safe-area-inset-top))]'}`}>
                                             <div ref={dayTabContainerRef} className="flex items-center gap-1 bg-white dark:bg-slate-800 rounded-xl p-1 shadow-sm border border-gray-200 dark:border-slate-700 transition-all duration-300 ease-out overflow-x-auto scrollbar-hide w-full">
                                                 {itinerary.map((day, idx) => {
                                                     const isSelected = selectedDayId === day.id;
@@ -699,7 +750,7 @@ export default function TravelApp() {
                                             />
                                         </div>
 
-                                        <div className="flex gap-4 px-6 overflow-x-auto pb-6 scrollbar-hide" style={{ height: 'calc(100vh - 280px)' }}>
+                                        <div className="flex gap-3 lg:gap-4 px-4 lg:px-6 overflow-x-auto pb-6 scrollbar-hide" style={{ height: 'calc(100vh - var(--desktop-header-offset))' }}>
                                             {itinerary.map((day, dayIdx) => {
                                                 const daySortedEvents = [...(day.events || [])].sort((a, b) => {
                                                     const t1 = (a.time || '23:59').padStart(5, '0');
@@ -711,7 +762,7 @@ export default function TravelApp() {
                                                     <div
                                                         key={day.id}
                                                         onClick={() => setSelectedDayId(day.id)}
-                                                        className={`flex-none w-[420px] bg-white dark:bg-slate-800 rounded-2xl border flex flex-col overflow-hidden shadow-sm cursor-pointer transition-all ${
+                                                        className={`flex-none w-[240px] xl:w-[320px] 2xl:w-[380px] bg-white dark:bg-slate-800 rounded-2xl border flex flex-col overflow-hidden shadow-sm cursor-pointer transition-all ${
                                                             selectedDayId === day.id
                                                                 ? 'border-indigo-400 dark:border-indigo-500 ring-2 ring-indigo-200 dark:ring-indigo-900/50'
                                                                 : 'border-gray-200 dark:border-slate-700 hover:border-indigo-200 dark:hover:border-indigo-800'
@@ -761,6 +812,7 @@ export default function TravelApp() {
                                                                         }}
                                                                         onDelete={() => handleDeleteEvent(event.id)}
                                                                         routeOrigin={routeOrigin}
+                                                                        compact
                                                                     />
                                                                 );
                                                             })}

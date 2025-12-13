@@ -360,7 +360,7 @@ export default function TicketList({ itinerary, isScrolled, onEventClick }) {
             </div>
 
             {/* Status Guide - Sticky */}
-            <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-sticky-content bg-gray-100/95 dark:bg-slate-900/95 backdrop-blur-sm -mx-4 px-4 sm:-mx-6 sm:px-6 py-2">
+            <div className="sticky top-[calc(var(--header-height)+env(safe-area-inset-top))] z-sticky-content bg-gray-100/95 dark:bg-slate-900/95 backdrop-blur-sm -mx-4 px-4 sm:-mx-6 sm:px-6 py-2">
                 <StatusGuide pending={totalPending} booked={totalBooked} pendingItems={pendingItems} />
             </div>
 

@@ -15,7 +15,8 @@ const EventCard = ({
     isEditMode,
     onEdit,
     onDelete,
-    routeOrigin
+    routeOrigin,
+    compact = false  // Hide status badge text (for tablet multi-column view)
 }) => {
     const [placeInfo, setPlaceInfo] = useState(null);
     const [staticMapImage, setStaticMapImage] = useState(null);
@@ -164,7 +165,7 @@ const EventCard = ({
                                 ? 'cursor-pointer hover:opacity-80 active:scale-95 transition-all'
                                 : ''}
                         >
-                            <StatusBadge status={event.status} />
+                            <StatusBadge status={event.status} compact={compact} />
                         </div>
                         {/* Delete Button in Edit Mode */}
                         {isEditMode && (
@@ -234,19 +235,37 @@ const EventCard = ({
                             <MapPin className="text-gray-400 animate-bounce" size={20} />
                         </div>
                     ) : staticMapImage ? (
-                        <a
-                            href={mapsUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="block rounded-xl overflow-hidden border border-gray-200 dark:border-slate-600"
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            <img
-                                src={staticMapImage}
-                                alt="Map"
-                                className="w-full h-28 object-cover hover:scale-105 transition-transform duration-300"
-                            />
-                        </a>
+                        isEditMode ? (
+                            // Edit mode: clicking map opens edit modal
+                            <div
+                                className="block rounded-xl overflow-hidden border border-gray-200 dark:border-slate-600 cursor-pointer"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onEdit?.(event);
+                                }}
+                            >
+                                <img
+                                    src={staticMapImage}
+                                    alt="Map"
+                                    className="w-full h-28 object-cover hover:scale-105 transition-transform duration-300"
+                                />
+                            </div>
+                        ) : (
+                            // Normal mode: clicking map opens Google Maps
+                            <a
+                                href={mapsUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="block rounded-xl overflow-hidden border border-gray-200 dark:border-slate-600"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <img
+                                    src={staticMapImage}
+                                    alt="Map"
+                                    className="w-full h-28 object-cover hover:scale-105 transition-transform duration-300"
+                                />
+                            </a>
+                        )
                     ) : null}
 
                     {/* Address */}

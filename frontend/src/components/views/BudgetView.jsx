@@ -270,11 +270,12 @@ const BudgetView = ({ itinerary, onForceReload, isScrolled }) => {
             </div>
 
             {/* Hero Summary Card - Sticky (Full Width) */}
-            <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] lg:top-0 z-sticky-content bg-gray-100/95 dark:bg-slate-900/95 backdrop-blur-sm -mx-4 px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0 py-2">
-                <div className="bg-gradient-to-br from-indigo-600 to-violet-700 dark:from-indigo-900 dark:to-slate-800 rounded-2xl p-5 text-white shadow-xl relative overflow-hidden">
+            <div className="sticky top-[calc(var(--header-height)+env(safe-area-inset-top))] lg:top-0 z-sticky-content bg-gray-100/95 dark:bg-slate-900/95 backdrop-blur-sm -mx-4 px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0 py-2">
+                <div className="bg-gradient-to-br from-indigo-600 to-violet-700 dark:from-indigo-900 dark:to-slate-800 rounded-2xl p-4 lg:p-5 text-white shadow-xl relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl" />
 
-                    <div className="relative z-content">
+                    {/* Mobile Layout */}
+                    <div className="lg:hidden relative z-content">
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-white/70 uppercase text-[10px] font-bold tracking-wider">予算管理</h2>
                             <Wallet size={18} className="text-white/50" />
@@ -349,6 +350,84 @@ const BudgetView = ({ itinerary, onForceReload, isScrolled }) => {
                                 <div className="text-[9px] uppercase tracking-wider opacity-70">1日あたり</div>
                             </div>
                             <div className="bg-white/10 backdrop-blur rounded-lg p-3 text-center">
+                                <div className="text-lg font-bold">{expenses.length}件</div>
+                                <div className="text-[9px] uppercase tracking-wider opacity-70">支出項目</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Tablet/Desktop Layout - Horizontal */}
+                    <div className="hidden lg:flex lg:items-center lg:gap-6 relative z-content">
+                        {/* Left: Total Spent (Main Focus) */}
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                                    <Wallet size={20} />
+                                </div>
+                                <div>
+                                    <div className="text-xs text-white/60">現在の支出</div>
+                                    <div className="text-3xl font-black tracking-tight">
+                                        <span className="text-lg opacity-70 mr-1">¥</span>
+                                        {stats.total.toLocaleString()}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Budget Progress - Inline */}
+                            {!showGoalInput ? (
+                                <div
+                                    className="bg-white/15 backdrop-blur rounded-xl p-3 cursor-pointer hover:bg-white/20 transition-colors"
+                                    onClick={() => { setTempGoal(budgetGoal); setShowGoalInput(true); }}
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <div className="flex-1">
+                                            <div className="h-2 bg-white/20 rounded-full overflow-hidden">
+                                                <div
+                                                    className={`h-full rounded-full transition-all duration-500 ${stats.percentage >= 100 ? 'bg-red-400' :
+                                                        stats.percentage >= 80 ? 'bg-amber-400' : 'bg-emerald-400'
+                                                        }`}
+                                                    style={{ width: `${stats.percentage}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="text-sm whitespace-nowrap">
+                                            <span className={stats.remaining < 0 ? 'text-red-300 font-bold' : 'text-white/80'}>
+                                                残り ¥{Math.abs(stats.remaining).toLocaleString()}
+                                                {stats.remaining < 0 && ' オーバー'}
+                                            </span>
+                                            <span className="text-white/50 ml-1">/ ¥{budgetGoal.toLocaleString()}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="bg-white/15 backdrop-blur rounded-xl p-3">
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="number"
+                                            value={tempGoal}
+                                            onChange={(e) => setTempGoal(parseInt(e.target.value) || 0)}
+                                            className="flex-1 bg-white/20 rounded-lg px-3 py-2 text-white placeholder-white/50 text-lg font-bold"
+                                            placeholder="100000"
+                                            autoFocus
+                                        />
+                                        <button
+                                            onClick={handleSaveGoal}
+                                            className="bg-white text-indigo-600 font-bold px-4 py-2 rounded-lg hover:bg-indigo-100 transition-colors"
+                                        >
+                                            保存
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Right: Quick Stats */}
+                        <div className="flex items-center gap-3 shrink-0">
+                            <div className="bg-white/10 backdrop-blur rounded-xl px-4 py-3 text-center min-w-[100px]">
+                                <div className="text-lg font-bold">¥{stats.perDay.toLocaleString()}</div>
+                                <div className="text-[9px] uppercase tracking-wider opacity-70">1日あたり</div>
+                            </div>
+                            <div className="bg-white/10 backdrop-blur rounded-xl px-4 py-3 text-center min-w-[80px]">
                                 <div className="text-lg font-bold">{expenses.length}件</div>
                                 <div className="text-[9px] uppercase tracking-wider opacity-70">支出項目</div>
                             </div>

@@ -159,7 +159,9 @@ const EventCard = ({
                                 onClick={(e) => {
                                     e.preventDefault();
                                     e.stopPropagation();
-                                    onDelete?.();
+                                    // Use setTimeout to decouple confirm dialog from click event
+                                    // This fixes the issue where dialog closes immediately on some browsers
+                                    setTimeout(() => onDelete?.(), 10);
                                 }}
                                 className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-colors"
                             >

@@ -95,12 +95,25 @@ const EventCard = ({
         if (isEditMode) {
             onEdit?.(event);
         } else {
-            // Scroll to center before expanding (iOS-style)
+            onToggle?.();
+            // 展開時のみ、アニメーション完了後に条件付きスクロール
             if (!isExpanded && cardRef.current) {
-                cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                setTimeout(() => onToggle?.(), 150);
-            } else {
-                onToggle?.();
+                setTimeout(() => {
+                    if (!cardRef.current) return;
+                    const rect = cardRef.current.getBoundingClientRect();
+                    const headerHeight = 56; // モバイルヘッダー高さ
+                    const footerHeight = 80; // ボトムナビ高さ
+                    const viewportTop = headerHeight;
+                    const viewportBottom = window.innerHeight - footerHeight;
+
+                    // カードが画面外にはみ出している場合のみスクロール
+                    if (rect.top < viewportTop || rect.bottom > viewportBottom) {
+                        cardRef.current.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'center'
+                        });
+                    }
+                }, 380); // 350msアニメーション + 30msバッファ
             }
         }
     };

@@ -24,6 +24,9 @@ export const getMidTime = (t1, t2) => {
 
 export { parseDurationToMinutes } from './durationParser';
 
+// Re-export cache utilities
+export { getCachedItem, setCachedItem, cleanupExpiredCache, enforceCacheLimit, getCacheStats } from './cache';
+
 export const formatDuration = (minutes) => {
     if (minutes === null || minutes === undefined) return null;
     if (minutes < 0) return null; // Overlap

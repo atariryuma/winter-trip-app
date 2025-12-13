@@ -1,4 +1,35 @@
+import cache from '../utils/cache';
+
 const API_URL = 'https://script.google.com/macros/s/AKfycbxdqZBzJm-TscH3ed7HsG9jBqK1hBQzCKqgJ1qngz42TERjOqju2jQqu3m1KRw49avX5Q/exec';
+
+// Cache TTL constants (in milliseconds)
+const CACHE_TTL = {
+    PLACE_INFO: 7 * 24 * 60 * 60 * 1000,      // 7 days
+    STATIC_MAP: 14 * 24 * 60 * 60 * 1000,     // 14 days
+    ROUTE_MAP: 3 * 24 * 60 * 60 * 1000,       // 3 days (routes change more often)
+    AUTOCOMPLETE: 1 * 24 * 60 * 60 * 1000,    // 1 day
+};
+
+// Helper: Generate safe cache key from query string
+const makeCacheKey = (prefix, query) => {
+    // Use base64 encoding for safe key generation
+    try {
+        return `${prefix}_${btoa(encodeURIComponent(query))}`;
+    } catch {
+        // Fallback for non-ASCII characters
+        return `${prefix}_${encodeURIComponent(query).slice(0, 100)}`;
+    }
+};
+
+// Helper: Decode cache key back to original query
+const decodeCacheKey = (key, prefix) => {
+    try {
+        const encoded = key.replace(`${prefix}_`, '');
+        return decodeURIComponent(atob(encoded));
+    } catch {
+        return null;
+    }
+};
 
 const fetchWithRetry = async (url, options = {}, retries = 3, backoff = 1000) => {
     try {
@@ -60,17 +91,18 @@ const server = {
             .catch(() => resolve(false));
     }),
 
-    // Get place info
+    // Get place info (with TTL cache)
     getPlaceInfo: (query) => new Promise((resolve, reject) => {
         if (!query?.trim()) {
             resolve({ found: false });
             return;
         }
 
-        const cacheKey = `place_${btoa(unescape(encodeURIComponent(query)))}`;
-        const cached = localStorage.getItem(cacheKey);
+        const cacheKey = makeCacheKey('place', query);
+        const cached = cache.get(cacheKey);
         if (cached) {
-            try { resolve(JSON.parse(cached)); return; } catch { /* ignore */ }
+            resolve(cached);
+            return;
         }
 
         fetchWithRetry(`${API_URL}?action=getPlaceInfo&query=${encodeURIComponent(query)}`)
@@ -78,30 +110,31 @@ const server = {
             .then(json => {
                 if (json.status === 'error') throw new Error(json.error?.message);
                 const data = json.data;
-                try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch { /* ignore */ }
+                cache.set(cacheKey, data, CACHE_TTL.PLACE_INFO);
                 resolve(data);
             })
             .catch(e => reject(new Error(e.message)));
     }),
 
-    // Get place autocomplete suggestions
+    // Get place autocomplete suggestions (with TTL cache)
     getPlaceAutocomplete: (input) => new Promise((resolve) => {
-        if (!input?.trim() || input.length < 2) {
+        if (!input?.trim() || input.trim().length < 2) {
             resolve({ predictions: [] });
             return;
         }
 
-        const cacheKey = `autocomplete_${btoa(unescape(encodeURIComponent(input)))}`;
-        const cached = localStorage.getItem(cacheKey);
+        const cacheKey = makeCacheKey('autocomplete', input);
+        const cached = cache.get(cacheKey);
         if (cached) {
-            try { resolve(JSON.parse(cached)); return; } catch { /* ignore */ }
+            resolve(cached);
+            return;
         }
 
         fetchWithRetry(`${API_URL}?action=getPlaceAutocomplete&input=${encodeURIComponent(input)}`)
             .then(res => res.json())
             .then(json => {
                 if (json.status === 'success' && json.data) {
-                    try { localStorage.setItem(cacheKey, JSON.stringify(json.data)); } catch { /* ignore */ }
+                    cache.set(cacheKey, json.data, CACHE_TTL.AUTOCOMPLETE);
                     resolve(json.data);
                 } else {
                     resolve({ predictions: [] });
@@ -110,24 +143,25 @@ const server = {
             .catch(() => resolve({ predictions: [] }));
     }),
 
-    // Get static map image for a location
+    // Get static map image for a location (with TTL cache)
     getStaticMap: (location) => new Promise((resolve) => {
         if (!location?.trim()) {
             resolve(null);
             return;
         }
 
-        const cacheKey = `staticmap_${btoa(unescape(encodeURIComponent(location)))}`;
-        const cached = localStorage.getItem(cacheKey);
+        const cacheKey = makeCacheKey('staticmap', location);
+        const cached = cache.get(cacheKey);
         if (cached) {
-            try { resolve(JSON.parse(cached)); return; } catch { /* ignore */ }
+            resolve(cached);
+            return;
         }
 
         fetchWithRetry(`${API_URL}?action=getStaticMap&location=${encodeURIComponent(location)}`)
             .then(res => res.json())
             .then(json => {
                 if (json.status === 'success' && json.data?.image) {
-                    try { localStorage.setItem(cacheKey, JSON.stringify(json.data.image)); } catch { /* ignore */ }
+                    cache.set(cacheKey, json.data.image, CACHE_TTL.STATIC_MAP);
                     resolve(json.data.image);
                 } else {
                     resolve(null);
@@ -136,37 +170,31 @@ const server = {
             .catch(() => resolve(null));
     }),
 
-    // Get route map image between two locations
+    // Get route map image between two locations (with TTL cache)
     getRouteMap: (origin, destination) => new Promise((resolve) => {
         if (!origin?.trim() || !destination?.trim()) {
-            console.log('getRouteMap: No origin or destination');
             resolve(null);
             return;
         }
 
-        const cacheKey = `routemap_${btoa(unescape(encodeURIComponent(origin + '|' + destination)))}`;
-        const cached = localStorage.getItem(cacheKey); // Change to localStorage
+        const cacheKey = makeCacheKey('routemap', `${origin}|${destination}`);
+        const cached = cache.get(cacheKey);
         if (cached) {
-            try { resolve(JSON.parse(cached)); return; } catch { /* ignore */ }
+            resolve(cached);
+            return;
         }
 
-        console.log('getRouteMap: Fetching', origin, '->', destination);
         fetchWithRetry(`${API_URL}?action=getRouteMap&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`)
             .then(res => res.json())
             .then(json => {
-                console.log('getRouteMap response:', json);
                 if (json.status === 'success' && json.data) {
-                    try { localStorage.setItem(cacheKey, JSON.stringify(json.data)); } catch { /* ignore */ } // Change to localStorage
+                    cache.set(cacheKey, json.data, CACHE_TTL.ROUTE_MAP);
                     resolve(json.data);
                 } else {
-                    console.log('getRouteMap failed:', JSON.stringify(json));
                     resolve(null);
                 }
             })
-            .catch(err => {
-                console.error('getRouteMap fetch error:', err);
-                resolve(null);
-            });
+            .catch(() => resolve(null));
     }),
 
     // Upload Events CSV
@@ -327,50 +355,50 @@ const server = {
     invalidateLocationCache: (location) => {
         if (!location?.trim()) return;
 
+        const prefixes = ['place_', 'staticmap_', 'routemap_', 'autocomplete_'];
         const keysToRemove = [];
+
         for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
             if (!key) continue;
 
-            // Check if this cache key contains the location
-            if (key.startsWith('place_') || key.startsWith('staticmap_')) {
-                try {
-                    const encoded = key.split('_')[1];
-                    const decoded = decodeURIComponent(escape(atob(encoded)));
-                    if (decoded === location) keysToRemove.push(key);
-                } catch { /* ignore decode errors */ }
-            }
-
-            if (key.startsWith('routemap_')) {
-                try {
-                    const encoded = key.replace('routemap_', '');
-                    const decoded = decodeURIComponent(escape(atob(encoded)));
-                    if (decoded.includes(location)) keysToRemove.push(key);
-                } catch { /* ignore decode errors */ }
+            for (const prefix of prefixes) {
+                if (key.startsWith(prefix)) {
+                    const decoded = decodeCacheKey(key, prefix.slice(0, -1));
+                    if (decoded && decoded.includes(location)) {
+                        keysToRemove.push(key);
+                    }
+                    break;
+                }
             }
         }
 
         keysToRemove.forEach(key => localStorage.removeItem(key));
-        console.log(`Cache invalidated for "${location}": ${keysToRemove.length} items removed`);
+        if (keysToRemove.length > 0) {
+            console.log(`Cache invalidated for "${location}": ${keysToRemove.length} items removed`);
+        }
     },
 
     /**
      * Clear all app caches (for settings/emergency use)
      */
     clearAllCaches: () => {
-        const prefixes = ['place_', 'staticmap_', 'routemap_', 'autocomplete_'];
-        const keysToRemove = [];
+        const removed = cache.cleanup();
+        cache.enforceLimit();
+        return removed;
+    },
 
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key && prefixes.some(p => key.startsWith(p))) {
-                keysToRemove.push(key);
-            }
-        }
+    /**
+     * Get cache statistics
+     */
+    getCacheStats: () => cache.stats(),
 
-        keysToRemove.forEach(key => localStorage.removeItem(key));
-        console.log(`All caches cleared: ${keysToRemove.length} items removed`);
-        return keysToRemove.length;
+    /**
+     * Run cache maintenance (cleanup expired + enforce limit)
+     */
+    maintainCache: () => {
+        cache.cleanup();
+        cache.enforceLimit();
     }
 };
 

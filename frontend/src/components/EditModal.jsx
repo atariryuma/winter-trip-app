@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, Trash2, Save, MapPin, Navigation, Calendar, Search, Ticket, Map } from 'lucide-react';
 import server from '../api/gas';
 

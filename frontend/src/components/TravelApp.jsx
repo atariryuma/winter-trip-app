@@ -446,7 +446,7 @@ export default function TravelApp() {
 
     const SavingOverlay = saving ? (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-black/80 text-white px-6 py-3 rounded-full shadow-xl z-notification flex items-center gap-3 animate-pulse pointer-events-none">
-            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+            <div className="w-4 h-4 min-w-4 min-h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
             <span className="font-bold text-sm">スプレッドシートに保存中...</span>
         </div>
     ) : null;

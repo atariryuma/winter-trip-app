@@ -157,6 +157,7 @@ const EventCard = ({
                         {isEditMode && (
                             <button
                                 onClick={(e) => {
+                                    e.preventDefault();
                                     e.stopPropagation();
                                     onDelete?.();
                                 }}

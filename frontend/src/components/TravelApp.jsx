@@ -772,42 +772,30 @@ export default function TravelApp() {
 
                                                         {/* Scrollable Events */}
                                                         <div className="flex-1 overflow-y-auto p-3 space-y-2">
-                                                            {daySortedEvents.map((event) => (
-                                                                <div
-                                                                    key={event.id}
-                                                                    onClick={() => {
-                                                                        if (isEditMode) {
+                                                            {daySortedEvents.map((event, index) => {
+                                                                const prevEvent = index > 0 ? daySortedEvents[index - 1] : null;
+                                                                const routeOrigin = prevEvent
+                                                                    ? (prevEvent.to || prevEvent.address || prevEvent.name)
+                                                                    : null;
+                                                                return (
+                                                                    <EventCard
+                                                                        key={event.id}
+                                                                        event={{ ...event, _routeOrigin: routeOrigin }}
+                                                                        isExpanded={expandedEventId === event.id}
+                                                                        onToggle={() => setExpandedEventId(
+                                                                            expandedEventId === event.id ? null : event.id
+                                                                        )}
+                                                                        isEditMode={isEditMode}
+                                                                        onEdit={(e) => {
                                                                             setSelectedDayId(day.id);
-                                                                            setEditItem(event);
+                                                                            setEditItem(e);
                                                                             setModalOpen(true);
-                                                                        } else {
-                                                                            const query = event.type === 'transport'
-                                                                                ? event.to
-                                                                                : (event.address || event.name);
-                                                                            setMapModalQuery(query);
-                                                                            setMapModalOpen(true);
-                                                                        }
-                                                                    }}
-                                                                    className={`bg-gray-50 dark:bg-slate-700/50 rounded-xl p-3 cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors ${isEditMode ? 'border-2 border-dashed border-gray-300 dark:border-slate-600' : ''}`}
-                                                                >
-                                                                    <div className="flex items-center gap-2 mb-1">
-                                                                        <span className="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400">
-                                                                            {event.time || '--:--'}{event.endTime ? ` → ${event.endTime}` : ''}
-                                                                        </span>
-                                                                        <StatusBadge status={event.status} />
-                                                                    </div>
-                                                                    <h4 className="font-bold text-sm text-gray-800 dark:text-white leading-tight">
-                                                                        {event.name}
-                                                                    </h4>
-                                                                    {event.type === 'transport' && (event.from || event.to) && (
-                                                                        <div className="flex items-center gap-1 mt-1 text-xs text-gray-500">
-                                                                            <span>{event.from || '?'}</span>
-                                                                            <ArrowRight size={10} />
-                                                                            <span>{event.to || '?'}</span>
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            ))}
+                                                                        }}
+                                                                        onDelete={() => handleDeleteEvent(event.id)}
+                                                                        routeOrigin={routeOrigin}
+                                                                    />
+                                                                );
+                                                            })}
 
                                                             {isEditMode && (
                                                                 <button

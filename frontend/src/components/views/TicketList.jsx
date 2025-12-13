@@ -368,7 +368,7 @@ export default function TicketList({ itinerary, isScrolled, onEventClick }) {
             {transport.length > 0 && (
                 <div className="animate-slide-up-fade" style={{ animationDelay: '0ms' }}>
                     <SectionHeader title="交通機関" icon={Train} count={transport.length} />
-                    <div className="space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                         {transport.map((event) => (
                             <TicketCard
                                 key={event.id}
@@ -386,7 +386,7 @@ export default function TicketList({ itinerary, isScrolled, onEventClick }) {
             {stay.length > 0 && (
                 <div className="animate-slide-up-fade" style={{ animationDelay: '100ms' }}>
                     <SectionHeader title="宿泊施設" icon={Hotel} count={stay.length} />
-                    <div className="space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                         {stay.map((event) => (
                             <TicketCard
                                 key={event.id}

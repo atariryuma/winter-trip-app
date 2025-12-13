@@ -293,7 +293,7 @@ const EventCard = ({
                                     const query = encodeURIComponent(parts.join(' '));
                                     window.open(`https://www.google.com/search?q=${query}`, '_blank');
                                 }}
-                                className="inline-flex items-center gap-1.5 px-3 py-2 bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 text-amber-600 dark:text-amber-400 rounded-xl text-xs font-bold transition-colors"
+                                className="inline-flex items-center gap-1.5 px-3 py-2 bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 text-amber-600 dark:text-amber-400 rounded-xl text-xs font-bold transition-colors whitespace-nowrap shrink-0"
                             >
                                 <ExternalLink size={14} />
                                 予約を探す
@@ -304,7 +304,7 @@ const EventCard = ({
                                 href={directionsUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1.5 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 rounded-xl text-xs font-bold transition-colors"
+                                className="inline-flex items-center gap-1.5 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 rounded-xl text-xs font-bold transition-colors whitespace-nowrap shrink-0"
                                 onClick={(e) => e.stopPropagation()}
                             >
                                 <Navigation size={14} />

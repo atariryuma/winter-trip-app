@@ -258,15 +258,15 @@ const BudgetView = ({ itinerary, onForceReload, isScrolled }) => {
     const selectedEvent = allEvents.find(e => e.id === selectedEventId);
 
     return (
-        <div className="space-y-4 pb-24 lg:grid lg:grid-cols-2 lg:gap-6 lg:space-y-0">
-            {/* Left Column - Summary */}
-            <div className="space-y-4">
-                {/* Large Title with fade animation */}
-                <div className={`pb-2 transition-all duration-300 ${isScrolled ? 'opacity-0 scale-95 -translate-y-2' : 'opacity-100 scale-100 translate-y-0'}`}>
-                    <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Budget</h1>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">予算管理</p>
-                </div>
-                {/* Summary Card */}
+        <div className="space-y-4 pb-24">
+            {/* Large Title with fade animation */}
+            <div className={`pb-2 transition-all duration-300 ${isScrolled ? 'opacity-0 scale-95 -translate-y-2' : 'opacity-100 scale-100 translate-y-0'}`}>
+                <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Budget</h1>
+                <p className="text-sm text-slate-500 dark:text-slate-400">予算管理</p>
+            </div>
+
+            {/* Hero Summary Card - Sticky (Full Width) */}
+            <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] lg:top-0 z-sticky-content bg-gray-100/95 dark:bg-slate-900/95 backdrop-blur-sm -mx-4 px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0 py-2">
                 <div className="bg-gradient-to-br from-indigo-600 to-violet-700 dark:from-indigo-900 dark:to-slate-800 rounded-2xl p-5 text-white shadow-xl relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl" />
 
@@ -351,15 +351,16 @@ const BudgetView = ({ itinerary, onForceReload, isScrolled }) => {
                         </div>
                     </div>
                 </div>
+            </div>
 
-                {/* Quick Add Payment Button */}
-                <button
-                    onClick={() => { setShowAddPayment(true); resetQuickAdd(); }}
-                    className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all active:scale-[0.98]"
-                >
-                    <PlusCircle size={20} />
-                    支出を追加
-                </button>
+            {/* Quick Add Payment Button - Full Width */}
+            <button
+                onClick={() => { setShowAddPayment(true); resetQuickAdd(); }}
+                className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all active:scale-[0.98]"
+            >
+                <PlusCircle size={20} />
+                支出を追加
+            </button>
 
                 {/* Quick Add Payment Modal */}
                 {showAddPayment && createPortal(
@@ -570,10 +571,9 @@ const BudgetView = ({ itinerary, onForceReload, isScrolled }) => {
                     </div>,
                     document.body
                 )}
-            </div>
 
-            {/* Right Column - Expense List */}
-            <div className="space-y-4">
+            {/* Lists - 2 Column on lg+ */}
+            <div className="lg:grid lg:grid-cols-2 lg:gap-6 space-y-4 lg:space-y-0">
                 {/* Expense List */}
                 <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden">
                     <div className="px-4 py-3 border-b border-gray-100 dark:border-slate-700">

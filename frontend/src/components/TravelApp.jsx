@@ -489,7 +489,7 @@ export default function TravelApp() {
                     </div>
                 </div>
 
-                <nav className="px-4 space-y-1">
+                <nav className="px-4 space-y-1 flex-1">
                     {[
                         { id: 'timeline', icon: Calendar, label: 'Timeline' },
                         { id: 'packing', icon: Package, label: 'Lists' },
@@ -510,6 +510,23 @@ export default function TravelApp() {
                         </button>
                     ))}
                 </nav>
+
+                {/* Edit Mode Button - Sidebar Bottom (Desktop only) */}
+                {activeTab === 'timeline' && (
+                    <div className="p-4 border-t border-gray-200 dark:border-slate-800">
+                        <button
+                            onClick={() => setIsEditMode(!isEditMode)}
+                            className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-bold text-sm transition-all ${
+                                isEditMode
+                                    ? 'bg-indigo-600 text-white shadow-lg'
+                                    : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700'
+                            }`}
+                        >
+                            {isEditMode ? <Save size={18} /> : <Edit3 size={18} />}
+                            {isEditMode ? '編集を保存' : '編集モード'}
+                        </button>
+                    </div>
+                )}
             </aside>
 
             {/* ========== MAIN CONTENT AREA ========== */}
@@ -736,8 +753,37 @@ export default function TravelApp() {
                                             </div>
                                         </div>
 
+                                        {/* DynamicSummary - Sticky (選択中の日のサマリー) */}
+                                        <div className="sticky top-0 z-sticky-content bg-gray-100/95 dark:bg-slate-900/95 backdrop-blur-sm px-6 py-2">
+                                            <DynamicSummary
+                                                day={selectedDay || itinerary[0]}
+                                                events={(() => {
+                                                    const targetDay = selectedDay || itinerary[0];
+                                                    if (!targetDay) return [];
+                                                    return [...(targetDay.events || [])].sort((a, b) => {
+                                                        const t1 = (a.time || '23:59').padStart(5, '0');
+                                                        const t2 = (b.time || '23:59').padStart(5, '0');
+                                                        return t1.localeCompare(t2);
+                                                    });
+                                                })()}
+                                                dayIdx={selectedDay ? itinerary.findIndex(d => d.id === selectedDay.id) : 0}
+                                                previousDayHotel={(() => {
+                                                    const targetDayIdx = selectedDay ? itinerary.findIndex(d => d.id === selectedDay.id) : 0;
+                                                    if (targetDayIdx <= 0) return null;
+                                                    const prevDay = itinerary[targetDayIdx - 1];
+                                                    return prevDay?.events.filter(e => e.category === 'hotel' || e.category === 'stay').pop();
+                                                })()}
+                                                onEditPlanned={(event) => {
+                                                    setEditItem(event);
+                                                    setModalOpen(true);
+                                                }}
+                                                onDeleteDay={handleDeleteDay}
+                                                isEditMode={isEditMode}
+                                            />
+                                        </div>
+
                                         {/* Multi-Column Container */}
-                                        <div className="flex gap-4 px-6 overflow-x-auto pb-6 scrollbar-hide" style={{ height: 'calc(100vh - 140px)' }}>
+                                        <div className="flex gap-4 px-6 overflow-x-auto pb-6 scrollbar-hide" style={{ height: 'calc(100vh - 280px)' }}>
                                             {itinerary.map((day, dayIdx) => {
                                                 const daySortedEvents = [...(day.events || [])].sort((a, b) => {
                                                     const t1 = (a.time || '23:59').padStart(5, '0');
@@ -748,10 +794,19 @@ export default function TravelApp() {
                                                 return (
                                                     <div
                                                         key={day.id}
-                                                        className="flex-none w-80 bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 flex flex-col overflow-hidden shadow-sm"
+                                                        onClick={() => setSelectedDayId(day.id)}
+                                                        className={`flex-none w-[420px] bg-white dark:bg-slate-800 rounded-2xl border flex flex-col overflow-hidden shadow-sm cursor-pointer transition-all ${
+                                                            selectedDayId === day.id
+                                                                ? 'border-indigo-400 dark:border-indigo-500 ring-2 ring-indigo-200 dark:ring-indigo-900/50'
+                                                                : 'border-gray-200 dark:border-slate-700 hover:border-indigo-200 dark:hover:border-indigo-800'
+                                                        }`}
                                                     >
                                                         {/* Day Header */}
-                                                        <div className="px-4 py-3 border-b border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/80 shrink-0">
+                                                        <div className={`px-4 py-3 border-b shrink-0 ${
+                                                            selectedDayId === day.id
+                                                                ? 'border-indigo-100 dark:border-indigo-900/50 bg-indigo-50 dark:bg-indigo-900/20'
+                                                                : 'border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/80'
+                                                        }`}>
                                                             <div className="flex items-center justify-between">
                                                                 <div className="flex items-center gap-2">
                                                                     <span className="px-2 py-1 rounded-lg bg-indigo-600 text-white text-xs font-bold">
@@ -876,11 +931,11 @@ export default function TravelApp() {
                         </div>
                     </nav>
 
-                    {/* Flat Immersive Edit Button - Only show on Timeline tab */}
+                    {/* Flat Immersive Edit Button - Only show on Timeline tab (Mobile only) */}
                     {activeTab === 'timeline' && (
                         <button
                             onClick={() => setIsEditMode(!isEditMode)}
-                            className={`fixed top-4 right-4 z-fixed bg-white dark:bg-slate-800 text-slate-500 dark:text-indigo-400 p-3 rounded-full shadow-lg border border-gray-100 dark:border-slate-700 transition-all duration-300 active:scale-95 ${isEditMode ? 'ring-2 ring-indigo-500 bg-indigo-50' : ''} ${scrollDirection === 'down' ? '-translate-y-[200%] opacity-0' : 'translate-y-0 opacity-100'}`}
+                            className={`lg:hidden fixed top-4 right-4 z-fixed bg-white dark:bg-slate-800 text-slate-500 dark:text-indigo-400 p-3 rounded-full shadow-lg border border-gray-100 dark:border-slate-700 transition-all duration-300 active:scale-95 ${isEditMode ? 'ring-2 ring-indigo-500 bg-indigo-50' : ''} ${scrollDirection === 'down' ? '-translate-y-[200%] opacity-0' : 'translate-y-0 opacity-100'}`}
                             aria-label="編集モード切り替え"
                         >
                             {isEditMode ? <Save size={20} className="text-indigo-600" /> : <Edit3 size={20} />}

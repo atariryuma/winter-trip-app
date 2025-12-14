@@ -270,12 +270,12 @@ const BudgetView = ({ itinerary, onForceReload, isScrolled }) => {
             </div>
 
             {/* Hero Summary Card - Sticky (Full Width) */}
-            <div className="sticky top-[calc(var(--header-height)+env(safe-area-inset-top))] lg:top-0 z-sticky-content bg-gray-100/95 dark:bg-slate-900/95 backdrop-blur-sm -mx-4 px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0 py-2">
-                <div className="bg-gradient-to-br from-indigo-600 to-violet-700 dark:from-indigo-900 dark:to-slate-800 rounded-2xl p-4 lg:p-5 text-white shadow-xl relative overflow-hidden">
+            <div className="sticky top-[calc(var(--header-height)+env(safe-area-inset-top))] md:top-0 z-sticky-content bg-gray-100/95 dark:bg-slate-900/95 backdrop-blur-sm -mx-4 px-4 sm:-mx-6 sm:px-6 md:mx-0 md:px-0 py-2">
+                <div className="bg-gradient-to-br from-indigo-600 to-violet-700 dark:from-indigo-900 dark:to-slate-800 rounded-2xl p-4 md:p-5 text-white shadow-xl relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl" />
 
                     {/* Mobile Layout */}
-                    <div className="lg:hidden relative z-content">
+                    <div className="md:hidden relative z-content">
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-white/70 uppercase text-[10px] font-bold tracking-wider">予算管理</h2>
                             <Wallet size={18} className="text-white/50" />
@@ -357,7 +357,7 @@ const BudgetView = ({ itinerary, onForceReload, isScrolled }) => {
                     </div>
 
                     {/* Tablet/Desktop Layout - Horizontal */}
-                    <div className="hidden lg:flex lg:items-center lg:gap-6 relative z-content">
+                    <div className="hidden md:flex md:items-center md:gap-6 relative z-content">
                         {/* Left: Total Spent (Main Focus) */}
                         <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-3 mb-2">
@@ -655,8 +655,8 @@ const BudgetView = ({ itinerary, onForceReload, isScrolled }) => {
                     document.body
                 )}
 
-            {/* Lists - 2 Column on lg+ */}
-            <div className="lg:grid lg:grid-cols-2 lg:gap-6 space-y-4 lg:space-y-0">
+            {/* Lists - 2 Column on md+ */}
+            <div className="md:grid md:grid-cols-2 md:gap-6 space-y-4 md:space-y-0">
                 {/* Expense List */}
                 <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden">
                     <div className="px-4 py-3 border-b border-gray-100 dark:border-slate-700">

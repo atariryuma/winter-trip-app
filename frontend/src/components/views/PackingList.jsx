@@ -343,15 +343,15 @@ export default function PackingList({ isScrolled }) {
             </div>
 
             {/* Content */}
-            <div className="p-4 space-y-4 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-4 lg:space-y-0">
+            <div className="p-4 space-y-4 md:grid md:grid-cols-2 xl:grid-cols-3 md:gap-4 md:space-y-0">
                 {activeTab === 'packing' ? (
                     // Packing List
                     loading ? (
-                        <div className="flex justify-center py-12 lg:col-span-full">
+                        <div className="flex justify-center py-12 md:col-span-full">
                             <Loader2 className="animate-spin text-indigo-500" size={32} />
                         </div>
                     ) : items.length === 0 ? (
-                        <div className="text-center py-16 text-gray-400 dark:text-slate-600 lg:col-span-full">
+                        <div className="text-center py-16 text-gray-400 dark:text-slate-600 md:col-span-full">
                             <Package size={48} className="mx-auto mb-3 opacity-30" />
                             <p className="font-medium">アイテムがありません</p>
                             <p className="text-sm mt-1">「+」ボタンから追加</p>
@@ -402,7 +402,7 @@ export default function PackingList({ isScrolled }) {
                 ) : (
                     // Shopping List
                     shoppingItems.length === 0 ? (
-                        <div className="text-center py-16 text-gray-400 dark:text-slate-600 lg:col-span-full">
+                        <div className="text-center py-16 text-gray-400 dark:text-slate-600 md:col-span-full">
                             <ShoppingBag size={48} className="mx-auto mb-3 opacity-30" />
                             <p className="font-medium">買い物リストがありません</p>
                             <p className="text-sm mt-1">「+」ボタンから追加</p>

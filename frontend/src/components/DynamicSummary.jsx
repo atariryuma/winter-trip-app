@@ -129,11 +129,11 @@ const DynamicSummary = ({ day, events, dayIdx, previousDayHotel, onEditPlanned, 
     const firstPlannedEvent = events.find(e => e.status === 'planned' || e.status === 'suggested');
 
     return (
-        <div className="bg-gradient-to-br from-indigo-600 to-violet-700 dark:from-indigo-900 dark:to-slate-800 rounded-2xl p-4 lg:p-5 mb-6 shadow-xl relative overflow-hidden">
+        <div className="bg-gradient-to-br from-indigo-600 to-violet-700 dark:from-indigo-900 dark:to-slate-800 rounded-2xl p-4 md:p-5 mb-6 shadow-xl relative overflow-hidden">
             <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl" />
 
             {/* Mobile Layout (default) */}
-            <div className="lg:hidden">
+            <div className="md:hidden">
                 {/* Day Header */}
                 <div className="relative z-content flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
@@ -242,8 +242,8 @@ const DynamicSummary = ({ day, events, dayIdx, previousDayHotel, onEditPlanned, 
                 </div>
             </div>
 
-            {/* Tablet/Desktop Layout (lg+) - Horizontal 2-column design */}
-            <div className="hidden lg:flex lg:items-center lg:gap-6 relative z-content">
+            {/* Tablet/Desktop Layout (md+) - Horizontal 2-column design */}
+            <div className="hidden md:flex md:items-center md:gap-6 relative z-content">
                 {/* Left: Day info + Next Action */}
                 <div className="flex-1 min-w-0">
                     {/* Day Header Row */}

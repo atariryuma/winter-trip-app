@@ -42,7 +42,7 @@ export function useSidebar() {
         expand,
         // CSS class helpers
         sidebarWidth: isCollapsed ? 'w-16' : 'w-64',
-        contentPadding: isCollapsed ? 'lg:pl-16' : 'lg:pl-64',
+        contentPadding: isCollapsed ? 'md:pl-16' : 'md:pl-64',
     };
 }
 

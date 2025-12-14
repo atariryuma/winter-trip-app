@@ -414,9 +414,9 @@ export default function TravelApp() {
                 </div>
             )}
 
-            {/* Sidebar (Desktop/Tablet) - Collapsible */}
+            {/* Sidebar (Desktop/Tablet/Foldable) - Collapsible */}
             <aside
-                className={`hidden lg:flex flex-col h-screen fixed left-0 top-0 border-r border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 z-fixed transition-all duration-200 ease-out ${
+                className={`hidden md:flex flex-col h-screen fixed left-0 top-0 border-r border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 z-fixed transition-all duration-200 ease-out ${
                     isSidebarCollapsed ? 'w-16' : 'w-64'
                 }`}
             >
@@ -514,14 +514,14 @@ export default function TravelApp() {
             </aside>
 
             {/* Main Content */}
-            <div className={`flex-1 min-h-screen pb-24 lg:pb-0 overflow-x-hidden transition-all duration-200 ease-out ${
-                isSidebarCollapsed ? 'lg:pl-16' : 'lg:pl-64'
+            <div className={`flex-1 min-h-screen pb-24 md:pb-0 overflow-x-hidden transition-all duration-200 ease-out ${
+                isSidebarCollapsed ? 'md:pl-16' : 'md:pl-64'
             }`}>
                 <div className="w-full h-full overflow-x-hidden">
 
                     {/* Mobile Header */}
                     <header
-                        className={`lg:hidden landscape-hide-header fixed top-0 left-0 right-0 z-sticky transition-all duration-300 pt-[env(safe-area-inset-top)] ${isScrolled
+                        className={`md:hidden landscape-hide-header fixed top-0 left-0 right-0 z-sticky transition-all duration-300 pt-[env(safe-area-inset-top)] ${isScrolled
                             ? 'bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-200 dark:border-slate-800 shadow-sm'
                             : 'bg-transparent'
                         } ${scrollDirection === 'down' && isScrolled ? '-translate-y-full' : 'translate-y-0'}`}
@@ -547,10 +547,10 @@ export default function TravelApp() {
 
                         {activeTab === 'timeline' && (
                             <PullToRefresh onRefresh={() => fetchData(false)} disabled={isEditMode}>
-                                <div className="pt-0 lg:pt-6 max-w-full mx-auto w-full pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
+                                <div className="pt-0 md:pt-6 max-w-full mx-auto w-full pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
 
-                                    {/* Mobile View */}
-                                    <div className="lg:hidden">
+                                    {/* Timeline View */}
+                                    <div>
                                         {/* Large Title */}
                                         <div className={`pt-[calc(4rem+env(safe-area-inset-top))] pb-2 px-4 sm:px-6 transition-all duration-300 ${isScrolled ? 'opacity-0 scale-95 translate-y-[-10px]' : 'opacity-100 scale-100 translate-y-0'}`}>
                                             <div className="flex items-center justify-between">
@@ -709,145 +709,14 @@ export default function TravelApp() {
                                             </div>
                                         </div>
                                     </div>
-
-                                    {/* Desktop View */}
-                                    <div className="hidden lg:block overflow-hidden">
-                                        <div className="px-8 pb-4">
-                                            <div className="flex items-center justify-between">
-                                                <div>
-                                                    <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight mb-1">
-                                                        TripPlanner
-                                                    </h1>
-                                                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                                                        {yearRange} • {itinerary.length} Days
-                                                    </p>
-                                                </div>
-                                                <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-600/20">
-                                                    <Plane className="text-white transform -rotate-45" size={20} />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="sticky top-0 z-sticky-content bg-gray-100/95 dark:bg-slate-900/95 backdrop-blur-sm px-6 py-2">
-                                            <DynamicSummary
-                                                day={selectedDay || itinerary[0]}
-                                                events={(() => {
-                                                    const targetDay = selectedDay || itinerary[0];
-                                                    if (!targetDay) return [];
-                                                    return [...(targetDay.events || [])].sort((a, b) => {
-                                                        const t1 = (a.time || '23:59').padStart(5, '0');
-                                                        const t2 = (b.time || '23:59').padStart(5, '0');
-                                                        return t1.localeCompare(t2);
-                                                    });
-                                                })()}
-                                                dayIdx={selectedDay ? itinerary.findIndex(d => d.id === selectedDay.id) : 0}
-                                                previousDayHotel={(() => {
-                                                    const targetDayIdx = selectedDay ? itinerary.findIndex(d => d.id === selectedDay.id) : 0;
-                                                    if (targetDayIdx <= 0) return null;
-                                                    const prevDay = itinerary[targetDayIdx - 1];
-                                                    return prevDay?.events.filter(e => e.category === 'hotel' || e.category === 'stay').pop();
-                                                })()}
-                                                onEditPlanned={handleEditEvent}
-                                                onDeleteDay={handleDeleteDay}
-                                                isEditMode={isEditMode}
-                                            />
-                                        </div>
-
-                                        <div className="flex gap-3 lg:gap-4 px-4 lg:px-6 overflow-x-auto pb-6 scrollbar-hide" style={{ height: 'calc(100vh - var(--desktop-header-offset))' }}>
-                                            {itinerary.map((day, dayIdx) => {
-                                                const daySortedEvents = [...(day.events || [])].sort((a, b) => {
-                                                    const t1 = (a.time || '23:59').padStart(5, '0');
-                                                    const t2 = (b.time || '23:59').padStart(5, '0');
-                                                    return t1.localeCompare(t2);
-                                                });
-
-                                                return (
-                                                    <div
-                                                        key={day.id}
-                                                        onClick={() => setSelectedDayId(day.id)}
-                                                        className={`flex-none w-[240px] xl:w-[320px] 2xl:w-[380px] bg-white dark:bg-slate-800 rounded-2xl border flex flex-col overflow-hidden shadow-sm cursor-pointer transition-all ${
-                                                            selectedDayId === day.id
-                                                                ? 'border-indigo-400 dark:border-indigo-500 ring-2 ring-indigo-200 dark:ring-indigo-900/50'
-                                                                : 'border-gray-200 dark:border-slate-700 hover:border-indigo-200 dark:hover:border-indigo-800'
-                                                        }`}
-                                                    >
-                                                        <div className={`px-4 py-3 border-b shrink-0 ${
-                                                            selectedDayId === day.id
-                                                                ? 'border-indigo-100 dark:border-indigo-900/50 bg-indigo-50 dark:bg-indigo-900/20'
-                                                                : 'border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/80'
-                                                        }`}>
-                                                            <div className="flex items-center justify-between">
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="px-2 py-1 rounded-lg bg-indigo-600 text-white text-xs font-bold">
-                                                                        Day {dayIdx + 1}
-                                                                    </span>
-                                                                    <span className="font-bold text-gray-800 dark:text-white text-sm">
-                                                                        {day.date}
-                                                                    </span>
-                                                                    <span className="text-xs text-gray-400">
-                                                                        {day.dayOfWeek}
-                                                                    </span>
-                                                                </div>
-                                                                <span className="text-xs text-gray-400">
-                                                                    {daySortedEvents.length}件
-                                                                </span>
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="flex-1 overflow-y-auto p-3 space-y-2">
-                                                            {daySortedEvents.map((event, index) => {
-                                                                const prevEvent = index > 0 ? daySortedEvents[index - 1] : null;
-                                                                const routeOrigin = prevEvent
-                                                                    ? (prevEvent.to || prevEvent.address || prevEvent.name)
-                                                                    : null;
-                                                                return (
-                                                                    <EventCard
-                                                                        key={event.id}
-                                                                        event={{ ...event, _routeOrigin: routeOrigin }}
-                                                                        isExpanded={expandedEventId === event.id}
-                                                                        onToggle={() => setExpandedEventId(
-                                                                            expandedEventId === event.id ? null : event.id
-                                                                        )}
-                                                                        isEditMode={isEditMode}
-                                                                        onEdit={(e) => {
-                                                                            setSelectedDayId(day.id);
-                                                                            handleEditEvent(e);
-                                                                        }}
-                                                                        onDelete={() => handleDeleteEvent(event.id)}
-                                                                        routeOrigin={routeOrigin}
-                                                                        compact
-                                                                    />
-                                                                );
-                                                            })}
-
-                                                            {isEditMode && (
-                                                                <button
-                                                                    onClick={() => {
-                                                                        setSelectedDayId(day.id);
-                                                                        const lastTime = daySortedEvents.length > 0 ? daySortedEvents[daySortedEvents.length - 1].time : '09:00';
-                                                                        const nextTime = toTimeStr(toMinutes(lastTime) + 60);
-                                                                        setEditItem({ type: 'activity', category: 'sightseeing', status: 'planned', time: nextTime, name: '' });
-                                                                        setModalOpen(true);
-                                                                    }}
-                                                                    className="w-full py-2 border-2 border-dashed border-gray-200 dark:border-slate-600 rounded-xl text-gray-400 hover:text-indigo-600 hover:border-indigo-400 transition-colors flex items-center justify-center gap-1 text-sm font-bold"
-                                                                >
-                                                                    <Plus size={14} /> 追加
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
                                 </div>
                             </PullToRefresh>
                         )}
 
                         {activeTab !== 'timeline' && activeTab !== 'settings' && (
                             <PullToRefresh onRefresh={() => fetchData(false)}>
-                                <main className="pt-[calc(4rem+env(safe-area-inset-top))] lg:pt-8 pb-32 lg:pb-8 pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] overflow-x-hidden">
-                                    <div className="max-w-full lg:max-w-7xl 2xl:max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 2xl:px-12 overflow-x-hidden">
+                                <main className="pt-[calc(4rem+env(safe-area-inset-top))] md:pt-8 pb-32 md:pb-8 pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] overflow-x-hidden">
+                                    <div className="max-w-full md:max-w-7xl 2xl:max-w-screen-2xl mx-auto px-4 sm:px-6 md:px-8 2xl:px-12 overflow-x-hidden">
                                         {activeTab === 'tickets' && <TicketList itinerary={itinerary} isScrolled={isScrolled} onEventClick={handleEditEvent} />}
                                         {activeTab === 'budget' && <BudgetView itinerary={itinerary} onForceReload={fetchData} isScrolled={isScrolled} />}
                                         {activeTab === 'packing' && <PackingList isScrolled={isScrolled} />}
@@ -857,8 +726,8 @@ export default function TravelApp() {
                         )}
 
                         {activeTab === 'settings' && (
-                            <main className="pt-[calc(4rem+env(safe-area-inset-top))] lg:pt-8 pb-32 lg:pb-8 pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] overflow-x-hidden">
-                                <div className="max-w-full lg:max-w-7xl 2xl:max-w-screen-2xl mx-auto w-full px-4 sm:px-6 lg:px-8 2xl:px-12 overflow-x-hidden">
+                            <main className="pt-[calc(4rem+env(safe-area-inset-top))] md:pt-8 pb-32 md:pb-8 pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] overflow-x-hidden">
+                                <div className="max-w-full md:max-w-7xl 2xl:max-w-screen-2xl mx-auto w-full px-4 sm:px-6 md:px-8 2xl:px-12 overflow-x-hidden">
                                     <SettingsView
                                         itinerary={itinerary}
                                         isDarkMode={isDarkMode}
@@ -874,7 +743,7 @@ export default function TravelApp() {
                     </Suspense>
 
                     {/* Bottom Nav (Mobile) */}
-                    <nav className={`lg:hidden landscape-hide-footer fixed bottom-0 left-0 right-0 z-fixed bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800 transition-transform duration-300 pb-[env(safe-area-inset-bottom)] ${scrollDirection === 'down' ? 'translate-y-full' : 'translate-y-0'}`}>
+                    <nav className={`md:hidden landscape-hide-footer fixed bottom-0 left-0 right-0 z-fixed bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800 transition-transform duration-300 pb-[env(safe-area-inset-bottom)] ${scrollDirection === 'down' ? 'translate-y-full' : 'translate-y-0'}`}>
                         <div className="flex justify-around items-center h-16 pt-1 pb-1 pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]">
                             {[
                                 { id: 'timeline', icon: Calendar },
@@ -900,7 +769,7 @@ export default function TravelApp() {
                     {activeTab === 'timeline' && (
                         <button
                             onClick={() => setIsEditMode(!isEditMode)}
-                            className={`lg:hidden fixed top-4 right-4 z-fixed bg-white dark:bg-slate-800 text-slate-500 dark:text-indigo-400 p-3 rounded-full shadow-lg border border-gray-100 dark:border-slate-700 transition-all duration-300 active:scale-95 ${isEditMode ? 'ring-2 ring-indigo-500 bg-indigo-50' : ''} ${scrollDirection === 'down' ? '-translate-y-[200%] opacity-0' : 'translate-y-0 opacity-100'}`}
+                            className={`md:hidden fixed top-4 right-4 z-fixed bg-white dark:bg-slate-800 text-slate-500 dark:text-indigo-400 p-3 rounded-full shadow-lg border border-gray-100 dark:border-slate-700 transition-all duration-300 active:scale-95 ${isEditMode ? 'ring-2 ring-indigo-500 bg-indigo-50' : ''} ${scrollDirection === 'down' ? '-translate-y-[200%] opacity-0' : 'translate-y-0 opacity-100'}`}
                             aria-label="編集モード切り替え"
                         >
                             {isEditMode ? <Save size={20} className="text-indigo-600" /> : <Edit3 size={20} />}

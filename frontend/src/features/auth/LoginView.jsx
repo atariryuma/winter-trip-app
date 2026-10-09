@@ -6,20 +6,26 @@ import { Spinner } from '../../ui/atoms';
 export default function LoginView({ onLogin }) {
     const [code, setCode] = useState('');
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(false);
+    // null | 'invalid' | 'network'
+    const [error, setError] = useState(null);
 
     const submit = async (e) => {
         e.preventDefault();
         if (code.length < 4 || loading) return;
         setLoading(true);
-        setError(false);
-        const ok = await api.validatePasscode(code);
-        setLoading(false);
-        if (ok) {
-            onLogin();
-        } else {
-            setError(true);
+        setError(null);
+        try {
+            if (await api.validatePasscode(code)) {
+                onLogin();
+                return;
+            }
+            setError('invalid');
             setCode('');
+        } catch {
+            // Keep the code so the user can just retry.
+            setError('network');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -44,7 +50,7 @@ export default function LoginView({ onLogin }) {
                             value={code}
                             onChange={(e) => {
                                 setCode(e.target.value);
-                                setError(false);
+                                setError(null);
                             }}
                             className="flex-1 min-w-0 bg-transparent px-5 py-4 text-2xl tracking-[0.5em] outline-none placeholder:text-white/20 placeholder:tracking-normal placeholder:text-base"
                             placeholder="4桁以上"
@@ -58,7 +64,10 @@ export default function LoginView({ onLogin }) {
                             {loading ? <Spinner className="w-5 h-5" /> : <ArrowRight size={20} />}
                         </button>
                     </div>
-                    <p className="mt-3 h-5 text-sm text-rose-300" role="alert">{error ? '合言葉が違います' : ''}</p>
+                    <p className="mt-3 min-h-5 text-sm text-rose-300" role="alert">
+                        {error === 'invalid' && '合言葉が違います'}
+                        {error === 'network' && 'サーバーに接続できませんでした。通信環境を確認して、もう一度お試しください'}
+                    </p>
                 </form>
             </div>
         </div>

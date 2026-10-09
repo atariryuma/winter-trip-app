@@ -7,9 +7,18 @@
 
   <!-- PWA -->
   <link rel="manifest" href="manifest.json">
+  <!-- Tints the opaque iOS status bar; useTheme() keeps it in sync with light/dark -->
   <meta name="theme-color" content="#f1f5f9">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <!--
+    Keep "default" (do not switch to "black-translucent").
+    With black-translucent the page runs under the status bar, and since iOS 26
+    the Home Screen app lays its Liquid Glass edge blur over the top of the page
+    (there is no CSS/meta opt-out). With "default" the web view starts below an
+    opaque status bar, so nothing is blurred. iOS reads this tag only when the
+    app is added to the Home Screen, so existing installs must be re-added.
+  -->
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="TripPlanner">
   <link rel="apple-touch-icon" href="icons/icon.svg">

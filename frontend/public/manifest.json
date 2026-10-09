@@ -1,12 +1,12 @@
 {
-    "name": "TripPlanner",
+    "name": "TripPlanner - 家族の旅のしおり",
     "short_name": "TripPlanner",
-    "description": "家族旅行の旅程管理アプリ",
+    "description": "家族の旅のしおり - 予定・予約・持ち物・お金をみんなで共有",
     "start_url": "/winter-trip-app/",
     "scope": "/winter-trip-app/",
     "display": "standalone",
-    "background_color": "#1e40af",
-    "theme_color": "#2563EB",
+    "background_color": "#0f172a",
+    "theme_color": "#0f172a",
     "orientation": "portrait",
     "icons": [
         {
@@ -16,9 +16,6 @@
             "purpose": "any maskable"
         }
     ],
-    "categories": [
-        "travel",
-        "lifestyle"
-    ],
+    "categories": ["travel", "lifestyle"],
     "lang": "ja"
 }

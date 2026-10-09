@@ -1,36 +1,19 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useState } from 'react';
 
 const AUTH_STORAGE_KEY = 'tripapp_authenticated';
 
-/**
- * Custom hook for authentication state management
- */
 export function useAuth() {
-    const [auth, setAuth] = useState(false);
-
-    // Check persistent auth on mount
-    useEffect(() => {
-        const isAuthenticated = localStorage.getItem(AUTH_STORAGE_KEY) === 'true';
-        if (isAuthenticated) {
-            setAuth(true);
-        }
-    }, []);
+    const [auth, setAuth] = useState(() => localStorage.getItem(AUTH_STORAGE_KEY) === 'true');
 
     const login = useCallback(() => {
-        setAuth(true);
         localStorage.setItem(AUTH_STORAGE_KEY, 'true');
+        setAuth(true);
     }, []);
 
     const logout = useCallback(() => {
-        setAuth(false);
         localStorage.removeItem(AUTH_STORAGE_KEY);
+        setAuth(false);
     }, []);
 
-    return {
-        auth,
-        login,
-        logout,
-    };
+    return { auth, login, logout };
 }
-
-export default useAuth;

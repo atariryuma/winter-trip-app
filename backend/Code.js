@@ -56,6 +56,28 @@ function createApiResponse(status, data = null, error = null) {
         .setMimeType(ContentService.MimeType.JSON);
 }
 
+/**
+ * Locate an event row (0-based index into data rows starting at sheet row 2).
+ * `rowHint` is the sheet row the client last saw; it is used only when the row
+ * still holds the same date + name, which disambiguates events that share a
+ * name on the same day. Falls back to the first date + name match.
+ */
+function findEventIndex(data, date, name, rowHint) {
+    const hint = Number(rowHint) - 2;
+    if (hint >= 0 && hint < data.length &&
+        toString(data[hint][0]) === date && toString(data[hint][3]) === name) {
+        return hint;
+    }
+    return data.findIndex(row => toString(row[0]) === date && toString(row[3]) === name);
+}
+
+/** Invalidate the itinerary cache and record the time of the last edit. */
+function markUpdated() {
+    CacheService.getScriptCache().remove('itinerary_json');
+    const timestamp = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy/MM/dd HH:mm');
+    PropertiesService.getScriptProperties().setProperty('lastUpdate', timestamp);
+}
+
 function handleGetData() {
     try {
         const data = getItineraryData();
@@ -305,7 +327,7 @@ function handleUploadEvents(e) {
             sheet.getRange(2, 1, dataRows.length, dataRows[0].length).setValues(dataRows);
         }
 
-        CacheService.getScriptCache().remove('itinerary_json');
+        markUpdated();
 
         return createApiResponse('success', {
             uploaded: dataRows.length,
@@ -828,21 +850,22 @@ function handleBatchUpdateEvents(e) {
         let modified = false;
 
         // 2. Modify in memory
+        const notFound = [];
         updates.forEach(update => {
-            const { date, eventId, eventData } = update;
+            const { date, eventId, eventData, row } = update;
 
-            // Find the row index
-            const rowIndex = allData.findIndex((row) => {
-                const rowDate = toString(row[0]);
-                const rowName = toString(row[3]);
-                return rowDate === date && (eventId ? rowName === eventId : true);
-            });
+            // An update without a name would silently hit the first event of the day
+            if (!eventId) {
+                notFound.push(date);
+                return;
+            }
+            const rowIndex = findEventIndex(allData, date, eventId, row);
 
             if (rowIndex !== -1) {
-                // Update the event data in memory
-                const budget = eventData.budgetAmount
-                    ? `${eventData.budgetAmount}/${eventData.budgetPaidBy || ''}`
-                    : '';
+                // Only touch the budget column when the client sent budget fields
+                const budget = 'budgetAmount' in eventData
+                    ? (eventData.budgetAmount ? `${eventData.budgetAmount}/${eventData.budgetPaidBy || ''}` : '')
+                    : allData[rowIndex][11];
 
                 // Use !== undefined check for all fields to allow clearing with empty strings
                 allData[rowIndex] = [
@@ -857,10 +880,12 @@ function handleBatchUpdateEvents(e) {
                     eventData.status !== undefined ? eventData.status : allData[rowIndex][8],
                     eventData.bookingRef !== undefined ? eventData.bookingRef : allData[rowIndex][9],
                     eventData.details !== undefined ? eventData.details : allData[rowIndex][10],
-                    budget !== undefined ? budget : allData[rowIndex][11]
+                    budget
                 ];
                 updateCount++;
                 modified = true;
+            } else {
+                notFound.push(`${date} ${eventId}`);
             }
         });
 
@@ -869,10 +894,12 @@ function handleBatchUpdateEvents(e) {
             eventsSheet.getRange(2, 1, allData.length, 12).setValues(allData);
         }
 
-        // Invalidate cache
-        CacheService.getScriptCache().remove('itinerary_json');
+        if (modified) markUpdated();
 
-        return createApiResponse('success', { updated: updateCount });
+        if (updateCount === 0 && notFound.length > 0) {
+            return createApiResponse('error', null, { message: `Event not found: ${notFound.join(', ')}` });
+        }
+        return createApiResponse('success', { updated: updateCount, notFound });
     } catch (error) {
         return createApiResponse('error', null, { message: error.toString() });
     }
@@ -920,8 +947,7 @@ function handleAddEvent(e) {
         // Append row (fast operation)
         eventsSheet.appendRow(rowData);
 
-        // Invalidate cache
-        CacheService.getScriptCache().remove('itinerary_json');
+        markUpdated();
 
         return createApiResponse('success', { message: 'Event added' });
     } catch (error) {
@@ -955,19 +981,15 @@ function handleDeleteEvent(e) {
 
         // Find the row to delete
         const data = eventsSheet.getRange(2, 1, lastRow - 1, 4).getValues();
+        const index = findEventIndex(data, date, eventId, e.parameter.row);
 
-        for (let i = 0; i < data.length; i++) {
-            if (toString(data[i][0]) === date && toString(data[i][3]) === eventId) {
-                eventsSheet.deleteRow(i + 2);
-
-                // Invalidate cache
-                CacheService.getScriptCache().remove('itinerary_json');
-
-                return createApiResponse('success', { message: 'Event deleted' });
-            }
+        if (index === -1) {
+            return createApiResponse('error', null, { message: 'Event not found' });
         }
 
-        return createApiResponse('error', null, { message: 'Event not found' });
+        eventsSheet.deleteRow(index + 2);
+        markUpdated();
+        return createApiResponse('success', { message: 'Event deleted' });
     } catch (error) {
         return createApiResponse('error', null, { message: error.toString() });
     }
@@ -1007,8 +1029,7 @@ function handleDeleteEventsByDate(e) {
             }
         }
 
-        // Invalidate cache
-        CacheService.getScriptCache().remove('itinerary_json');
+        markUpdated();
 
         return createApiResponse('success', { message: `Deleted ${deletedCount} events`, deletedCount });
     } catch (error) {
@@ -1022,7 +1043,7 @@ function handleDeleteEventsByDate(e) {
 function handleMoveEvent(e) {
     try {
         const eventData = JSON.parse(e.parameter.eventData || e.postData?.contents);
-        const { originalDate, eventId, newDate, newStartTime, newEndTime } = eventData;
+        const { originalDate, eventId, newDate, newStartTime, newEndTime, row } = eventData;
 
         if (!originalDate || !eventId || !newDate) {
             return createApiResponse('error', null, { message: 'originalDate, eventId, and newDate are required' });
@@ -1043,28 +1064,25 @@ function handleMoveEvent(e) {
         // Find the event to update (columns: date, startTime, endTime, name)
         const data = eventsSheet.getRange(2, 1, lastRow - 1, 4).getValues();
 
-        for (let i = 0; i < data.length; i++) {
-            if (toString(data[i][0]) === originalDate && toString(data[i][3]) === eventId) {
-                const rowIndex = i + 2;
+        const index = findEventIndex(data, originalDate, eventId, row);
+        if (index !== -1) {
+            const rowIndex = index + 2;
 
-                // Update date (column 1)
-                eventsSheet.getRange(rowIndex, 1).setValue(newDate);
+            // Update date (column 1)
+            eventsSheet.getRange(rowIndex, 1).setValue(newDate);
 
-                // Update start time if provided (column 5)
-                if (newStartTime !== undefined && newStartTime !== null) {
-                    eventsSheet.getRange(rowIndex, 5).setValue(newStartTime);
-                }
-
-                // Update end time if provided (column 6)
-                if (newEndTime !== undefined && newEndTime !== null) {
-                    eventsSheet.getRange(rowIndex, 6).setValue(newEndTime);
-                }
-
-                // Invalidate cache
-                CacheService.getScriptCache().remove('itinerary_json');
-
-                return createApiResponse('success', { message: 'Event moved successfully' });
+            // Update start time if provided (column 5)
+            if (newStartTime !== undefined && newStartTime !== null) {
+                eventsSheet.getRange(rowIndex, 5).setValue(newStartTime);
             }
+
+            // Update end time if provided (column 6)
+            if (newEndTime !== undefined && newEndTime !== null) {
+                eventsSheet.getRange(rowIndex, 6).setValue(newEndTime);
+            }
+
+            markUpdated();
+            return createApiResponse('success', { message: 'Event moved successfully' });
         }
 
         return createApiResponse('error', null, { message: 'Event not found' });

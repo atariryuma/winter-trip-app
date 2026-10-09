@@ -74,13 +74,10 @@ const cached = async (prefix, query, ttl, load) => {
 const api = {
     getData: () => get({ action: 'getData' }, 'データを取得できませんでした'),
 
+    // Throws when the server can't be reached, so callers can tell that apart from a wrong code.
     validatePasscode: async (code) => {
-        try {
-            const data = await get({ action: 'validatePasscode', code });
-            return data?.valid === true;
-        } catch {
-            return false;
-        }
+        const data = await get({ action: 'validatePasscode', code }, 'サーバーに接続できませんでした');
+        return data?.valid === true;
     },
 
     // --- Events ------------------------------------------------------------

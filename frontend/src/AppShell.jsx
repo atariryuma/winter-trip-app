@@ -110,7 +110,8 @@ export default function AppShell({ theme, setTheme, onLogout }) {
                 </div>
             </aside>
 
-            {/* Header */}
+            {/* Header. Keep it sticky at top-0 with a background: WebKit skips the iOS 26+
+                edge blur when such a box covers the top edge (see the status-bar note in index.html). */}
             <header className="sticky top-0 z-sticky bg-slate-100/90 dark:bg-slate-950/90 backdrop-blur pt-[env(safe-area-inset-top)]">
                 <div className="h-14 flex items-center gap-3 px-4 sm:px-6">
                     <div className="flex-1 min-w-0">

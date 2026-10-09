@@ -1,4 +1,4 @@
-const CACHE_NAME = 'winter-trip-v2';
+const CACHE_NAME = 'winter-trip-v3';
 const ASSETS_TO_CACHE = [
     '/winter-trip-app/',
     '/winter-trip-app/index.html'

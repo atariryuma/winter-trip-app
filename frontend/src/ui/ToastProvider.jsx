@@ -7,7 +7,7 @@ const STYLES = {
     success: { icon: CheckCircle2, iconCls: 'text-emerald-400' },
     warning: { icon: AlertTriangle, iconCls: 'text-amber-400' },
     error: { icon: XCircle, iconCls: 'text-rose-400' },
-    info: { icon: Info, iconCls: 'text-sky-400' },
+    info: { icon: Info, iconCls: 'text-accent-400' },
 };
 
 const DEFAULT_DURATION = { error: 6000, warning: 4500, success: 3000, info: 3000 };
@@ -55,7 +55,7 @@ export default function ToastProvider({ children }) {
                                             t.action.onClick();
                                             dismissToast(t.id);
                                         }}
-                                        className="shrink-0 px-3 py-1.5 rounded-xl text-sm font-bold text-sky-300 hover:bg-white/10"
+                                        className="shrink-0 px-3 py-1.5 rounded-xl text-sm font-bold text-accent-300 hover:bg-white/10"
                                     >
                                         {t.action.label}
                                     </button>

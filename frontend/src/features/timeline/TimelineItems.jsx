@@ -27,7 +27,7 @@ export function EventRow({ event, state, onOpen }) {
             <button
                 onClick={() => onOpen(event)}
                 className={`flex-1 min-w-0 my-1.5 text-left rounded-3xl bg-white dark:bg-slate-900 p-4 ring-1 transition active:scale-[0.99] ${state === 'current'
-                    ? 'ring-2 ring-sky-500 shadow-lg shadow-sky-500/10'
+                    ? 'ring-2 ring-accent-500 shadow-lg shadow-accent-500/10'
                     : 'ring-slate-200/70 dark:ring-slate-800 hover:ring-slate-300 dark:hover:ring-slate-700'
                 }`}
             >
@@ -98,7 +98,7 @@ export function GapRow({ from, to, available, onInsert, label }) {
                 {onInsert && (
                     <button
                         onClick={onInsert}
-                        className="relative my-auto w-6 h-6 -mx-1.5 rounded-full bg-slate-100 dark:bg-slate-900 text-slate-400 hover:text-sky-600 hover:bg-sky-50 ring-1 ring-slate-200 dark:ring-slate-800 flex items-center justify-center"
+                        className="relative my-auto w-6 h-6 -mx-1.5 rounded-full bg-slate-100 dark:bg-slate-900 text-slate-400 hover:text-accent-700 hover:bg-accent-50 ring-1 ring-slate-200 dark:ring-slate-800 flex items-center justify-center"
                         aria-label="ここに予定を追加"
                     >
                         <Plus size={14} />
@@ -137,11 +137,11 @@ export function DepartureRow({ stay, firstEvent, firstPlace }) {
 export function NowMarker({ now }) {
     return (
         <div className="flex items-center gap-3 py-1" aria-label="現在時刻">
-            <p className={`${RAIL} text-right text-xs font-black tabular-nums text-sky-600 dark:text-sky-400`}>
+            <p className={`${RAIL} text-right text-xs font-black tabular-nums text-accent-700 dark:text-accent-400`}>
                 {toTime(now.getHours() * 60 + now.getMinutes())}
             </p>
-            <span className="w-3 h-3 rounded-full bg-sky-500 ring-4 ring-sky-500/20" />
-            <span className="flex-1 h-0.5 bg-sky-500/60 rounded-full" />
+            <span className="w-3 h-3 rounded-full bg-accent-500 ring-4 ring-accent-500/20" />
+            <span className="flex-1 h-0.5 bg-accent-500/60 rounded-full" />
         </div>
     );
 }

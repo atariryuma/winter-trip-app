@@ -7,7 +7,8 @@ import { formatYen } from '../../lib/trip';
 import { useToast } from '../../ui/contexts';
 import { useLocalStorage } from '../../hooks/useLocalStorage';
 import { SectionTitle, Spinner } from '../../ui/atoms';
-import { SHOPPING_KEY } from '../../lib/keys';
+import { shoppingKey } from '../../lib/keys';
+import { useTrip } from '../../store/context';
 
 const PACKING_CATEGORIES = [
     { id: 'documents', label: '書類・貴重品', icon: FileText },
@@ -253,7 +254,7 @@ function PackingList() {
 
     return (
         <>
-            <ProgressCard done={done} total={items.length} label="準備できた持ち物（家族で共有）" />
+            <ProgressCard done={done} total={items.length} label="準備できた持ち物（家族で共有・全旅行で共通）" />
             <AddRow categories={PACKING_CATEGORIES} onAdd={add} placeholder="持ち物を追加（例: モバイルバッテリー）" />
             {groups.map((g) => (
                 <section key={g.id}>
@@ -285,7 +286,8 @@ function PackingList() {
 }
 
 function ShoppingList() {
-    const [items, setItems] = useLocalStorage(SHOPPING_KEY, []);
+    const { currentTrip } = useTrip();
+    const [items, setItems] = useLocalStorage(shoppingKey(currentTrip?.id), []);
     const [recipient, setRecipient] = useState('');
     const [price, setPrice] = useState('');
 
@@ -319,7 +321,7 @@ function ShoppingList() {
             <AddRow
                 categories={SHOPPING_CATEGORIES}
                 onAdd={add}
-                placeholder="買う物を追加（例: さるぼぼ）"
+                placeholder="買う物を追加（例: ご当地のお菓子）"
                 extra={(
                     <div className="grid grid-cols-2 gap-2 mt-2">
                         <input value={recipient} onChange={(e) => setRecipient(e.target.value)} placeholder="渡す相手（任意）" className="field-input !py-2 !text-sm" aria-label="渡す相手" />

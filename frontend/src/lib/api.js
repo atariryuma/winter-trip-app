@@ -103,10 +103,22 @@ const api = {
     deleteEvent: ({ date, name, row }, { keepalive = false } = {}) =>
         mutateGet({ action: 'deleteEvent', date, eventId: name, ...(row ? { row } : {}) }, '削除できませんでした', { keepalive }),
 
-    deleteEventsByDate: (date) =>
-        mutateGet({ action: 'deleteEventsByDate', date }, 'この日を削除できませんでした'),
+    deleteEventsByDate: (date, tripId) =>
+        mutateGet({ action: 'deleteEventsByDate', date, ...(tripId ? { tripId } : {}) }, 'この日を削除できませんでした'),
 
-    uploadEvents: (csv) => post({ action: 'uploadEvents', data: csv }, 'CSVを取り込めませんでした'),
+    // With tripId (API v2) only that trip is replaced; without it the whole sheet is.
+    uploadEvents: (csv, tripId) =>
+        post({ action: 'uploadEvents', data: csv, ...(tripId ? { tripId } : {}) }, 'CSVを取り込めませんでした'),
+
+    // --- Trips (API v2) -------------------------------------------------------
+
+    saveTrip: (trip) => post({ action: 'saveTrip', trip: JSON.stringify(trip) }, '旅行を保存できませんでした'),
+
+    deleteTrip: (id) => post({ action: 'deleteTrip', id }, '旅行を削除できませんでした'),
+
+    /** changes: [{ from, to }] date keys, applied to one trip's events */
+    renameDates: (tripId, changes) =>
+        post({ action: 'renameDates', tripId, changes: JSON.stringify(changes) }, '日付を変更できませんでした'),
 
     // --- Packing list --------------------------------------------------------
 

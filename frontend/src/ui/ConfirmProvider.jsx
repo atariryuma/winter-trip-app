@@ -32,7 +32,7 @@ export default function ConfirmProvider({ children }) {
                     </button>
                     <button
                         onClick={() => settle(true)}
-                        className={`flex-1 py-3 rounded-2xl font-bold text-white ${request?.destructive ? 'bg-rose-600' : 'bg-sky-600'}`}
+                        className={`flex-1 py-3 rounded-2xl font-bold text-white ${request?.destructive ? 'bg-rose-600' : 'bg-accent-700'}`}
                     >
                         {request?.confirmLabel || 'OK'}
                     </button>

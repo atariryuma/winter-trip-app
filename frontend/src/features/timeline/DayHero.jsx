@@ -27,12 +27,12 @@ export default function DayHero({ day, prevStay, now, onDeleteDay, onOpenEvent }
     const next = isToday ? plan.find((e) => (toMinutes(e.time) ?? -1) > nowMin) : null;
 
     return (
-        <section className="relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-slate-900 via-slate-800 to-sky-900 text-white p-5 shadow-xl shadow-slate-900/10">
-            <div className="absolute -top-16 -right-10 w-48 h-48 rounded-full bg-sky-400/20 blur-3xl" aria-hidden />
+        <section className="relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-slate-900 via-slate-800 to-accent-900 text-white p-5 shadow-xl shadow-slate-900/10">
+            <div className="absolute -top-16 -right-10 w-48 h-48 rounded-full bg-accent-400/20 blur-3xl" aria-hidden />
             <div className="relative flex items-start justify-between gap-3">
                 <div>
-                    <p className="text-xs font-bold tracking-[0.2em] text-sky-200/80">DAY {day.index + 1}</p>
-                    <h2 className="text-2xl font-black mt-0.5">{formatDateJa(day.fullDate)}</h2>
+                    <p className="text-xs font-bold tracking-[0.2em] text-accent-200/80">DAY {day.index + 1}</p>
+                    <h2 className="text-2xl font-black mt-0.5">{formatDateJa(day.fullDate, { withYear: day.fullDate.getFullYear() !== now.getFullYear() })}</h2>
                 </div>
                 <div className="relative">
                     <button
@@ -64,7 +64,7 @@ export default function DayHero({ day, prevStay, now, onDeleteDay, onOpenEvent }
                     onClick={() => onOpenEvent(current || next)}
                     className="relative mt-4 w-full text-left rounded-2xl bg-white/10 hover:bg-white/15 px-4 py-3"
                 >
-                    <p className="text-[11px] font-bold text-sky-200">{current ? 'いまの予定' : '次の予定'}</p>
+                    <p className="text-[11px] font-bold text-accent-200">{current ? 'いまの予定' : '次の予定'}</p>
                     <p className="font-bold truncate">
                         <span className="tabular-nums mr-2">{(current || next).time}</span>
                         {eventTitle(current || next)}

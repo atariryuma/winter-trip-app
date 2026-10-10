@@ -125,7 +125,7 @@ export const parseDurationText = (text) => {
 };
 
 // ---------------------------------------------------------------------------
-// Dates — the sheet stores "M/D" without a year
+// Dates — keys are "2027/8/10", or "8/10" for rows saved before years were kept
 // ---------------------------------------------------------------------------
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
@@ -133,91 +133,175 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 
-const parseMonthDay = (dateStr) => {
-    const [month, day] = String(dateStr).split('/').map(Number);
-    return { month, day };
+export const parseDateKey = (key) => {
+    const parts = String(key).split('/').map(Number);
+    return parts.length === 3
+        ? { year: parts[0], month: parts[1], day: parts[2] }
+        : { year: null, month: parts[0], day: parts[1] };
 };
 
-/**
- * Assign real dates to the "M/D" strings of a trip, in order.
- * The first day gets the earliest year that is not more than ~4 months in the
- * past, so an upcoming or ongoing trip resolves correctly across New Year.
- * Following days roll over to the next year when the month goes backwards.
- */
-export const resolveTripDates = (dateStrings, today = new Date()) => {
-    const result = {};
-    if (dateStrings.length === 0) return result;
-    const floor = startOfDay(today).getTime() - 120 * DAY_MS;
-    const first = parseMonthDay(dateStrings[0]);
-    let year = today.getFullYear() - 1;
-    while (new Date(year, first.month - 1, first.day).getTime() < floor) year += 1;
+export const hasYear = (key) => parseDateKey(key).year !== null;
 
-    let prevMonth = first.month;
-    dateStrings.forEach((str) => {
-        const { month, day } = parseMonthDay(str);
-        if (month < prevMonth) year += 1;
-        prevMonth = month;
-        result[str] = new Date(year, month - 1, day);
+/** Date key for the sheet. Without `withYear` (older backends) it is "M/D". */
+export const toDateKey = (date, withYear = true) =>
+    `${withYear ? `${date.getFullYear()}/` : ''}${date.getMonth() + 1}/${date.getDate()}`;
+
+/** Date for a key that carries a year, else null. */
+export const dateFromKey = (key) => {
+    const { year, month, day } = parseDateKey(key);
+    return year && month && day ? new Date(year, month - 1, day) : null;
+};
+
+export const isoDate = (date) =>
+    `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+
+export const fromIsoDate = (iso) => {
+    const [y, m, d] = String(iso).split('-').map(Number);
+    return y && m && d ? new Date(y, m - 1, d) : null;
+};
+
+// Position in a leap reference year, so 2/29 has a slot.
+const dayOfYear = (month, day) => Math.round((new Date(2000, month - 1, day) - new Date(2000, 0, 1)) / DAY_MS);
+
+/**
+ * Resolve the date keys of one trip to real dates.
+ * Keys with a year are exact. Year-less legacy keys are treated as one
+ * contiguous trip: it starts right after the largest gap in the calendar (so
+ * 12/30→1/2 and 6/29→7/2 both come out in order), and it is anchored to the
+ * year of the trip's dated keys, or else to the first occurrence that is not
+ * more than ~4 months in the past.
+ */
+export const resolveDates = (keys, today = new Date()) => {
+    const result = {};
+    const legacy = [];
+    new Set(keys).forEach((key) => {
+        const { year, month, day } = parseDateKey(key);
+        if (year) result[key] = new Date(year, month - 1, day);
+        else if (month && day) legacy.push(key);
+    });
+    if (legacy.length === 0) return result;
+
+    const pos = (key) => {
+        const { month, day } = parseDateKey(key);
+        return dayOfYear(month, day);
+    };
+    const sorted = legacy.sort((a, b) => pos(a) - pos(b));
+    let startIndex = 0;
+    let widest = -1;
+    sorted.forEach((key, i) => {
+        const prev = sorted[(i - 1 + sorted.length) % sorted.length];
+        const gap = sorted.length === 1 ? 366 : (pos(key) - pos(prev) + 366) % 366;
+        if (gap > widest) {
+            widest = gap;
+            startIndex = i;
+        }
+    });
+    const ordered = [...sorted.slice(startIndex), ...sorted.slice(0, startIndex)];
+
+    const first = parseDateKey(ordered[0]);
+    const at = (y) => new Date(y, first.month - 1, first.day);
+    const dated = Object.values(result).sort((a, b) => a - b);
+    let year;
+    if (dated.length > 0) {
+        const ref = dated[0].getFullYear();
+        year = [ref - 1, ref, ref + 1].reduce((best, y) =>
+            (Math.abs(at(y) - dated[0]) < Math.abs(at(best) - dated[0]) ? y : best));
+    } else {
+        const floor = startOfDay(today).getTime() - 120 * DAY_MS;
+        year = today.getFullYear() - 1;
+        while (at(year).getTime() < floor) year += 1;
+    }
+
+    let prev = null;
+    ordered.forEach((key) => {
+        const { month, day } = parseDateKey(key);
+        let date = new Date(year, month - 1, day);
+        if (prev && date < prev) {
+            year += 1;
+            date = new Date(year, month - 1, day);
+        }
+        result[key] = date;
+        prev = date;
     });
     return result;
 };
 
-// Chronological order of "M/D" strings for a trip that may span New Year.
-export const sortDateStrings = (dateStrings) => {
-    const unique = [...new Set(dateStrings)];
-    const late = unique.filter((d) => parseMonthDay(d).month >= 7);
-    const early = unique.filter((d) => parseMonthDay(d).month < 7);
-    const byMonthDay = (a, b) => {
-        const pa = parseMonthDay(a);
-        const pb = parseMonthDay(b);
-        return pa.month - pb.month || pa.day - pb.day;
-    };
-    // Trips that cross New Year list the autumn/winter months first.
-    if (late.length && early.length) return [...late.sort(byMonthDay), ...early.sort(byMonthDay)];
-    return unique.sort(byMonthDay);
-};
-
-export const toDateString = (date) => `${date.getMonth() + 1}/${date.getDate()}`;
 export const weekdayOf = (date) => WEEKDAYS[date.getDay()];
 export const daysBetween = (from, to) => Math.round((startOfDay(to) - startOfDay(from)) / DAY_MS);
 export const isSameDay = (a, b) => daysBetween(a, b) === 0;
+export const addDays = (date, n) => new Date(date.getFullYear(), date.getMonth(), date.getDate() + n);
 
 export const formatDateJa = (date, { withYear = false } = {}) =>
     `${withYear ? `${date.getFullYear()}年` : ''}${date.getMonth() + 1}月${date.getDate()}日(${weekdayOf(date)})`;
+
+export const formatShortDate = (date) => `${date.getMonth() + 1}/${date.getDate()}(${weekdayOf(date)})`;
+
+export const formatRange = (start, end, { withYear = true } = {}) => {
+    if (!start) return '';
+    const y = withYear ? `${start.getFullYear()}/` : '';
+    if (!end || isSameDay(start, end)) return `${y}${formatShortDate(start)}`;
+    return `${y}${formatShortDate(start)} – ${formatShortDate(end)}`;
+};
 
 // ---------------------------------------------------------------------------
 // Trip shaping
 // ---------------------------------------------------------------------------
 
-/** Normalise raw server days into the shape the UI works with. */
-export const buildTrip = (rawDays, today = new Date()) => {
-    const order = sortDateStrings(rawDays.map((d) => d.date));
-    const dates = resolveTripDates(order, today);
-    const byDate = Object.fromEntries(rawDays.map((d) => [d.date, d]));
-    return order.map((dateStr, index) => {
-        const raw = byDate[dateStr];
-        const date = dates[dateStr];
-        return {
-            id: raw.id || `day-${dateStr.replace('/', '-')}`,
-            date: dateStr,
-            index,
-            fullDate: date,
-            weekday: weekdayOf(date),
-            events: [...(raw.events || [])].sort(compareByTime),
-        };
+/**
+ * Turn one trip's events into days.
+ * @param entries [{ key, event }] — `key` is the event's date key in the sheet
+ * Days are keyed by calendar date; if a legacy "M/D" key and a "yyyy/M/d" key
+ * land on the same date they become one day. `date` is the preferred key for
+ * new events on that day (the one with a year), `keys` lists them all.
+ */
+export const buildDays = (entries, today = new Date()) => {
+    const dates = resolveDates(entries.map((e) => e.key), today);
+    const byIso = new Map();
+    entries.forEach(({ key, event }) => {
+        const fullDate = dates[key];
+        if (!fullDate) return;
+        const iso = isoDate(fullDate);
+        if (!byIso.has(iso)) byIso.set(iso, { iso, fullDate, keys: [], events: [] });
+        const day = byIso.get(iso);
+        if (!day.keys.includes(key)) day.keys.push(key);
+        day.events.push(event);
     });
+    return [...byIso.values()]
+        .sort((a, b) => a.fullDate - b.fullDate)
+        .map((d, index) => ({
+            id: `day-${d.iso}`,
+            date: d.keys.find(hasYear) || d.keys[0],
+            keys: d.keys,
+            index,
+            fullDate: d.fullDate,
+            weekday: weekdayOf(d.fullDate),
+            events: d.events.sort(compareByTime),
+        }));
 };
 
-export const tripPhase = (days, now = new Date()) => {
-    if (days.length === 0) return { phase: 'empty' };
-    const first = days[0].fullDate;
-    const last = days[days.length - 1].fullDate;
+/**
+ * Where we are relative to a trip: before / during / after.
+ * Uses the days if there are any, else the trip's planned start date.
+ */
+export const tripPhase = (days, now = new Date(), plannedStart = null) => {
+    const first = days[0]?.fullDate || plannedStart;
+    if (!first) return { phase: 'empty' };
+    const last = days[days.length - 1]?.fullDate || first;
     const untilStart = daysBetween(now, first);
     if (untilStart > 0) return { phase: 'before', daysUntil: untilStart };
     const sinceEnd = daysBetween(last, now);
     if (sinceEnd > 0) return { phase: 'after', daysSince: sinceEnd };
     const todayIndex = days.findIndex((d) => isSameDay(d.fullDate, now));
-    return { phase: 'during', todayIndex, dayNumber: todayIndex + 1 };
+    return { phase: 'during', todayIndex, dayNumber: daysBetween(first, now) + 1 };
+};
+
+export const phaseLabel = (phase) => {
+    switch (phase?.phase) {
+        case 'before': return phase.daysUntil === 1 ? 'いよいよ明日出発' : `出発まであと${phase.daysUntil}日`;
+        case 'during': return phase.dayNumber > 0 ? `旅行中・${phase.dayNumber}日目` : '旅行中';
+        case 'after': return 'おかえりなさい';
+        default: return '日程未定';
+    }
 };
 
 /** The ordered stops of a day, for the "route" summary and the Maps link. */
@@ -253,8 +337,10 @@ export const mapsDirectionsUrl = (stops) => {
 
 export const formatYen = (n) => `¥${Math.round(n || 0).toLocaleString('ja-JP')}`;
 
-/** Row number hint for the backend; ids look like "e-12-28-5" (5 = data index). */
+/** Sheet row of an event, so the backend can tell same-named events apart. */
 export const rowHint = (eventId) => {
-    const m = /^e-\d+-\d+-(\d+)$/.exec(eventId || '');
-    return m ? Number(m[1]) + 2 : undefined;
+    const current = /^ev-(\d+)$/.exec(eventId || '');
+    if (current) return Number(current[1]);
+    const legacy = /^e-\d+-\d+-(\d+)$/.exec(eventId || ''); // ids from API v1
+    return legacy ? Number(legacy[1]) + 2 : undefined;
 };

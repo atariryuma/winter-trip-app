@@ -4,7 +4,9 @@ import Sheet from '../../ui/Sheet';
 import PlaceInput from './PlaceInput';
 import PayerPicker from '../money/PayerPicker';
 import { useTrip } from '../../store/context';
-import { CATEGORIES, STATUSES, isConfirmed, toDateString, typeForCategory } from '../../lib/trip';
+import {
+    CATEGORIES, STATUSES, addDays, formatShortDate, fromIsoDate, isConfirmed, isSameDay, isoDate, toDateKey, typeForCategory,
+} from '../../lib/trip';
 
 const CATEGORY_ORDER = ['flight', 'train', 'bus', 'transfer', 'hotel', 'meal', 'sightseeing', 'shopping', 'activity'];
 const NEW_DATE = '__new__';
@@ -29,14 +31,6 @@ const fieldsFrom = (event) => ({
     status: isConfirmed(event) ? 'confirmed' : event.status || 'planned',
 });
 
-// "2027-01-03" → "1/3"
-const isoToDateString = (iso) => {
-    const [y, m, d] = iso.split('-').map(Number);
-    return toDateString(new Date(y, m - 1, d));
-};
-const toIso = (date) =>
-    `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-
 /**
  * draft: { event?, date?, newDate?: Date, time?, fromPlace? }
  *  - event: edit an existing event
@@ -58,7 +52,7 @@ export default function EventEditorSheet({ draft, onClose }) {
 }
 
 function EditorForm({ draft, onClose }) {
-    const { days, saveEvent } = useTrip();
+    const { days, saveEvent, supportsTrips, currentTrip, today } = useTrip();
     const original = draft.event || null;
     const [fields, setFields] = useState(() => {
         if (original) return fieldsFrom(original);
@@ -66,15 +60,20 @@ function EditorForm({ draft, onClose }) {
     });
     const [dateChoice, setDateChoice] = useState(draft.newDate ? NEW_DATE : draft.date || days[0]?.date || NEW_DATE);
     const [newDateIso, setNewDateIso] = useState(() => {
-        if (draft.newDate) return toIso(draft.newDate);
+        if (draft.newDate) return isoDate(draft.newDate);
         const last = days[days.length - 1]?.fullDate;
-        return last ? toIso(new Date(last.getFullYear(), last.getMonth(), last.getDate() + 1)) : toIso(new Date());
+        return isoDate(last ? addDays(last, 1) : currentTrip?.start || today);
     });
     const [touched, setTouched] = useState(false);
 
     const set = (key) => (value) => setFields((f) => ({ ...f, [key]: value }));
     const transport = typeForCategory(fields.category) === 'transport';
-    const targetDate = dateChoice === NEW_DATE ? (newDateIso ? isoToDateString(newDateIso) : '') : dateChoice;
+    // A picked date that already has a day reuses that day's key, so the events land on one day.
+    const pickedDate = dateChoice === NEW_DATE && newDateIso ? fromIsoDate(newDateIso) : null;
+    const pickedDay = pickedDate ? days.find((d) => isSameDay(d.fullDate, pickedDate)) : null;
+    const targetDay = dateChoice === NEW_DATE ? pickedDay : days.find((d) => d.date === dateChoice);
+    const targetDate = targetDay?.date || (pickedDate ? toDateKey(pickedDate, supportsTrips) : '');
+    const targetFullDate = targetDay?.fullDate || pickedDate;
 
     const resolvedName = fields.name.trim()
         || (transport && (fields.from || fields.to) ? `${fields.from || '?'} → ${fields.to || '?'}` : '');
@@ -91,7 +90,6 @@ function EditorForm({ draft, onClose }) {
         const amount = String(fields.budgetAmount).replace(/[^\d]/g, '');
         saveEvent({
             original,
-            originalDate: draft.date,
             date: targetDate,
             fields: {
                 ...fields,
@@ -129,9 +127,9 @@ function EditorForm({ draft, onClose }) {
 
             {transport ? (
                 <div className="rounded-3xl bg-slate-50 dark:bg-slate-800/60 p-4 space-y-2">
-                    <PlaceInput label="出発地" value={fields.from} onChange={set('from')} placeholder="例: 名古屋駅" />
+                    <PlaceInput label="出発地" value={fields.from} onChange={set('from')} placeholder="例: 東京駅、羽田空港" />
                     <div className="flex justify-center text-slate-400"><ArrowDown size={16} /></div>
-                    <PlaceInput label="到着地" value={fields.to} onChange={set('to')} placeholder="例: 高山駅" large />
+                    <PlaceInput label="到着地" value={fields.to} onChange={set('to')} placeholder="例: 新大阪駅、那覇空港" large />
                     <div className="pt-2">
                         <label className="field-label" htmlFor="ev-name">便名・列車名（任意）</label>
                         <input
@@ -139,7 +137,7 @@ function EditorForm({ draft, onClose }) {
                             className="field-input"
                             value={fields.name}
                             onChange={(e) => set('name')(e.target.value)}
-                            placeholder={fields.from || fields.to ? `未入力なら「${fields.from || '?'} → ${fields.to || '?'}」` : '例: 特急ひだ 15号'}
+                            placeholder={fields.from || fields.to ? `未入力なら「${fields.from || '?'} → ${fields.to || '?'}」` : '例: のぞみ 21号、ANA 993便'}
                         />
                     </div>
                 </div>
@@ -148,7 +146,7 @@ function EditorForm({ draft, onClose }) {
                     label={fields.category === 'hotel' ? '宿の名前' : '名前・場所'}
                     value={fields.name}
                     onChange={set('name')}
-                    placeholder={fields.category === 'hotel' ? '例: ホテル ウッド 高山' : '例: 白川郷 展望台'}
+                    placeholder={fields.category === 'hotel' ? '例: 〇〇ホテル' : '例: 水族館、ランチのお店'}
                     autoFocus={!original}
                     large
                 />
@@ -186,7 +184,7 @@ function EditorForm({ draft, onClose }) {
                     />
                 )}
                 {original && targetDate && targetDate !== draft.date && (
-                    <p className="mt-1 px-1 text-xs text-sky-600 dark:text-sky-400">保存すると {targetDate} に移動します</p>
+                    <p className="mt-1 px-1 text-xs text-accent-700 dark:text-accent-400">保存すると {formatShortDate(targetFullDate)} に移動します</p>
                 )}
                 {touched && errors.date && <p className="text-sm text-rose-600 mt-1">{errors.date}</p>}
             </div>
@@ -219,7 +217,7 @@ function EditorForm({ draft, onClose }) {
                     autoCapitalize="characters"
                 />
                 {fields.bookingRef && fields.status !== 'confirmed' && (
-                    <button type="button" onClick={() => set('status')('confirmed')} className="mt-1 px-1 text-xs font-bold text-sky-600 dark:text-sky-400 inline-flex items-center gap-1">
+                    <button type="button" onClick={() => set('status')('confirmed')} className="mt-1 px-1 text-xs font-bold text-accent-700 dark:text-accent-400 inline-flex items-center gap-1">
                         <Plus size={12} /> 「予約済」にする
                     </button>
                 )}

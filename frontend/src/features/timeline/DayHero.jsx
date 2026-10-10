@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BedDouble, MoreHorizontal, Navigation, Trash2, TriangleAlert } from 'lucide-react';
 import {
     dayRoute, endPlace, eventTitle, formatDateJa, formatMinutes, isSameDay, isStay, mapsDirectionsUrl, needsBooking,
@@ -8,6 +8,15 @@ import {
 /** Summary card for the selected day: route, what's next, tonight's stay. */
 export default function DayHero({ day, prevStay, now, onDeleteDay, onOpenEvent }) {
     const [menuOpen, setMenuOpen] = useState(false);
+
+    useEffect(() => {
+        if (!menuOpen) return undefined;
+        const onKey = (e) => {
+            if (e.key === 'Escape') setMenuOpen(false);
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [menuOpen]);
     const plan = day.events.filter((e) => !isStay(e));
     const stays = day.events.filter(isStay);
     const pending = day.events.filter(needsBooking);
@@ -27,14 +36,30 @@ export default function DayHero({ day, prevStay, now, onDeleteDay, onOpenEvent }
     const next = isToday ? plan.find((e) => (toMinutes(e.time) ?? -1) > nowMin) : null;
 
     return (
-        <section className="relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-slate-900 via-slate-800 to-accent-900 text-white p-5 shadow-xl shadow-slate-900/10">
-            <div className="absolute -top-16 -right-10 w-48 h-48 rounded-full bg-accent-400/20 blur-3xl" aria-hidden />
+        <section className="relative rounded-[1.75rem] bg-gradient-to-br from-slate-900 via-slate-800 to-accent-900 text-white p-5 shadow-xl shadow-slate-900/10">
+            {/* The glow is clipped on its own layer so the day menu below can overflow the card */}
+            <div className="absolute inset-0 overflow-hidden rounded-[1.75rem] pointer-events-none" aria-hidden>
+                <div className="absolute -top-16 -right-10 w-48 h-48 rounded-full bg-accent-400/20 blur-3xl" />
+            </div>
             <div className="relative flex items-start justify-between gap-3">
                 <div>
                     <p className="text-xs font-bold tracking-[0.2em] text-accent-200/80">DAY {day.index + 1}</p>
-                    <h2 className="text-2xl font-black mt-0.5">{formatDateJa(day.fullDate, { withYear: day.fullDate.getFullYear() !== now.getFullYear() })}</h2>
+                    <h2 className="text-xl min-[360px]:text-2xl font-black mt-0.5">{formatDateJa(day.fullDate, { withYear: day.fullDate.getFullYear() !== now.getFullYear() })}</h2>
                 </div>
-                <div className="relative">
+                {/* Route sits up here: the floating add button covers the card's bottom-right on small phones */}
+                <div className="relative flex items-center gap-1 shrink-0">
+                    {routeUrl && stops.length >= 2 && (
+                        <a
+                            href={routeUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label="この日のルート"
+                            className="p-2 min-[400px]:px-3 min-[400px]:py-1.5 rounded-full bg-white text-slate-900 text-xs font-bold inline-flex items-center gap-1"
+                        >
+                            <Navigation size={14} className="min-[400px]:w-3 min-[400px]:h-3" />
+                            <span className="hidden min-[400px]:inline">ルート</span>
+                        </a>
+                    )}
                     <button
                         onClick={() => setMenuOpen((v) => !v)}
                         className="p-2 -mr-2 rounded-full hover:bg-white/10"
@@ -46,7 +71,7 @@ export default function DayHero({ day, prevStay, now, onDeleteDay, onOpenEvent }
                     {menuOpen && (
                         <>
                             <div className="fixed inset-0 z-dropdown" onClick={() => setMenuOpen(false)} />
-                            <div className="absolute right-0 mt-1 z-dropdown w-48 rounded-2xl bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow-xl ring-1 ring-black/5 overflow-hidden">
+                            <div className="absolute right-0 top-full mt-1 z-dropdown w-48 rounded-2xl bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow-xl ring-1 ring-black/5 overflow-hidden">
                                 <button
                                     onClick={() => { setMenuOpen(false); onDeleteDay(day); }}
                                     className="w-full flex items-center gap-2 px-4 py-3 text-sm font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10"
@@ -95,16 +120,6 @@ export default function DayHero({ day, prevStay, now, onDeleteDay, onOpenEvent }
                     >
                         <BedDouble size={12} className="shrink-0" /> <span className="truncate">{stays[0].name}</span>
                     </button>
-                )}
-                {routeUrl && stops.length >= 2 && (
-                    <a
-                        href={routeUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="ml-auto px-3 py-1.5 rounded-full bg-white text-slate-900 text-xs font-bold inline-flex items-center gap-1"
-                    >
-                        <Navigation size={12} /> ルート
-                    </a>
                 )}
             </div>
         </section>

@@ -116,14 +116,14 @@ export function DepartureRow({ stay, firstEvent, firstPlace }) {
     const start = toMinutes(firstEvent?.time);
     const leaveAt = travel !== null && start !== null ? start - travel - 10 : null;
     return (
-        <div className="flex items-center gap-3">
-            <div className={`${RAIL} text-right`}>
+        <div className="flex items-start gap-3">
+            <div className={`${RAIL} pt-3 text-right`}>
                 {leaveAt !== null && leaveAt >= 0 && (
                     <p className="text-sm font-bold tabular-nums text-violet-600 dark:text-violet-300">{toTime(leaveAt)}</p>
                 )}
             </div>
             <div className="relative flex justify-center w-3 self-stretch">
-                <span className="mt-3 w-3 h-3 rounded-full bg-violet-500/30 ring-4 ring-slate-100 dark:ring-slate-950" />
+                <span className="mt-4 w-3 h-3 rounded-full bg-violet-500/30 ring-4 ring-slate-100 dark:ring-slate-950" />
             </div>
             <p className="flex-1 min-w-0 py-3 text-sm text-slate-600 dark:text-slate-300">
                 <BedDouble size={14} className="inline -mt-0.5 mr-1 text-violet-500" />

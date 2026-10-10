@@ -97,7 +97,7 @@ function AddRow({ categories, onAdd, placeholder, extra }) {
                 />
                 <button type="submit" disabled={!name.trim()} className="btn-primary !px-5 disabled:opacity-40">追加</button>
             </div>
-            <div className="flex gap-1.5 mt-2 overflow-x-auto scrollbar-hide">
+            <div className="flex gap-1.5 mt-1.5 -mx-1 px-1 py-1 overflow-x-auto scrollbar-hide">
                 {categories.map((c) => (
                     <button
                         type="button"
@@ -255,9 +255,9 @@ function PackingList() {
     return (
         <>
             <ProgressCard done={done} total={items.length} label="準備できた持ち物（家族で共有・全旅行で共通）" />
-            <AddRow categories={PACKING_CATEGORIES} onAdd={add} placeholder="持ち物を追加（例: モバイルバッテリー）" />
+            <AddRow categories={PACKING_CATEGORIES} onAdd={add} placeholder="持ち物を追加" />
             {groups.map((g) => (
-                <section key={g.id}>
+                <section key={g.id} className="mt-6">
                     <SectionTitle>
                         <g.icon size={13} className="inline -mt-0.5 mr-1" />
                         {g.label}（{g.items.filter((i) => i.isChecked).length}/{g.items.length}）
@@ -321,7 +321,7 @@ function ShoppingList() {
             <AddRow
                 categories={SHOPPING_CATEGORIES}
                 onAdd={add}
-                placeholder="買う物を追加（例: ご当地のお菓子）"
+                placeholder="買う物・お土産を追加"
                 extra={(
                     <div className="grid grid-cols-2 gap-2 mt-2">
                         <input value={recipient} onChange={(e) => setRecipient(e.target.value)} placeholder="渡す相手（任意）" className="field-input !py-2 !text-sm" aria-label="渡す相手" />

@@ -74,7 +74,7 @@ export default function Sheet({ open, onClose, title, subtitle, children, footer
                         </button>
                     </div>
                 )}
-                <div className="flex-1 overflow-y-auto overscroll-contain px-5 pb-5">{children}</div>
+                <div className="flex-1 overflow-y-auto overscroll-contain px-5 pt-1 pb-5">{children}</div>
                 {footer && (
                     <div className="px-5 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-5 border-t border-slate-100 dark:border-slate-800">
                         {footer}

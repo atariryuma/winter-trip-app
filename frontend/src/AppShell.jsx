@@ -91,7 +91,7 @@ export default function AppShell({ theme, setTheme, onLogout }) {
                             <SeasonIcon size={20} />
                         </span>
                         <span className="flex-1 min-w-0">
-                            <span className="block font-black leading-snug text-slate-900 dark:text-white truncate">{title}</span>
+                            <span className="block font-black leading-snug text-slate-900 dark:text-white line-clamp-2 break-words">{title}</span>
                             <span className="block text-xs text-slate-500 truncate">{subtitle}</span>
                         </span>
                         <ChevronDown size={16} className="shrink-0 text-slate-400" />
@@ -212,10 +212,13 @@ function SyncBadge({ saving, syncError, syncedAt, onRetry }) {
         return (
             <button
                 onClick={onRetry}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300 text-xs font-bold"
+                aria-label="オフライン（タップで再接続）"
+                className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300 text-xs font-bold"
                 title={syncedAt ? `最終同期 ${new Date(syncedAt).toLocaleString('ja-JP')}` : undefined}
             >
-                <CloudOff size={14} /> オフライン
+                <CloudOff size={14} />
+                {/* Icon only on phones so the trip name keeps its room */}
+                <span className="hidden sm:inline">オフライン</span>
             </button>
         );
     }

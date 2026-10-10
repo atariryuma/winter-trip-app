@@ -129,7 +129,7 @@ export default function TimelineView({ onOpenEvent, onEdit, onCreateTrip }) {
                 <DayStrip days={days} selectedId={day.id} onSelect={select} onAddDay={addDay} today={now} />
             </div>
 
-            <div className="px-4 sm:px-6 pt-3 pb-32 md:pb-16 max-w-3xl" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+            <div className="px-4 sm:px-6 pt-3 pb-44 md:pb-28 max-w-3xl" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
                 <DayHero day={day} prevStay={prevStay} now={now} onDeleteDay={requestDeleteDay} onOpenEvent={open} />
 
                 <div className="mt-4" key={day.id}>

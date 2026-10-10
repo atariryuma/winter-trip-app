@@ -89,9 +89,9 @@ export default function PlaceInput({ label, value, onChange, placeholder, hint, 
                                 type="button"
                                 onMouseDown={(e) => e.preventDefault()}
                                 onClick={() => pick(s)}
-                                className={`w-full flex items-center gap-2 px-4 py-3 text-left text-sm ${i === active ? 'bg-sky-50 dark:bg-slate-700' : 'hover:bg-slate-50 dark:hover:bg-slate-700/60'}`}
+                                className={`w-full flex items-center gap-2 px-4 py-3 text-left text-sm ${i === active ? 'bg-accent-50 dark:bg-slate-700' : 'hover:bg-slate-50 dark:hover:bg-slate-700/60'}`}
                             >
-                                <MapPin size={14} className="shrink-0 text-sky-500" />
+                                <MapPin size={14} className="shrink-0 text-accent-500" />
                                 <span className="truncate text-slate-700 dark:text-slate-200">{s.description}</span>
                             </button>
                         </li>

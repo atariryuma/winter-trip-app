@@ -3,6 +3,67 @@
 @tailwind utilities;
 
 @layer base {
+  /* Seasonal accent (see lib/season.js). Winter / default: sky */
+  :root,
+  [data-season='winter'] {
+    --accent-50: 240 249 255;
+    --accent-100: 224 242 254;
+    --accent-200: 186 230 253;
+    --accent-300: 125 211 252;
+    --accent-400: 56 189 248;
+    --accent-500: 14 165 233;
+    --accent-600: 2 132 199;
+    --accent-700: 3 105 161;
+    --accent-800: 7 89 133;
+    --accent-900: 12 74 110;
+    --accent-950: 8 47 73;
+  }
+
+  /* Spring: sakura pink */
+  [data-season='spring'] {
+    --accent-50: 253 242 248;
+    --accent-100: 252 231 243;
+    --accent-200: 251 207 232;
+    --accent-300: 249 168 212;
+    --accent-400: 244 114 182;
+    --accent-500: 236 72 153;
+    --accent-600: 219 39 119;
+    --accent-700: 190 24 93;
+    --accent-800: 157 23 77;
+    --accent-900: 131 24 67;
+    --accent-950: 80 7 36;
+  }
+
+  /* Summer: sea teal */
+  [data-season='summer'] {
+    --accent-50: 240 253 250;
+    --accent-100: 204 251 241;
+    --accent-200: 153 246 228;
+    --accent-300: 94 234 212;
+    --accent-400: 45 212 191;
+    --accent-500: 20 184 166;
+    --accent-600: 13 148 136;
+    --accent-700: 15 118 110;
+    --accent-800: 17 94 89;
+    --accent-900: 19 78 74;
+    --accent-950: 4 47 46;
+  }
+
+  /* Autumn: maple orange */
+  [data-season='autumn'] {
+    --accent-50: 255 247 237;
+    --accent-100: 255 237 213;
+    --accent-200: 254 215 170;
+    --accent-300: 253 186 116;
+    --accent-400: 251 146 60;
+    --accent-500: 249 115 22;
+    --accent-600: 234 88 12;
+    --accent-700: 194 65 12;
+    --accent-800: 154 52 18;
+    --accent-900: 124 45 18;
+    --accent-950: 67 20 7;
+  }
+
   :root {
     color-scheme: light;
     -webkit-tap-highlight-color: transparent;
@@ -29,7 +90,7 @@
   }
 
   :focus-visible:not(input):not(textarea):not(select) {
-    @apply outline-none ring-2 ring-sky-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-900;
+    @apply outline-none ring-2 ring-accent-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-900;
   }
 
   input[type='time'],
@@ -46,7 +107,7 @@
   }
 
   .field-input {
-    @apply w-full rounded-2xl bg-slate-100 dark:bg-slate-800 px-4 py-3 text-base text-slate-900 dark:text-slate-100 placeholder:text-slate-400 outline-none ring-1 ring-transparent focus:ring-2 focus:ring-sky-500 transition;
+    @apply w-full rounded-2xl bg-slate-100 dark:bg-slate-800 px-4 py-3 text-base text-slate-900 dark:text-slate-100 placeholder:text-slate-400 outline-none ring-1 ring-transparent focus:ring-2 focus:ring-accent-500 transition;
   }
 
   .chip {
@@ -58,7 +119,7 @@
   }
 
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-sky-600 text-white font-bold shadow-lg shadow-sky-600/20 hover:bg-sky-700 active:scale-[0.98] transition;
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-accent-700 text-white font-bold shadow-lg shadow-accent-700/20 hover:bg-accent-800 active:scale-[0.98] transition;
   }
 
   .btn-secondary {

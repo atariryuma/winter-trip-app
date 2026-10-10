@@ -35,7 +35,7 @@
     href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap"
     rel="stylesheet">
 
-  <!-- Apply the saved theme before first paint to avoid a light/dark flash -->
+  <!-- Apply the saved theme and season before first paint to avoid a color flash -->
   <script>
     (function () {
       try {
@@ -43,6 +43,10 @@
         if (t === 'dark' || (t === 'system' && matchMedia('(prefers-color-scheme: dark)').matches)) {
           document.documentElement.classList.add('dark');
         }
+        // Seasonal accent of the last viewed trip (see useSeason)
+        var m = new Date().getMonth() + 1;
+        document.documentElement.dataset.season = localStorage.getItem('season')
+          || (m >= 3 && m <= 5 ? 'spring' : m >= 6 && m <= 8 ? 'summer' : m >= 9 && m <= 11 ? 'autumn' : 'winter');
       } catch (e) { }
     })();
   </script>

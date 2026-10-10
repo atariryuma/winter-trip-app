@@ -3,6 +3,17 @@ const SPREADSHEET_ID = PropertiesService.getScriptProperties().getProperty('SPRE
 const DAYS_SHEET = 'days';
 const EVENTS_SHEET = 'events';
 const PACKING_SHEET = 'packing_list';
+const TRIPS_SHEET = 'trips';
+
+// events sheet: date, type, category, name, time, endTime, from, to, status,
+// bookingRef, memo, budget, tripId
+const EVENT_COLS = 13;
+const EVENTS_HEADER = ['date', 'type', 'category', 'name', 'time', 'endTime', 'from', 'to', 'status', 'bookingRef', 'memo', 'budget', 'tripId'];
+const TRIPS_HEADER = ['id', 'title', 'startDate', 'theme', 'budget', 'createdAt'];
+// Rows written before trips existed have no tripId; they belong to this trip.
+const DEFAULT_TRIP_ID = 'default';
+const API_VERSION = 2;
+const ITINERARY_CACHE_KEY = 'itinerary_json_v2';
 
 /**
  * Helper to get spreadsheet instance with fallback
@@ -65,15 +76,98 @@ function createApiResponse(status, data = null, error = null) {
 function findEventIndex(data, date, name, rowHint) {
     const hint = Number(rowHint) - 2;
     if (hint >= 0 && hint < data.length &&
-        toString(data[hint][0]) === date && toString(data[hint][3]) === name) {
+        dateKey(data[hint][0]) === date && toString(data[hint][3]) === name) {
         return hint;
     }
-    return data.findIndex(row => toString(row[0]) === date && toString(row[3]) === name);
+    return data.findIndex(row => dateKey(row[0]) === date && toString(row[3]) === name);
+}
+
+const YMD_PATTERN = /^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})$/;
+const MD_PATTERN = /^\d{1,2}\/\d{1,2}$/;
+
+/**
+ * Canonical key for a date cell.
+ * - Text "2027/8/10" (written by this API) keeps its year: "2027/8/10".
+ * - Date cells and "8/10" text are legacy rows: the year Sheets attached to them
+ *   may be wrong, so it is dropped ("8/10") and the client infers it.
+ */
+function dateKey(value) {
+    if (value instanceof Date) return toString(value);
+    const s = toString(value).trim();
+    const m = YMD_PATTERN.exec(s);
+    return m ? `${Number(m[1])}/${Number(m[2])}/${Number(m[3])}` : s;
+}
+
+/** Cell value for a date key. Written as text so Sheets doesn't convert it (and drop the year). */
+function dateCell(value) {
+    if (value instanceof Date) return value;
+    const key = dateKey(value);
+    return YMD_PATTERN.test(key) || MD_PATTERN.test(key) ? "'" + key : key;
+}
+
+/** Cell value for "HH:mm", kept as text for the same reason. */
+function timeCell(value) {
+    if (value instanceof Date) return value;
+    const s = value === undefined || value === null ? '' : String(value);
+    return /^\d{1,2}:\d{2}$/.test(s) ? "'" + s : s;
+}
+
+function tripIdOf(row) {
+    return toString(row[12]) || DEFAULT_TRIP_ID;
+}
+
+function dateParts(key) {
+    const parts = String(key).split('/').map(Number);
+    return parts.length === 3
+        ? { year: parts[0], month: parts[1], day: parts[2] }
+        : { year: null, month: parts[0], day: parts[1] };
+}
+
+function getEventsSheet() {
+    const sheet = getSpreadsheet().getSheetByName(EVENTS_SHEET);
+    if (!sheet) throw new Error('Events sheet not found');
+    // Older sheets only have 12 header cells
+    if (sheet.getLastRow() >= 1 && !toString(sheet.getRange(1, EVENT_COLS).getValue())) {
+        sheet.getRange(1, EVENT_COLS).setValue(EVENTS_HEADER[EVENT_COLS - 1]);
+    }
+    return sheet;
+}
+
+function readEventRows(sheet) {
+    const lastRow = sheet.getLastRow();
+    return lastRow > 1 ? sheet.getRange(2, 1, lastRow - 1, EVENT_COLS).getValues() : [];
+}
+
+/** Delete the given 0-based data-row indexes, bottom-up in contiguous runs. */
+function deleteEventRows(sheet, indexes) {
+    const sorted = [...indexes].sort((a, b) => b - a);
+    let i = 0;
+    while (i < sorted.length) {
+        let start = sorted[i];
+        let count = 1;
+        while (i + count < sorted.length && sorted[i + count] === start - 1) {
+            start -= 1;
+            count += 1;
+        }
+        sheet.deleteRows(start + 2, count);
+        i += count;
+    }
+    return indexes.length;
+}
+
+/** Normalise one event row for writing (12 data columns + tripId). */
+function eventRowValues(values) {
+    const row = [];
+    for (let c = 0; c < EVENT_COLS; c++) row.push(values[c] === undefined || values[c] === null ? '' : values[c]);
+    row[0] = dateCell(row[0]);
+    row[4] = timeCell(row[4]);
+    row[5] = timeCell(row[5]);
+    return row;
 }
 
 /** Invalidate the itinerary cache and record the time of the last edit. */
 function markUpdated() {
-    CacheService.getScriptCache().remove('itinerary_json');
+    CacheService.getScriptCache().remove(ITINERARY_CACHE_KEY);
     const timestamp = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy/MM/dd HH:mm');
     PropertiesService.getScriptProperties().setProperty('lastUpdate', timestamp);
 }
@@ -163,27 +257,17 @@ function doPost(e) {
                 return handleBatchUpdatePackingItems(e);
             case 'uploadEvents':
                 return handleUploadEvents(e);
+            case 'saveTrip':
+                return handleSaveTrip(e);
+            case 'deleteTrip':
+                return handleDeleteTrip(e);
+            case 'renameDates':
+                return handleRenameDates(e);
         }
 
-        // Default: save itinerary data (full save)
-        let jsonString;
-        if (e.parameter?.data) {
-            jsonString = e.parameter.data;
-        } else if (e.postData) {
-            jsonString = e.postData.contents;
-        }
-
-        if (!jsonString) throw new Error('No valid post data found');
-
-        const data = JSON.parse(jsonString);
-        saveItineraryData(data);
-
-        const timestamp = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy/MM/dd HH:mm');
-        PropertiesService.getScriptProperties().setProperty('lastUpdate', timestamp);
-
-        CacheService.getScriptCache().remove('itinerary_json');
-
-        return createApiResponse('success', { message: 'Saved', lastUpdate: timestamp });
+        // The old "save the whole itinerary" fallback was removed: it rewrote every
+        // row without trip ids. Unknown actions are rejected instead.
+        return createApiResponse('error', null, { message: `Unknown action: ${action}` });
     } catch (error) {
         return createApiResponse('error', null, { message: error.toString() });
     }
@@ -270,7 +354,7 @@ function fixTimeData() {
     }
 
     // Clear cache
-    CacheService.getScriptCache().remove('itinerary_json');
+    CacheService.getScriptCache().remove(ITINERARY_CACHE_KEY);
 
     return {
         fixed: fixedCount,
@@ -289,6 +373,7 @@ function fixTimeData() {
 function handleUploadEvents(e) {
     try {
         const csvData = e.parameter.data;
+        const tripId = e.parameter.tripId || '';
         if (!csvData) {
             return createApiResponse('error', null, { message: 'No CSV data provided' });
         }
@@ -298,40 +383,34 @@ function handleUploadEvents(e) {
             return createApiResponse('error', null, { message: 'CSV must have header and at least one row' });
         }
 
-        const ss = getSpreadsheet();
-        const sheet = ss.getSheetByName(EVENTS_SHEET);
+        const sheet = getEventsSheet();
 
-        if (!sheet) {
-            return createApiResponse('error', null, { message: 'Events sheet not found' });
-        }
+        // Header row skipped; the first 12 columns follow EVENTS_HEADER.
+        const dataRows = rows.slice(1)
+            .filter(row => row[0])
+            .map(row => eventRowValues([...row.slice(0, EVENT_COLS - 1), tripId || row[EVENT_COLS - 1] || '']));
 
-        // Clear existing data (except header)
-        const lastRow = sheet.getLastRow();
-        if (lastRow > 1) {
-            sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).clearContent();
-        }
-
-        // Write new data (skip header from CSV, use existing header)
-        // Prepend ' to time columns (5, 6) to prevent auto-date conversion
-        const dataRows = rows.slice(1).filter(row => row[0]).map(row => {
-            return row.map((cell, idx) => {
-                // Column 5 (time) and 6 (endTime) - 0-indexed: 4 and 5
-                if ((idx === 4 || idx === 5) && cell && /^\d{1,2}:\d{2}$/.test(cell)) {
-                    return "'" + cell;
-                }
-                return cell;
-            });
-        });
-
-        if (dataRows.length > 0) {
-            sheet.getRange(2, 1, dataRows.length, dataRows[0].length).setValues(dataRows);
+        if (tripId) {
+            // Replace only this trip's events
+            const existing = readEventRows(sheet);
+            const mine = [];
+            existing.forEach((row, i) => { if (tripIdOf(row) === tripId) mine.push(i); });
+            deleteEventRows(sheet, mine);
+            if (dataRows.length > 0) {
+                sheet.getRange(sheet.getLastRow() + 1, 1, dataRows.length, EVENT_COLS).setValues(dataRows);
+            }
+        } else {
+            // Legacy: replace everything
+            const lastRow = sheet.getLastRow();
+            if (lastRow > 1) sheet.getRange(2, 1, lastRow - 1, EVENT_COLS).clearContent();
+            if (dataRows.length > 0) sheet.getRange(2, 1, dataRows.length, EVENT_COLS).setValues(dataRows);
         }
 
         markUpdated();
 
         return createApiResponse('success', {
             uploaded: dataRows.length,
-            message: `Uploaded ${dataRows.length} events`
+            message: `${dataRows.length}件の予定を取り込みました`
         });
     } catch (err) {
         return createApiResponse('error', null, { message: err.toString() });
@@ -397,63 +476,42 @@ function getItineraryData() {
     const cache = CacheService.getScriptCache();
 
     try {
-        const cached = cache.get('itinerary_json');
+        const cached = cache.get(ITINERARY_CACHE_KEY);
         if (cached) return JSON.parse(cached);
     } catch (e) { }
 
-    const ss = getSpreadsheet();
-    const eventsSheet = ss.getSheetByName(EVENTS_SHEET);
-
+    const eventsSheet = getSpreadsheet().getSheetByName(EVENTS_SHEET);
     if (!eventsSheet) {
         throw new Error('Events sheet not found');
     }
+    const eventsData = readEventRows(eventsSheet);
 
-    // Read events
-    const eventsLastRow = eventsSheet.getLastRow();
-    const eventsData = eventsLastRow > 1
-        ? eventsSheet.getRange(2, 1, eventsLastRow - 1, 12).getValues()
-        : [];
-
-    // Helper: Get day of week from date string (M/D format)
-    // Uses same logic as frontend getTripDate for Winter Trip context
-    const getDayOfWeek = (dateStr) => {
-        const [month, day] = dateStr.split('/').map(Number);
-        const now = new Date();
-        const currentYear = now.getFullYear();
-        const currentMonth = now.getMonth() + 1;
-
-        let targetYear = currentYear;
-
-        // Winter Trip Heuristics (Oct-Mar Season) - same as frontend
-        // Case 1: Currently Late Year (Oct-Dec), looking at Early Year date (Jan-Mar)
-        if (currentMonth >= 10 && month <= 3) {
-            targetYear = currentYear + 1;
+    const days = ['日', '月', '火', '水', '木', '金', '土'];
+    // Legacy "M/D" keys have no year; guess one only for the day-of-week label
+    // (the app computes its own dates).
+    const getDayOfWeek = (key) => {
+        const { year, month, day } = dateParts(key);
+        let targetYear = year;
+        if (!targetYear) {
+            const now = new Date();
+            targetYear = now.getFullYear();
+            if (now.getMonth() + 1 >= 10 && month <= 3) targetYear += 1;
+            else if (now.getMonth() + 1 <= 3 && month >= 10) targetYear -= 1;
         }
-        // Case 2: Currently Early Year (Jan-Mar), looking at Late Year date (Oct-Dec)
-        else if (currentMonth <= 3 && month >= 10) {
-            targetYear = currentYear - 1;
-        }
-
-        const date = new Date(targetYear, month - 1, day);
-        const days = ['日', '月', '火', '水', '木', '金', '土'];
-        return days[date.getDay()];
+        return days[new Date(targetYear, month - 1, day).getDay()];
     };
 
-    // Build days map from events (derive days dynamically)
     const daysMap = {};
     const mapLocations = [];
 
-    // Process events and create days on-the-fly
     eventsData.forEach((row, idx) => {
         const [date, type, category, name, time, endTime, from, to, status, bookingRef, memo, budget] = row;
-        const dateStr = toString(date);
-
+        const dateStr = dateKey(date);
         if (!dateStr) return;
 
-        // Create day if not exists
         if (!daysMap[dateStr]) {
             daysMap[dateStr] = {
-                id: `day-${dateStr.replace('/', '-')}`,
+                id: `day-${dateStr.replace(/\//g, '-')}`,
                 date: dateStr,
                 dayOfWeek: getDayOfWeek(dateStr),
                 title: '',
@@ -472,7 +530,9 @@ function getItineraryData() {
         }
 
         const event = {
-            id: `e-${dateStr.replace('/', '-')}-${idx}`,
+            // Sheet row number: lets clients point at this exact row
+            id: `ev-${idx + 2}`,
+            tripId: tripIdOf(row),
             type: toString(type),
             category: toString(category),
             name: toString(name),
@@ -498,30 +558,25 @@ function getItineraryData() {
         daysMap[dateStr].events.push(event);
     });
 
-    // Sort events by time within each day
     Object.values(daysMap).forEach(day => {
         day.events.sort((a, b) => (a.time || '23:59').localeCompare(b.time || '23:59'));
     });
 
-    // Sort days by date (consider year boundary: Dec before Jan)
+    // Year-qualified keys sort by date; legacy keys fall back to the old
+    // "autumn/winter before spring" ordering.
     const sortedDays = Object.values(daysMap).sort((a, b) => {
-        const [aMonth, aDay] = a.date.split('/').map(Number);
-        const [bMonth, bDay] = b.date.split('/').map(Number);
-
-        // Handle year boundary: December (10-12) should come before January (1-3)
-        // Assume trips don't span more than a few months
-        const aIsLateYear = aMonth >= 10; // Oct-Dec
-        const bIsLateYear = bMonth >= 10;
-
-        if (aIsLateYear && !bIsLateYear) return -1; // a is Dec, b is Jan → a first
-        if (!aIsLateYear && bIsLateYear) return 1;  // a is Jan, b is Dec → b first
-
-        // Same year period, sort by month then day
-        if (aMonth !== bMonth) return aMonth - bMonth;
-        return aDay - bDay;
+        const pa = dateParts(a.date);
+        const pb = dateParts(b.date);
+        if (pa.year && pb.year) {
+            return new Date(pa.year, pa.month - 1, pa.day) - new Date(pb.year, pb.month - 1, pb.day);
+        }
+        if (pa.year !== pb.year) return pa.year ? 1 : -1;
+        const aLate = pa.month >= 10;
+        const bLate = pb.month >= 10;
+        if (aLate !== bLate) return aLate ? -1 : 1;
+        return pa.month - pb.month || pa.day - pb.day;
     });
 
-    // Generate map
     let mapUrl = null, mapError = null;
     try {
         const uniqueLocations = [...new Set(mapLocations)].filter(l => l && l.trim());
@@ -533,79 +588,19 @@ function getItineraryData() {
     }
 
     const result = {
+        apiVersion: API_VERSION,
         days: sortedDays,
+        trips: getTrips(),
         mapUrl,
         mapError,
         lastUpdate: PropertiesService.getScriptProperties().getProperty('lastUpdate') || null
     };
 
     try {
-        cache.put('itinerary_json', JSON.stringify(result), 3600);
+        cache.put(ITINERARY_CACHE_KEY, JSON.stringify(result), 3600);
     } catch (e) { }
 
     return result;
-}
-
-/**
- * Save itinerary data to sheets
- */
-function saveItineraryData(data) {
-    const ss = getSpreadsheet();
-
-    const daysData = data.map(day => [
-        day.date,
-        day.dayOfWeek,
-        day.title,
-        day.summary || '',
-        day.theme || 'default'
-    ]);
-
-    const eventsData = [];
-    data.forEach(day => {
-        (day.events || []).forEach(event => {
-            const budget = event.budgetAmount
-                ? `${event.budgetAmount}/${event.budgetPaidBy || ''}`
-                : '';
-
-            eventsData.push([
-                day.date,
-                event.type !== undefined ? event.type : '',
-                event.category !== undefined ? event.category : '',
-                event.name !== undefined ? event.name : '',
-                event.time !== undefined ? event.time : '',
-                event.endTime !== undefined ? event.endTime : '',
-                event.from !== undefined ? event.from : (event.place !== undefined ? event.place : ''),
-                event.to !== undefined ? event.to : '',
-                event.status !== undefined ? event.status : 'planned',
-                event.bookingRef !== undefined ? event.bookingRef : '',
-                event.details !== undefined ? event.details : '',
-                budget
-            ]);
-        });
-    });
-
-    let daysSheet = ss.getSheetByName(DAYS_SHEET);
-    if (!daysSheet) {
-        daysSheet = ss.insertSheet(DAYS_SHEET);
-        daysSheet.appendRow(['date', 'dayOfWeek', 'title', 'summary', 'theme']);
-    } else if (daysSheet.getLastRow() > 1) {
-        daysSheet.getRange(2, 1, daysSheet.getLastRow() - 1, 5).clearContent();
-    }
-
-    let eventsSheet = ss.getSheetByName(EVENTS_SHEET);
-    if (!eventsSheet) {
-        eventsSheet = ss.insertSheet(EVENTS_SHEET);
-        eventsSheet.appendRow(['date', 'type', 'category', 'name', 'time', 'endTime', 'from', 'to', 'status', 'bookingRef', 'memo', 'budget']);
-    } else if (eventsSheet.getLastRow() > 1) {
-        eventsSheet.getRange(2, 1, eventsSheet.getLastRow() - 1, 12).clearContent();
-    }
-
-    if (daysData.length > 0) {
-        daysSheet.getRange(2, 1, daysData.length, 5).setValues(daysData);
-    }
-    if (eventsData.length > 0) {
-        eventsSheet.getRange(2, 1, eventsData.length, 12).setValues(eventsData);
-    }
 }
 
 // ============================================================================
@@ -832,25 +827,16 @@ function handleBatchUpdateEvents(e) {
             return createApiResponse('error', null, { message: 'Invalid updates format' });
         }
 
-        const ss = getSpreadsheet();
-        const eventsSheet = ss.getSheetByName(EVENTS_SHEET);
-
-        if (!eventsSheet) {
-            return createApiResponse('error', null, { message: 'Events sheet not found' });
-        }
-
-        const lastRow = eventsSheet.getLastRow();
-        if (lastRow < 2) {
+        const eventsSheet = getEventsSheet();
+        const allData = readEventRows(eventsSheet);
+        if (allData.length === 0) {
             return createApiResponse('error', null, { message: 'No data to update' });
         }
 
-        // 1. Batch read: Get all data once
-        const allData = eventsSheet.getRange(2, 1, lastRow - 1, 12).getValues();
-        let updateCount = 0;
-        let modified = false;
-
-        // 2. Modify in memory
+        const pick = (data, key, current) => (data[key] !== undefined ? data[key] : current);
+        const changedRows = new Set();
         const notFound = [];
+
         updates.forEach(update => {
             const { date, eventId, eventData, row } = update;
 
@@ -860,46 +846,46 @@ function handleBatchUpdateEvents(e) {
                 return;
             }
             const rowIndex = findEventIndex(allData, date, eventId, row);
-
-            if (rowIndex !== -1) {
-                // Only touch the budget column when the client sent budget fields
-                const budget = 'budgetAmount' in eventData
-                    ? (eventData.budgetAmount ? `${eventData.budgetAmount}/${eventData.budgetPaidBy || ''}` : '')
-                    : allData[rowIndex][11];
-
-                // Use !== undefined check for all fields to allow clearing with empty strings
-                allData[rowIndex] = [
-                    date,
-                    eventData.type !== undefined ? eventData.type : allData[rowIndex][1],
-                    eventData.category !== undefined ? eventData.category : allData[rowIndex][2],
-                    eventData.name !== undefined ? eventData.name : allData[rowIndex][3],
-                    eventData.time !== undefined ? eventData.time : allData[rowIndex][4],
-                    eventData.endTime !== undefined ? eventData.endTime : allData[rowIndex][5],
-                    eventData.from !== undefined ? eventData.from : (eventData.place !== undefined ? eventData.place : allData[rowIndex][6]),
-                    eventData.to !== undefined ? eventData.to : allData[rowIndex][7],
-                    eventData.status !== undefined ? eventData.status : allData[rowIndex][8],
-                    eventData.bookingRef !== undefined ? eventData.bookingRef : allData[rowIndex][9],
-                    eventData.details !== undefined ? eventData.details : allData[rowIndex][10],
-                    budget
-                ];
-                updateCount++;
-                modified = true;
-            } else {
+            if (rowIndex === -1) {
                 notFound.push(`${date} ${eventId}`);
+                return;
             }
+
+            const current = allData[rowIndex];
+            // Only touch the budget column when the client sent budget fields
+            const budget = 'budgetAmount' in eventData
+                ? (eventData.budgetAmount ? `${eventData.budgetAmount}/${eventData.budgetPaidBy || ''}` : '')
+                : current[11];
+
+            allData[rowIndex] = [
+                current[0], // date changes go through moveEvent / renameDates
+                pick(eventData, 'type', current[1]),
+                pick(eventData, 'category', current[2]),
+                pick(eventData, 'name', current[3]),
+                pick(eventData, 'time', current[4]),
+                pick(eventData, 'endTime', current[5]),
+                eventData.from !== undefined ? eventData.from : pick(eventData, 'place', current[6]),
+                pick(eventData, 'to', current[7]),
+                pick(eventData, 'status', current[8]),
+                pick(eventData, 'bookingRef', current[9]),
+                pick(eventData, 'details', current[10]),
+                budget,
+                pick(eventData, 'tripId', current[12])
+            ];
+            changedRows.add(rowIndex);
         });
 
-        // 3. Batch write: Write all data back in a single call
-        if (modified) {
-            eventsSheet.getRange(2, 1, allData.length, 12).setValues(allData);
-        }
+        // Write only the rows that changed: rewriting every row would turn text
+        // dates/times back into Sheets date values.
+        changedRows.forEach(i => {
+            eventsSheet.getRange(i + 2, 1, 1, EVENT_COLS).setValues([eventRowValues(allData[i])]);
+        });
+        if (changedRows.size > 0) markUpdated();
 
-        if (modified) markUpdated();
-
-        if (updateCount === 0 && notFound.length > 0) {
+        if (changedRows.size === 0 && notFound.length > 0) {
             return createApiResponse('error', null, { message: `Event not found: ${notFound.join(', ')}` });
         }
-        return createApiResponse('success', { updated: updateCount, notFound });
+        return createApiResponse('success', { updated: changedRows.size, notFound });
     } catch (error) {
         return createApiResponse('error', null, { message: error.toString() });
     }
@@ -917,36 +903,29 @@ function handleAddEvent(e) {
             return createApiResponse('error', null, { message: 'Date is required' });
         }
 
-        const ss = getSpreadsheet();
-        const eventsSheet = ss.getSheetByName(EVENTS_SHEET);
-
-        if (!eventsSheet) {
-            return createApiResponse('error', null, { message: 'Events sheet not found' });
-        }
-
+        const eventsSheet = getEventsSheet();
         const budget = eventData.budgetAmount
             ? `${eventData.budgetAmount}/${eventData.budgetPaidBy || ''}`
             : '';
+        const value = (key, fallback = '') => (eventData[key] !== undefined ? eventData[key] : fallback);
 
-        // For new events, use default empty string but preserve explicit values
-        const rowData = [
+        const rowData = eventRowValues([
             date,
-            eventData.type !== undefined ? eventData.type : '',
-            eventData.category !== undefined ? eventData.category : '',
-            eventData.name !== undefined ? eventData.name : '',
-            eventData.time !== undefined ? eventData.time : '',
-            eventData.endTime !== undefined ? eventData.endTime : '',
-            eventData.from !== undefined ? eventData.from : (eventData.place !== undefined ? eventData.place : ''),
-            eventData.to !== undefined ? eventData.to : '',
-            eventData.status !== undefined ? eventData.status : 'planned',
-            eventData.bookingRef !== undefined ? eventData.bookingRef : '',
-            eventData.details !== undefined ? eventData.details : '',
-            budget
-        ];
+            value('type'),
+            value('category'),
+            value('name'),
+            value('time'),
+            value('endTime'),
+            eventData.from !== undefined ? eventData.from : value('place'),
+            value('to'),
+            value('status', 'planned'),
+            value('bookingRef'),
+            value('details'),
+            budget,
+            value('tripId')
+        ]);
 
-        // Append row (fast operation)
         eventsSheet.appendRow(rowData);
-
         markUpdated();
 
         return createApiResponse('success', { message: 'Event added' });
@@ -967,20 +946,8 @@ function handleDeleteEvent(e) {
             return createApiResponse('error', null, { message: 'Date and eventId required' });
         }
 
-        const ss = getSpreadsheet();
-        const eventsSheet = ss.getSheetByName(EVENTS_SHEET);
-
-        if (!eventsSheet) {
-            return createApiResponse('error', null, { message: 'Events sheet not found' });
-        }
-
-        const lastRow = eventsSheet.getLastRow();
-        if (lastRow < 2) {
-            return createApiResponse('error', null, { message: 'No data' });
-        }
-
-        // Find the row to delete
-        const data = eventsSheet.getRange(2, 1, lastRow - 1, 4).getValues();
+        const eventsSheet = getEventsSheet();
+        const data = readEventRows(eventsSheet);
         const index = findEventIndex(data, date, eventId, e.parameter.row);
 
         if (index === -1) {
@@ -1001,35 +968,20 @@ function handleDeleteEvent(e) {
 function handleDeleteEventsByDate(e) {
     try {
         const date = e.parameter.date;
+        const tripId = e.parameter.tripId || '';
 
         if (!date) {
             return createApiResponse('error', null, { message: 'Date is required' });
         }
 
-        const ss = getSpreadsheet();
-        const eventsSheet = ss.getSheetByName(EVENTS_SHEET);
+        const eventsSheet = getEventsSheet();
+        const matches = [];
+        readEventRows(eventsSheet).forEach((row, i) => {
+            if (dateKey(row[0]) === date && (!tripId || tripIdOf(row) === tripId)) matches.push(i);
+        });
 
-        if (!eventsSheet) {
-            return createApiResponse('error', null, { message: 'Events sheet not found' });
-        }
-
-        const lastRow = eventsSheet.getLastRow();
-        if (lastRow < 2) {
-            return createApiResponse('success', { message: 'No events to delete', deletedCount: 0 });
-        }
-
-        // Find all rows to delete (iterate backwards to avoid index shifting)
-        const data = eventsSheet.getRange(2, 1, lastRow - 1, 1).getValues();
-        let deletedCount = 0;
-
-        for (let i = data.length - 1; i >= 0; i--) {
-            if (toString(data[i][0]) === date) {
-                eventsSheet.deleteRow(i + 2);
-                deletedCount++;
-            }
-        }
-
-        markUpdated();
+        const deletedCount = deleteEventRows(eventsSheet, matches);
+        if (deletedCount > 0) markUpdated();
 
         return createApiResponse('success', { message: `Deleted ${deletedCount} events`, deletedCount });
     } catch (error) {
@@ -1049,43 +1001,23 @@ function handleMoveEvent(e) {
             return createApiResponse('error', null, { message: 'originalDate, eventId, and newDate are required' });
         }
 
-        const ss = getSpreadsheet();
-        const eventsSheet = ss.getSheetByName(EVENTS_SHEET);
-
-        if (!eventsSheet) {
-            return createApiResponse('error', null, { message: 'Events sheet not found' });
+        const eventsSheet = getEventsSheet();
+        const index = findEventIndex(readEventRows(eventsSheet), originalDate, eventId, row);
+        if (index === -1) {
+            return createApiResponse('error', null, { message: 'Event not found' });
         }
 
-        const lastRow = eventsSheet.getLastRow();
-        if (lastRow < 2) {
-            return createApiResponse('error', null, { message: 'No data' });
+        const rowIndex = index + 2;
+        eventsSheet.getRange(rowIndex, 1).setValue(dateCell(newDate));
+        if (newStartTime !== undefined && newStartTime !== null) {
+            eventsSheet.getRange(rowIndex, 5).setValue(timeCell(newStartTime));
+        }
+        if (newEndTime !== undefined && newEndTime !== null) {
+            eventsSheet.getRange(rowIndex, 6).setValue(timeCell(newEndTime));
         }
 
-        // Find the event to update (columns: date, startTime, endTime, name)
-        const data = eventsSheet.getRange(2, 1, lastRow - 1, 4).getValues();
-
-        const index = findEventIndex(data, originalDate, eventId, row);
-        if (index !== -1) {
-            const rowIndex = index + 2;
-
-            // Update date (column 1)
-            eventsSheet.getRange(rowIndex, 1).setValue(newDate);
-
-            // Update start time if provided (column 5)
-            if (newStartTime !== undefined && newStartTime !== null) {
-                eventsSheet.getRange(rowIndex, 5).setValue(newStartTime);
-            }
-
-            // Update end time if provided (column 6)
-            if (newEndTime !== undefined && newEndTime !== null) {
-                eventsSheet.getRange(rowIndex, 6).setValue(newEndTime);
-            }
-
-            markUpdated();
-            return createApiResponse('success', { message: 'Event moved successfully' });
-        }
-
-        return createApiResponse('error', null, { message: 'Event not found' });
+        markUpdated();
+        return createApiResponse('success', { message: 'Event moved successfully' });
     } catch (error) {
         return createApiResponse('error', null, { message: error.toString() });
     }
@@ -1133,9 +1065,9 @@ function updateEventField(date, eventName, field, value) {
     const data = eventsSheet.getRange(2, 1, lastRow - 1, 4).getValues();
 
     for (let i = 0; i < data.length; i++) {
-        if (toString(data[i][0]) === date && toString(data[i][3]) === eventName) {
+        if (dateKey(data[i][0]) === date && toString(data[i][3]) === eventName) {
             eventsSheet.getRange(i + 2, colIndex).setValue(value);
-            CacheService.getScriptCache().remove('itinerary_json');
+            markUpdated();
             return { success: true };
         }
     }
@@ -1439,6 +1371,126 @@ function generateStaticMapUrl(locations) {
 
     const blob = map.getBlob();
     return 'data:image/png;base64,' + Utilities.base64Encode(blob.getBytes());
+}
+
+// ============================================================================
+// TRIPS
+// ============================================================================
+
+function getTripsSheet() {
+    const ss = getSpreadsheet();
+    let sheet = ss.getSheetByName(TRIPS_SHEET);
+    if (!sheet) {
+        sheet = ss.insertSheet(TRIPS_SHEET);
+        sheet.appendRow(TRIPS_HEADER);
+    }
+    return sheet;
+}
+
+/** Trip start dates are written by this API only, so a Date cell's year can be trusted. */
+function tripDateKey(value) {
+    if (value instanceof Date) return Utilities.formatDate(value, 'Asia/Tokyo', 'yyyy/M/d');
+    return dateKey(value);
+}
+
+function getTrips() {
+    const sheet = getSpreadsheet().getSheetByName(TRIPS_SHEET);
+    if (!sheet || sheet.getLastRow() < 2) return [];
+    return sheet.getRange(2, 1, sheet.getLastRow() - 1, TRIPS_HEADER.length).getValues()
+        .filter(row => toString(row[0]))
+        .map(row => ({
+            id: toString(row[0]),
+            title: toString(row[1]),
+            startDate: tripDateKey(row[2]),
+            theme: toString(row[3]) || 'auto',
+            budget: Number(row[4]) || 0
+        }));
+}
+
+/** Create or update a trip. POST trip={id?, title, startDate, theme, budget} */
+function handleSaveTrip(e) {
+    try {
+        const trip = JSON.parse(e.parameter.trip || '{}');
+        if (!trip.title) {
+            return createApiResponse('error', null, { message: 'Title is required' });
+        }
+        const sheet = getTripsSheet();
+        const id = trip.id || `trip-${Utilities.getUuid().slice(0, 8)}`;
+        const lastRow = sheet.getLastRow();
+        const ids = lastRow > 1 ? sheet.getRange(2, 1, lastRow - 1, 1).getValues().map(r => toString(r[0])) : [];
+        const index = ids.indexOf(id);
+        const createdAt = index === -1 ? new Date() : sheet.getRange(index + 2, 6).getValue();
+        const row = [id, trip.title, trip.startDate ? dateCell(trip.startDate) : '', trip.theme || 'auto', Number(trip.budget) || 0, createdAt];
+
+        if (index === -1) sheet.appendRow(row);
+        else sheet.getRange(index + 2, 1, 1, TRIPS_HEADER.length).setValues([row]);
+
+        markUpdated();
+        return createApiResponse('success', { id });
+    } catch (error) {
+        return createApiResponse('error', null, { message: error.toString() });
+    }
+}
+
+/** Delete a trip and all of its events. POST id=... */
+function handleDeleteTrip(e) {
+    try {
+        const id = e.parameter.id;
+        if (!id) return createApiResponse('error', null, { message: 'id is required' });
+
+        const eventsSheet = getEventsSheet();
+        const mine = [];
+        readEventRows(eventsSheet).forEach((row, i) => { if (tripIdOf(row) === id) mine.push(i); });
+        const deletedEvents = deleteEventRows(eventsSheet, mine);
+
+        const sheet = getSpreadsheet().getSheetByName(TRIPS_SHEET);
+        if (sheet && sheet.getLastRow() > 1) {
+            const ids = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues().map(r => toString(r[0]));
+            const index = ids.indexOf(id);
+            if (index !== -1) sheet.deleteRow(index + 2);
+        }
+
+        markUpdated();
+        return createApiResponse('success', { deletedEvents });
+    } catch (error) {
+        return createApiResponse('error', null, { message: error.toString() });
+    }
+}
+
+/**
+ * Change the dates of a trip's events, e.g. to add the year to legacy "M/D"
+ * rows or to shift a rescheduled trip. POST tripId=..., changes=[{from, to}]
+ * All changes are applied against the original values, so swaps are safe.
+ */
+function handleRenameDates(e) {
+    try {
+        const tripId = e.parameter.tripId;
+        const changes = JSON.parse(e.parameter.changes || '[]');
+        if (!tripId || !Array.isArray(changes)) {
+            return createApiResponse('error', null, { message: 'tripId and changes are required' });
+        }
+        const map = {};
+        changes.forEach(c => { if (c.from && c.to) map[dateKey(c.from)] = dateKey(c.to); });
+
+        const sheet = getEventsSheet();
+        const rows = readEventRows(sheet);
+        let renamed = 0;
+        const column = rows.map(row => {
+            const key = dateKey(row[0]);
+            if (tripIdOf(row) === tripId && map[key] && map[key] !== key) {
+                renamed++;
+                return [dateCell(map[key])];
+            }
+            return [dateCell(row[0])];
+        });
+        if (renamed > 0) {
+            sheet.getRange(2, 1, column.length, 1).setValues(column);
+            markUpdated();
+        }
+        return createApiResponse('success', { renamed });
+    } catch (error) {
+        return createApiResponse('error', null, { message: error.toString() });
+    }
 }
 
 // ============================================================================

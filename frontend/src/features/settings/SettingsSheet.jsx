@@ -5,8 +5,7 @@ import { Spinner } from '../../ui/atoms';
 import { useConfirm, useToast } from '../../ui/contexts';
 import { useTrip } from '../../store/context';
 import api from '../../lib/api';
-import { TRIP_TITLE_KEY, DEFAULT_TRIP_TITLE } from '../../lib/keys';
-import { useLocalStorage } from '../../hooks/useLocalStorage';
+import { toDateKey } from '../../lib/trip';
 
 const THEMES = [
     { id: 'system', label: '自動', icon: Monitor },
@@ -17,10 +16,10 @@ const THEMES = [
 const csvCell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
 
 export default function SettingsSheet({ open, onClose, theme, setTheme, onLogout }) {
-    const { days, refresh, syncedAt, syncError } = useTrip();
+    const { currentTrip, days, refresh, syncedAt, syncError, supportsTrips, importEvents } = useTrip();
     const { showToast } = useToast();
     const { confirm } = useConfirm();
-    const [title, setTitle] = useLocalStorage(TRIP_TITLE_KEY, DEFAULT_TRIP_TITLE);
+    const tripTitle = currentTrip?.title || '旅行';
     const [syncing, setSyncing] = useState(false);
     const [importing, setImporting] = useState(false);
     const fileRef = useRef(null);
@@ -31,18 +30,19 @@ export default function SettingsSheet({ open, onClose, theme, setTheme, onLogout
         setSyncing(false);
     };
 
-    // Same column order as the "events" sheet, so the file can be imported back.
+    // The current trip, in the "events" sheet's column order so it can be imported back.
+    // Dates are written with their year.
     const exportCsv = () => {
         const header = ['date', 'type', 'category', 'name', 'time', 'endTime', 'from', 'to', 'status', 'bookingRef', 'memo', 'budget'];
         const rows = days.flatMap((d) => d.events.map((e) => [
-            d.date, e.type, e.category, e.name, e.time, e.endTime, e.from, e.to, e.status, e.bookingRef, e.details,
+            toDateKey(d.fullDate), e.type, e.category, e.name, e.time, e.endTime, e.from, e.to, e.status, e.bookingRef, e.details,
             e.budgetAmount ? `${e.budgetAmount}/${e.budgetPaidBy || ''}` : '',
         ]));
         const csv = [header, ...rows].map((r) => r.map(csvCell).join(',')).join('\n');
         const url = URL.createObjectURL(new Blob(['﻿', csv], { type: 'text/csv;charset=utf-8' }));
         const a = document.createElement('a');
         a.href = url;
-        a.download = `trip_${new Date().toISOString().slice(0, 10)}.csv`;
+        a.download = `${tripTitle}_${new Date().toISOString().slice(0, 10)}.csv`;
         a.click();
         URL.revokeObjectURL(url);
     };
@@ -53,16 +53,16 @@ export default function SettingsSheet({ open, onClose, theme, setTheme, onLogout
         if (!file) return;
         const ok = await confirm({
             title: 'CSVを取り込む',
-            message: 'スプレッドシートの予定がCSVの内容で置き換わります。\n先に「書き出す」でバックアップを取ることをおすすめします。',
+            message: supportsTrips
+                ? `「${tripTitle}」の予定がCSVの内容で置き換わります。ほかの旅行はそのままです。\n先に「書き出す」でバックアップを取ることをおすすめします。`
+                : 'スプレッドシートの予定がすべてCSVの内容で置き換わります。\n先に「書き出す」でバックアップを取ることをおすすめします。',
             confirmLabel: '取り込む',
             destructive: true,
         });
         if (!ok) return;
         setImporting(true);
         try {
-            const result = await api.uploadEvents(await file.text());
-            showToast('success', result?.message || '取り込みました');
-            await refresh();
+            if (await importEvents(await file.text())) showToast('success', '取り込みました');
         } catch (err) {
             showToast('error', err.message);
         } finally {
@@ -78,11 +78,6 @@ export default function SettingsSheet({ open, onClose, theme, setTheme, onLogout
     return (
         <Sheet open={open} onClose={onClose} title="設定">
             <div className="space-y-6">
-                <section>
-                    <label className="field-label" htmlFor="trip-title">旅の名前</label>
-                    <input id="trip-title" className="field-input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={DEFAULT_TRIP_TITLE} />
-                </section>
-
                 <section>
                     <p className="field-label">表示</p>
                     <div className="grid grid-cols-3 gap-2">
@@ -106,12 +101,12 @@ export default function SettingsSheet({ open, onClose, theme, setTheme, onLogout
                                 </span>
                             </span>
                         </button>
-                        <button onClick={exportCsv} className="settings-row">
-                            <Download size={18} /> <span className="flex-1">CSVに書き出す</span>
+                        <button onClick={exportCsv} disabled={days.length === 0} className="settings-row">
+                            <Download size={18} /> <span className="flex-1">「{tripTitle}」をCSVに書き出す</span>
                         </button>
                         <button onClick={() => fileRef.current?.click()} disabled={importing} className="settings-row">
                             {importing ? <Spinner className="w-4 h-4" /> : <Upload size={18} />}
-                            <span className="flex-1">CSVから取り込む</span>
+                            <span className="flex-1">CSVから「{tripTitle}」に取り込む</span>
                         </button>
                         <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden" onChange={importCsv} />
                         <button onClick={clearCache} className="settings-row">

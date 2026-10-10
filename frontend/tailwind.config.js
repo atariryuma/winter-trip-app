@@ -4,6 +4,13 @@ export default {
     content: ['./index.html', './src/**/*.{js,jsx}'],
     theme: {
         extend: {
+            colors: {
+                // Seasonal accent; the palette is switched with [data-season] in index.css
+                accent: Object.fromEntries(
+                    [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950]
+                        .map((shade) => [shade, `rgb(var(--accent-${shade}) / <alpha-value>)`]),
+                ),
+            },
             fontFamily: {
                 sans: ['"Zen Kaku Gothic New"', 'Inter', 'system-ui', 'sans-serif'],
             },

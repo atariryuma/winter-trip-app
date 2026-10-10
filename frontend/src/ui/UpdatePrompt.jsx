@@ -28,7 +28,7 @@ export default function UpdatePrompt() {
     return (
         <div className="fixed inset-x-0 top-[calc(0.75rem+env(safe-area-inset-top))] z-notification flex justify-center px-4">
             <div className="w-full max-w-sm flex items-center gap-3 rounded-2xl bg-slate-900 text-white px-4 py-3 shadow-xl animate-slide-up-fade">
-                <RefreshCw size={18} className="text-sky-300 shrink-0" />
+                <RefreshCw size={18} className="text-accent-300 shrink-0" />
                 <p className="flex-1 text-sm">新しいバージョンがあります</p>
                 <button
                     onClick={() => window.location.reload()}

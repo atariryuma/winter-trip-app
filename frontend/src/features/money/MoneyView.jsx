@@ -5,12 +5,12 @@ import { useLocalStorage } from '../../hooks/useLocalStorage';
 import { CategoryIcon, SectionTitle } from '../../ui/atoms';
 import Sheet from '../../ui/Sheet';
 import PayerPicker from './PayerPicker';
-import { BUDGET_GOAL_KEY, PAYERS_KEY, SHOPPING_KEY } from '../../lib/keys';
+import { PAYERS_KEY, shoppingKey } from '../../lib/keys';
 import { eventTitle, formatYen, isStay, isTransport } from '../../lib/trip';
 
 const GROUPS = [
     { id: 'stay', label: '宿泊', cls: 'bg-violet-500' },
-    { id: 'transport', label: '交通', cls: 'bg-sky-500' },
+    { id: 'transport', label: '交通', cls: 'bg-accent-500' },
     { id: 'meal', label: '食事', cls: 'bg-orange-500' },
     { id: 'fun', label: '観光・体験', cls: 'bg-rose-500' },
     { id: 'shopping', label: '買い物', cls: 'bg-pink-500' },
@@ -49,10 +49,11 @@ const settle = (paidBy, people) => {
 };
 
 export default function MoneyView() {
-    const { days, setPayment } = useTrip();
-    const [goal, setGoal] = useLocalStorage(BUDGET_GOAL_KEY, 100000);
+    const { currentTrip, days, setPayment, saveTrip } = useTrip();
+    const goal = currentTrip?.budget || 0;
+    const setGoal = (budget) => saveTrip({ id: currentTrip.id, title: currentTrip.title, theme: currentTrip.theme, budget });
     const [payers] = useLocalStorage(PAYERS_KEY, []);
-    const [shopping] = useLocalStorage(SHOPPING_KEY, []);
+    const [shopping] = useLocalStorage(shoppingKey(currentTrip?.id), []);
     const [editing, setEditing] = useState(null);
     const [editingGoal, setEditingGoal] = useState(false);
 
@@ -81,18 +82,20 @@ export default function MoneyView() {
 
     return (
         <div className="px-4 sm:px-6 pt-2 pb-32 md:pb-16 max-w-3xl">
-            <section className="rounded-[1.75rem] bg-gradient-to-br from-slate-900 to-slate-700 text-white p-5 shadow-xl shadow-slate-900/10">
+            <section className="rounded-[1.75rem] bg-gradient-to-br from-slate-900 via-slate-800 to-accent-900 text-white p-5 shadow-xl shadow-slate-900/10">
                 <p className="text-xs font-bold text-white/60">旅の支出</p>
                 <p className="text-4xl font-black tabular-nums mt-1">{formatYen(total)}</p>
                 <button onClick={() => setEditingGoal(true)} className="mt-1 text-sm text-white/70 inline-flex items-center gap-1">
-                    予算 {formatYen(goal)} <Pencil size={12} />
+                    {goal > 0 ? `予算 ${formatYen(goal)}` : '予算を設定'} <Pencil size={12} />
                 </button>
-                <div className="mt-4 h-2.5 rounded-full bg-white/15 overflow-hidden">
-                    <div className={`h-full rounded-full transition-all ${total > goal ? 'bg-rose-400' : 'bg-emerald-400'}`} style={{ width: `${pct}%` }} />
-                </div>
+                {goal > 0 && (
+                    <div className="mt-4 h-2.5 rounded-full bg-white/15 overflow-hidden">
+                        <div className={`h-full rounded-full transition-all ${total > goal ? 'bg-rose-400' : 'bg-emerald-400'}`} style={{ width: `${pct}%` }} />
+                    </div>
+                )}
                 <div className="mt-3 flex justify-between text-sm">
-                    <span className={total > goal ? 'text-rose-300 font-bold' : 'text-white/80'}>
-                        {total > goal ? `${formatYen(total - goal)} オーバー` : `残り ${formatYen(goal - total)}`}
+                    <span className={goal > 0 && total > goal ? 'text-rose-300 font-bold' : 'text-white/80'}>
+                        {goal > 0 && (total > goal ? `${formatYen(total - goal)} オーバー` : `残り ${formatYen(goal - total)}`)}
                     </span>
                     {days.length > 0 && <span className="text-white/60">1日あたり {formatYen(total / days.length)}</span>}
                 </div>
@@ -138,7 +141,7 @@ export default function MoneyView() {
                                         <span className="font-bold">{t.from}</span>
                                         <ArrowRight size={14} className="text-slate-400" />
                                         <span className="font-bold">{t.to}</span>
-                                        <span className="ml-auto font-black tabular-nums text-sky-600 dark:text-sky-400">{formatYen(t.amount)}</span>
+                                        <span className="ml-auto font-black tabular-nums text-accent-700 dark:text-accent-400">{formatYen(t.amount)}</span>
                                     </p>
                                 ))}
                             </div>
@@ -151,7 +154,7 @@ export default function MoneyView() {
             )}
 
             <SectionTitle action={(
-                <button onClick={() => setEditing({ pick: true })} className="text-sm font-bold text-sky-600 dark:text-sky-400 inline-flex items-center gap-1">
+                <button onClick={() => setEditing({ pick: true })} className="text-sm font-bold text-accent-700 dark:text-accent-400 inline-flex items-center gap-1">
                     <Plus size={14} /> 支払いを記録
                 </button>
             )}>

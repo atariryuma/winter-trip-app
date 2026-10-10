@@ -1,13 +1,16 @@
 import { useState } from 'react';
-import { ArrowRight, Snowflake } from 'lucide-react';
+import { ArrowRight, Plane } from 'lucide-react';
 import api from '../../lib/api';
 import { Spinner } from '../../ui/atoms';
+import { useSeason } from '../../hooks/useSeason';
+import { seasonOf } from '../../lib/season';
 
 export default function LoginView({ onLogin }) {
     const [code, setCode] = useState('');
     const [loading, setLoading] = useState(false);
     // null | 'invalid' | 'network'
     const [error, setError] = useState(null);
+    useSeason(seasonOf(new Date()));
 
     const submit = async (e) => {
         e.preventDefault();
@@ -30,17 +33,17 @@ export default function LoginView({ onLogin }) {
     };
 
     return (
-        <div className="min-h-[100dvh] flex items-center justify-center bg-gradient-to-b from-slate-950 via-slate-900 to-sky-950 px-6 text-white">
+        <div className="min-h-[100dvh] flex items-center justify-center bg-gradient-to-b from-slate-950 via-slate-900 to-accent-950 px-6 text-white">
             <div className="w-full max-w-sm">
                 <div className="w-16 h-16 rounded-3xl bg-white/10 ring-1 ring-white/20 flex items-center justify-center">
-                    <Snowflake size={30} className="text-sky-200" />
+                    <Plane size={30} className="text-accent-200" />
                 </div>
                 <h1 className="mt-6 text-4xl font-black tracking-tight">TripPlanner</h1>
                 <p className="mt-2 text-white/60">家族の旅のしおり。予定・予約・持ち物・お金をみんなで共有。</p>
 
                 <form onSubmit={submit} className="mt-10">
                     <label htmlFor="passcode" className="text-xs font-bold tracking-wider text-white/60">合言葉</label>
-                    <div className={`mt-2 flex items-center rounded-2xl bg-white/10 ring-1 ${error ? 'ring-rose-400 animate-shake' : 'ring-white/15 focus-within:ring-sky-300'}`}>
+                    <div className={`mt-2 flex items-center rounded-2xl bg-white/10 ring-1 ${error ? 'ring-rose-400 animate-shake' : 'ring-white/15 focus-within:ring-accent-300'}`}>
                         <input
                             id="passcode"
                             type="password"

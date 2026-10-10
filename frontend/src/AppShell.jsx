@@ -1,16 +1,18 @@
 import { lazy, Suspense, useState } from 'react';
-import { Backpack, CalendarDays, CloudOff, RefreshCw, Settings, Snowflake, Ticket, Wallet } from 'lucide-react';
+import { Backpack, CalendarDays, ChevronDown, CloudOff, Plane, RefreshCw, Settings, Ticket, Wallet } from 'lucide-react';
 import TimelineView from './features/timeline/TimelineView';
 import EventDetailSheet from './features/event/EventDetailSheet';
 import EventEditorSheet from './features/event/EventEditorSheet';
 import SettingsSheet from './features/settings/SettingsSheet';
+import TripsSheet from './features/trips/TripsSheet';
+import TripEditorSheet from './features/trips/TripEditorSheet';
 import PullToRefresh from './ui/PullToRefresh';
 import UpdatePrompt from './ui/UpdatePrompt';
 import { Spinner } from './ui/atoms';
 import { useTrip } from './store/context';
-import { useLocalStorage } from './hooks/useLocalStorage';
-import { DEFAULT_TRIP_TITLE, TRIP_TITLE_KEY } from './lib/keys';
-import { needsBooking, tripPhase } from './lib/trip';
+import { useSeason } from './hooks/useSeason';
+import { needsBooking, phaseLabel } from './lib/trip';
+import { SEASONS, seasonOf } from './lib/season';
 
 const BookingsView = lazy(() => import('./features/bookings/BookingsView'));
 const ListsView = lazy(() => import('./features/lists/ListsView'));
@@ -23,22 +25,19 @@ const TABS = [
     { id: 'money', label: 'お金', icon: Wallet },
 ];
 
-const phaseLabel = (phase) => {
-    switch (phase.phase) {
-        case 'before': return phase.daysUntil === 1 ? 'いよいよ明日出発' : `出発まであと${phase.daysUntil}日`;
-        case 'during': return phase.dayNumber > 0 ? `旅行中・${phase.dayNumber}日目` : '旅行中';
-        case 'after': return 'おかえりなさい';
-        default: return '';
-    }
-};
-
 export default function AppShell({ theme, setTheme, onLogout }) {
-    const { days, status, syncError, syncedAt, saving, refresh, today, deleteEvent } = useTrip();
+    const { currentTrip, days, status, syncError, syncedAt, saving, refresh, today, deleteEvent } = useTrip();
     const [tab, setTab] = useState(() => sessionStorage.getItem('tab') || 'timeline');
-    const [title] = useLocalStorage(TRIP_TITLE_KEY, DEFAULT_TRIP_TITLE);
     const [selection, setSelection] = useState(null);
     const [draft, setDraft] = useState(null);
     const [settingsOpen, setSettingsOpen] = useState(false);
+    const [tripsOpen, setTripsOpen] = useState(false);
+    // { trip } edits a trip, {} creates one
+    const [tripDraft, setTripDraft] = useState(null);
+
+    const season = currentTrip?.season || seasonOf(today);
+    const SeasonIcon = SEASONS[season].icon;
+    useSeason(season);
 
     const switchTab = (id) => {
         setTab(id);
@@ -52,7 +51,7 @@ export default function AppShell({ theme, setTheme, onLogout }) {
     if (status === 'loading') {
         return (
             <div className="min-h-[100dvh] flex flex-col items-center justify-center gap-4 text-slate-400">
-                <Snowflake className="animate-spin [animation-duration:3s]" size={32} />
+                <Plane className="animate-pulse" size={32} />
                 <p className="text-sm">旅のしおりを読み込んでいます…</p>
             </div>
         );
@@ -69,8 +68,9 @@ export default function AppShell({ theme, setTheme, onLogout }) {
         );
     }
 
-    const phase = tripPhase(days, today);
     const current = TABS.find((t) => t.id === tab) || TABS[0];
+    const title = currentTrip?.title || 'TripPlanner';
+    const subtitle = currentTrip ? phaseLabel(currentTrip.phase) : '旅行を作成してください';
 
     return (
         <div className="min-h-[100dvh] md:pl-60">
@@ -78,12 +78,24 @@ export default function AppShell({ theme, setTheme, onLogout }) {
 
             {/* Side navigation (tablet / desktop) */}
             <aside className="hidden md:flex fixed inset-y-0 left-0 w-60 flex-col border-r border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/60 backdrop-blur z-fixed">
-                <div className="px-5 pt-6 pb-5">
-                    <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400">
-                        <Snowflake size={18} /> <span className="text-xs font-bold tracking-widest">TRIPPLANNER</span>
-                    </div>
-                    <p className="mt-2 text-lg font-black leading-snug text-slate-900 dark:text-white">{title}</p>
-                    <p className="text-xs text-slate-500 mt-0.5">{phaseLabel(phase)}</p>
+                <div className="px-3 pt-5 pb-4">
+                    <p className="px-2 flex items-center gap-2 text-accent-700 dark:text-accent-400 text-xs font-bold tracking-widest">
+                        <Plane size={14} /> TRIPPLANNER
+                    </p>
+                    <button
+                        onClick={() => setTripsOpen(true)}
+                        className="mt-3 w-full flex items-center gap-3 rounded-2xl px-2 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-800"
+                        aria-label="旅行を切り替え"
+                    >
+                        <span className="w-10 h-10 shrink-0 rounded-2xl bg-accent-100 dark:bg-accent-500/15 text-accent-700 dark:text-accent-300 flex items-center justify-center">
+                            <SeasonIcon size={20} />
+                        </span>
+                        <span className="flex-1 min-w-0">
+                            <span className="block font-black leading-snug text-slate-900 dark:text-white truncate">{title}</span>
+                            <span className="block text-xs text-slate-500 truncate">{subtitle}</span>
+                        </span>
+                        <ChevronDown size={16} className="shrink-0 text-slate-400" />
+                    </button>
                 </div>
                 <nav className="flex-1 px-3 space-y-1">
                     {TABS.map((t) => (
@@ -114,13 +126,21 @@ export default function AppShell({ theme, setTheme, onLogout }) {
                 edge blur when such a box covers the top edge (see the status-bar note in index.html). */}
             <header className="sticky top-0 z-sticky bg-slate-100/90 dark:bg-slate-950/90 backdrop-blur pt-[env(safe-area-inset-top)]">
                 <div className="h-14 flex items-center gap-3 px-4 sm:px-6">
-                    <div className="flex-1 min-w-0">
-                        <h1 className="text-lg font-black text-slate-900 dark:text-white truncate leading-tight">
-                            <span className="md:hidden">{tab === 'timeline' ? title : current.label}</span>
-                            <span className="hidden md:inline">{current.label}</span>
-                        </h1>
-                        {tab === 'timeline' && <p className="md:hidden text-[11px] font-bold text-sky-600 dark:text-sky-400">{phaseLabel(phase)}</p>}
-                    </div>
+                    <button
+                        onClick={() => setTripsOpen(true)}
+                        className="md:hidden flex-1 min-w-0 flex items-center gap-2.5 text-left"
+                        aria-label="旅行を切り替え"
+                    >
+                        <SeasonIcon size={22} className="shrink-0 text-accent-700 dark:text-accent-400" />
+                        <span className="min-w-0">
+                            <span className="flex items-center gap-1 text-lg font-black text-slate-900 dark:text-white leading-tight">
+                                <span className="truncate">{title}</span>
+                                <ChevronDown size={16} className="shrink-0 text-slate-400" />
+                            </span>
+                            <span className="block text-[11px] font-bold text-accent-700 dark:text-accent-400 truncate">{subtitle}</span>
+                        </span>
+                    </button>
+                    <h1 className="hidden md:block flex-1 text-lg font-black text-slate-900 dark:text-white">{current.label}</h1>
                     <SyncBadge saving={saving} syncError={syncError} syncedAt={syncedAt} onRetry={refresh} />
                     <button onClick={() => setSettingsOpen(true)} className="md:hidden p-2 -mr-2 rounded-full text-slate-500 hover:bg-slate-200/60 dark:hover:bg-slate-800" aria-label="設定">
                         <Settings size={20} />
@@ -131,10 +151,12 @@ export default function AppShell({ theme, setTheme, onLogout }) {
             <main>
                 <PullToRefresh onRefresh={refresh}>
                     <Suspense fallback={<div className="py-20 flex justify-center text-slate-400"><Spinner className="w-6 h-6" /></div>}>
-                        {tab === 'timeline' && <TimelineView onOpenEvent={setSelection} onEdit={setDraft} />}
-                        {tab === 'bookings' && <BookingsView onOpenEvent={setSelection} />}
-                        {tab === 'lists' && <ListsView />}
-                        {tab === 'money' && <MoneyView />}
+                        {(tab === 'timeline' || !currentTrip) && (
+                            <TimelineView onOpenEvent={setSelection} onEdit={setDraft} onCreateTrip={() => setTripDraft({})} />
+                        )}
+                        {currentTrip && tab === 'bookings' && <BookingsView onOpenEvent={setSelection} />}
+                        {currentTrip && tab === 'lists' && <ListsView />}
+                        {currentTrip && tab === 'money' && <MoneyView />}
                     </Suspense>
                 </PullToRefresh>
             </main>
@@ -147,7 +169,7 @@ export default function AppShell({ theme, setTheme, onLogout }) {
                             key={t.id}
                             onClick={() => switchTab(t.id)}
                             aria-current={tab === t.id ? 'page' : undefined}
-                            className={`relative flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold ${tab === t.id ? 'text-sky-600 dark:text-sky-400' : 'text-slate-400'}`}
+                            className={`relative flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold ${tab === t.id ? 'text-accent-700 dark:text-accent-400' : 'text-slate-400'}`}
                         >
                             <t.icon size={22} strokeWidth={tab === t.id ? 2.4 : 2} />
                             {t.label}
@@ -166,6 +188,13 @@ export default function AppShell({ theme, setTheme, onLogout }) {
                 onDelete={(event) => deleteEvent(event.id)}
             />
             <EventEditorSheet draft={draft} onClose={() => setDraft(null)} />
+            <TripsSheet
+                open={tripsOpen}
+                onClose={() => setTripsOpen(false)}
+                onCreate={() => { setTripsOpen(false); setTripDraft({}); }}
+                onEdit={(trip) => { setTripsOpen(false); setTripDraft({ trip }); }}
+            />
+            <TripEditorSheet draft={tripDraft} onClose={() => setTripDraft(null)} />
             <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} theme={theme} setTheme={setTheme} onLogout={onLogout} />
         </div>
     );

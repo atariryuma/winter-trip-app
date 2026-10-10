@@ -692,6 +692,12 @@ function handleGetPlaceInfo(e) {
     return createApiResponse('success', getPlaceInfo(query));
 }
 
+function withoutPhotoUrl(info) {
+    if (!info || typeof info !== 'object') return info;
+    const { photoUrl, ...rest } = info;
+    return rest;
+}
+
 function getPlaceInfo(query) {
     if (!query || query.trim() === '') {
         return { found: false };
@@ -703,11 +709,12 @@ function getPlaceInfo(query) {
     // 1. Try Script Cache (Memory - Fast)
     try {
         const cached = cache.get(cacheKey);
-        if (cached) return JSON.parse(cached);
+        if (cached) return withoutPhotoUrl(JSON.parse(cached));
     } catch (e) { }
 
     // 2. Try Sheet Cache (Persistent)
-    const sheetCached = getPlaceFromSheetCache(query);
+    // Entries cached before photoUrl was dropped still carry the API key in it
+    const sheetCached = withoutPhotoUrl(getPlaceFromSheetCache(query));
     if (sheetCached) {
         // Warm up script cache
         try { cache.put(cacheKey, JSON.stringify(sheetCached), 43200); } catch (e) { }
@@ -744,7 +751,7 @@ function getPlaceInfo(query) {
             const fieldMask = [
                 'places.id', 'places.displayName', 'places.formattedAddress',
                 'places.googleMapsUri', 'places.nationalPhoneNumber', 'places.websiteUri',
-                'places.rating', 'places.userRatingCount', 'places.photos'
+                'places.rating', 'places.userRatingCount'
             ].join(',');
 
             const response = UrlFetchApp.fetch(textSearchUrl, {
@@ -772,10 +779,8 @@ function getPlaceInfo(query) {
                         website: place.websiteUri || null,
                         rating: place.rating || null,
                         userRatingCount: place.userRatingCount || null,
-                        mapsUrl: place.googleMapsUri || placeInfo.mapsUrl,
-                        photoUrl: place.photos?.[0]?.name
-                            ? `https://places.googleapis.com/v1/${place.photos[0].name}/media?maxHeightPx=300&maxWidthPx=400&key=${API_KEY}`
-                            : null
+                        mapsUrl: place.googleMapsUri || placeInfo.mapsUrl
+                        // No photo URL: it would carry the API key to every (anonymous) caller.
                     };
                 }
             }

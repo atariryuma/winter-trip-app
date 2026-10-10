@@ -62,12 +62,16 @@ const mutateGet = async (params, fallbackMessage, options = {}) => {
     return unwrap(await fetchWithRetry(`${API_URL}?${query}`, options, 0), fallbackMessage);
 };
 
-const cached = async (prefix, query, ttl, load) => {
+// Only good answers are kept: a failed lookup (e.g. a misconfigured API key) must not
+// stick on the device for days after the problem is fixed.
+const isGood = (value) => !!value && !value.error;
+
+const cached = async (prefix, query, ttl, load, keep = isGood) => {
     const key = makeCacheKey(prefix, query);
     const hit = cache.get(key);
-    if (hit) return hit;
+    if (hit && keep(hit)) return hit;
     const value = await load();
-    if (value) cache.set(key, value, ttl);
+    if (keep(value)) cache.set(key, value, ttl);
     return value;
 };
 
@@ -156,7 +160,8 @@ const api = {
     getPlaceAutocomplete: async (input) => {
         if (!input?.trim() || input.trim().length < 2) return [];
         const data = await cached('autocomplete', input, CACHE_TTL.AUTOCOMPLETE, () =>
-            get({ action: 'getPlaceAutocomplete', input }).catch(() => null));
+            get({ action: 'getPlaceAutocomplete', input }).catch(() => null),
+        (v) => isGood(v) && v.predictions?.length > 0);
         return data?.predictions || [];
     },
 
@@ -169,7 +174,8 @@ const api = {
     getRoute: (origin, destination) => {
         if (!origin?.trim() || !destination?.trim()) return Promise.resolve(null);
         return cached('routemap', `${origin}|${destination}`, CACHE_TTL.ROUTE, () =>
-            get({ action: 'getRouteMap', origin, destination }).catch(() => null));
+            get({ action: 'getRouteMap', origin, destination }).catch(() => null),
+        (v) => isGood(v) && !!v.duration);
     },
 
     invalidatePlace: (location) => {

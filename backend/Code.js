@@ -617,6 +617,16 @@ function handleGetPlaceAutocomplete(e) {
  * Get place autocomplete suggestions using Google Places API (New)
  * Returns array of suggestions with description and placeId
  */
+/** "400 INVALID_ARGUMENT: Invalid circle.radius..." from a Places API error response. */
+function placesErrorMessage(response) {
+    try {
+        const err = JSON.parse(response.getContentText()).error || {};
+        return `${err.code || response.getResponseCode()} ${err.status || ''}: ${String(err.message || '').trim()}`.trim();
+    } catch (e) {
+        return String(response.getResponseCode());
+    }
+}
+
 function getPlaceAutocomplete(input) {
     if (!input || input.trim() === '' || input.length < 2) {
         return { predictions: [] };
@@ -641,13 +651,10 @@ function getPlaceAutocomplete(input) {
         const payload = {
             input: input,
             languageCode: 'ja',
-            regionCode: 'JP',
-            locationBias: {
-                circle: {
-                    center: { latitude: 36.0, longitude: 138.0 },
-                    radius: 800000.0
-                }
-            }
+            // Favours Japanese results. (A location circle is capped at 50km by the API,
+            // so an all-of-Japan bias can't be expressed that way; the old 800km circle
+            // made every request fail with INVALID_ARGUMENT.)
+            regionCode: 'JP'
         };
 
         const response = UrlFetchApp.fetch(autocompleteUrl, {
@@ -678,7 +685,7 @@ function getPlaceAutocomplete(input) {
             return result;
         } else {
             Logger.log('Autocomplete API error: ' + response.getContentText());
-            return { predictions: [], error: 'API request failed' };
+            return { predictions: [], error: `API request failed: ${placesErrorMessage(response)}` };
         }
     } catch (e) {
         Logger.log('Autocomplete error: ' + e);
@@ -741,10 +748,7 @@ function getPlaceInfo(query) {
             const searchPayload = {
                 textQuery: query,
                 languageCode: 'ja',
-                regionCode: 'JP',
-                locationBias: {
-                    circle: { center: { latitude: 36.0, longitude: 138.0 }, radius: 800000.0 }
-                },
+                regionCode: 'JP', // see getPlaceAutocomplete: no location circle (50km max)
                 maxResultCount: 1
             };
 
@@ -783,6 +787,8 @@ function getPlaceInfo(query) {
                         // No photo URL: it would carry the API key to every (anonymous) caller.
                     };
                 }
+            } else {
+                Logger.log('Places text search error: ' + response.getContentText());
             }
         } catch (e) {
             Logger.log('Places API error: ' + e);

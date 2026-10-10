@@ -10,6 +10,7 @@ import {
 
 const CATEGORY_ORDER = ['flight', 'train', 'bus', 'transfer', 'hotel', 'meal', 'sightseeing', 'shopping', 'activity'];
 const NEW_DATE = '__new__';
+const FORM_ID = 'event-editor-form';
 
 const emptyFields = (time = '') => ({
     category: 'sightseeing',
@@ -44,6 +45,12 @@ export default function EventEditorSheet({ draft, onClose }) {
             onClose={onClose}
             title={draft?.event ? '予定を編集' : '予定を追加'}
             size="md"
+            footer={open && (
+                // Outside the scroll area; tied to the form below by its id
+                <button type="submit" form={FORM_ID} className="btn-primary w-full">
+                    {draft.event ? '保存する' : '追加する'}
+                </button>
+            )}
         >
             {/* Remount per draft so the form starts from the right values. */}
             {open && <EditorForm key={draft.event?.id || `${draft.date}-${draft.time}`} draft={draft} onClose={onClose} />}
@@ -102,7 +109,7 @@ function EditorForm({ draft, onClose }) {
     };
 
     return (
-        <form onSubmit={submit} className="space-y-5" noValidate>
+        <form id={FORM_ID} onSubmit={submit} className="space-y-5" noValidate>
             <fieldset>
                 <legend className="field-label">種類</legend>
                 <div className="flex flex-wrap gap-2">
@@ -255,11 +262,6 @@ function EditorForm({ draft, onClose }) {
                 )}
             </div>
 
-            <div className="sticky bottom-0 -mx-5 px-5 pt-3 pb-[env(safe-area-inset-bottom)] bg-white/95 dark:bg-slate-900/95 backdrop-blur">
-                <button type="submit" className="btn-primary w-full">
-                    {original ? '保存する' : '追加する'}
-                </button>
-            </div>
         </form>
     );
 }

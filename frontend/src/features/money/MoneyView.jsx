@@ -85,7 +85,7 @@ export default function MoneyView() {
             <section className="rounded-[1.75rem] bg-gradient-to-br from-slate-900 via-slate-800 to-accent-900 text-white p-5 shadow-xl shadow-slate-900/10">
                 <p className="text-xs font-bold text-white/60">旅の支出</p>
                 <p className="text-4xl font-black tabular-nums mt-1">{formatYen(total)}</p>
-                <button onClick={() => setEditingGoal(true)} className="mt-1 text-sm text-white/70 inline-flex items-center gap-1">
+                <button onClick={() => setEditingGoal(true)} className="-mb-2 py-2 text-sm text-white/70 inline-flex items-center gap-1">
                     {goal > 0 ? `予算 ${formatYen(goal)}` : '予算を設定'} <Pencil size={12} />
                 </button>
                 {goal > 0 && (
@@ -154,7 +154,7 @@ export default function MoneyView() {
             )}
 
             <SectionTitle action={(
-                <button onClick={() => setEditing({ pick: true })} className="text-sm font-bold text-accent-700 dark:text-accent-400 inline-flex items-center gap-1">
+                <button onClick={() => setEditing({ pick: true })} className="-my-2 py-2 text-sm font-bold text-accent-700 dark:text-accent-400 inline-flex items-center gap-1">
                     <Plus size={14} /> 支払いを記録
                 </button>
             )}>
